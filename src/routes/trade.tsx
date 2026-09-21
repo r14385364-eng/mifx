@@ -11,15 +11,16 @@ export const Route = createFileRoute("/trade")({
   }),
   head: () => ({
     meta: [
-      { title: "Trade — MIFX" },
+      { title: "Trade — Gotrade" },
       {
         name: "description",
-        content: "Grafik harga, harga jual dan beli, serta alat analisa untuk transaksi di MIFX.",
+        content:
+          "Grafik harga, harga jual dan beli, serta alat analisa untuk transaksi di Gotrade.",
       },
-      { property: "og:title", content: "Trade — MIFX" },
+      { property: "og:title", content: "Trade — Gotrade" },
       {
         property: "og:description",
-        content: "Grafik harga bergerak, harga jual dan beli, serta alat analisa di MIFX.",
+        content: "Grafik harga bergerak, harga jual dan beli, serta alat analisa di Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

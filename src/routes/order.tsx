@@ -1,21 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, ImageOff } from "lucide-react";
-import { useState } from "react";
+import { ArrowDownToLine, Bell, ChevronRight, Users, Wallet } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/order")({
   head: () => ({
     meta: [
-      { title: "Order — MIFX" },
+      { title: "Menu Transaksi — Gotrade" },
       {
         name: "description",
-        content: "Pantau posisi terbuka, order pending, dan riwayat transaksi Anda di MIFX.",
+        content:
+          "Akses menu Top up, Withdraw, dan Referral akun Gotrade Anda secara cepat dan aman.",
       },
-      { property: "og:title", content: "Order — MIFX" },
+      { property: "og:title", content: "Menu Transaksi — Gotrade" },
       {
         property: "og:description",
-        content: "Pantau posisi terbuka, order pending, dan riwayat transaksi Anda di MIFX.",
+        content:
+          "Akses menu Top up, Withdraw, dan Referral akun Gotrade Anda secara cepat dan aman.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -24,33 +26,50 @@ export const Route = createFileRoute("/order")({
   component: OrderPage,
 });
 
-const tabs = ["Open", "Pending", "Riwayat"] as const;
-
-const emptyCopy: Record<(typeof tabs)[number], { title: string; body: string }> = {
-  Open: {
-    title: "Anda Belum Memiliki Open Order",
-    body: "Untuk mulai trading, silakan klik di bawah lalu pilih produk yang tersedia di market",
+const quickMenus = [
+  {
+    title: "Top up",
+    to: "/deposit",
+    icon: Wallet,
+    iconColor: "text-primary bg-primary/10",
+    buttonColor: "bg-primary text-primary-foreground",
+    buttonText: "Top Up Sekarang",
+    description:
+      "Isi saldo akun trading Gotrade Anda melalui QRIS, transfer bank, atau e-wallet resmi secara instan.",
   },
-  Pending: {
-    title: "Anda Belum Memiliki Pending Order",
-    body: "Buat order pending untuk masuk ke market secara otomatis di harga yang Anda tentukan",
+  {
+    title: "Withdraw",
+    to: "/withdraw",
+    icon: ArrowDownToLine,
+    iconColor: "text-emerald-600 bg-emerald-500/10",
+    buttonColor: "bg-emerald-600 text-white",
+    buttonText: "Withdraw Sekarang",
+    description:
+      "Tarik saldo trading atau keuntungan Anda langsung ke rekening bank atau e-wallet dengan aman.",
   },
-  Riwayat: {
-    title: "Belum Ada Riwayat Transaksi",
-    body: "Riwayat transaksi Anda akan muncul di sini setelah Anda mulai trading",
+  {
+    title: "Referral",
+    to: "/referral",
+    icon: Users,
+    iconColor: "text-amber-600 bg-amber-500/10",
+    buttonColor: "bg-amber-600 text-white",
+    buttonText: "Buka Menu Referral",
+    description:
+      "Ajak teman dan rekan Anda trading di MIFX dan kumpulkan komisi serta reward tambahan setiap transaksi.",
   },
-};
+];
 
 function OrderPage() {
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Open");
-  const empty = emptyCopy[tab];
+  const { user } = useAuth();
+  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
+      {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-3">
         <span className="text-lg font-black tracking-tight text-primary">MIFX</span>
         <div className="flex flex-col items-center">
-          <span className="text-base font-bold tabular-nums">$10,000.00</span>
+          <span className="text-base font-bold tabular-nums">{balance}</span>
         </div>
         <button
           type="button"
@@ -58,38 +77,44 @@ function OrderPage() {
           className="relative rounded-full p-1 hover:bg-muted"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white">
-            5
-          </span>
         </button>
       </header>
 
-      <nav className="grid grid-cols-3 border-b text-sm">
-        {tabs.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={`border-b-2 py-2.5 font-medium transition-colors ${
-              tab === item
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground"
-            }`}
-          >
-            {item}
-          </button>
-        ))}
+      {/* 3 Nav Tabs that navigate directly to each respective page */}
+      <nav className="grid grid-cols-3 border-b bg-card text-sm">
+        <Link
+          to="/deposit"
+          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-primary active:bg-muted"
+        >
+          <Wallet className="h-4 w-4 text-primary" />
+          <span>Top up</span>
+        </Link>
+        <Link
+          to="/withdraw"
+          className="flex items-center justify-center gap-1.5 border-x py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-emerald-600 active:bg-muted"
+        >
+          <ArrowDownToLine className="h-4 w-4 text-emerald-600" />
+          <span>Withdraw</span>
+        </Link>
+        <Link
+          to="/referral"
+          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-amber-600 active:bg-muted"
+        >
+          <Users className="h-4 w-4 text-amber-500" />
+          <span>Referral</span>
+        </Link>
       </nav>
 
-      <main className="flex flex-1 flex-col px-4 py-4">
-        <div className="rounded-xl border p-4">
+      <main className="flex flex-1 flex-col gap-4 px-4 py-4 pb-8">
+        {/* Ringkasan Saldo */}
+        <div className="rounded-xl border bg-card p-4 shadow-xs">
           <div className="flex justify-between">
             <div>
-              <p className="text-base font-bold tabular-nums">$10,000.00</p>
+              <p className="text-base font-bold tabular-nums">{balance}</p>
               <p className="text-xs text-muted-foreground">Balance</p>
             </div>
             <div className="text-right">
-              <p className="text-base font-bold tabular-nums">$10,000.00</p>
+              <p className="text-base font-bold tabular-nums">{balance}</p>
               <p className="text-xs text-muted-foreground">Equity</p>
             </div>
           </div>
@@ -99,18 +124,38 @@ function OrderPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12 text-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted">
-            <ImageOff className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <h1 className="text-base font-bold">{empty.title}</h1>
-          <p className="max-w-xs text-xs text-muted-foreground">{empty.body}</p>
-          <Link
-            to="/pasar"
-            className="mt-2 rounded-lg bg-emerald-600 px-8 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Trading Sekarang
-          </Link>
+        {/* 3 Menu Cards */}
+        <div className="flex flex-col gap-3">
+          {quickMenus.map((menu) => {
+            const Icon = menu.icon;
+            return (
+              <div
+                key={menu.title}
+                className="rounded-xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${menu.iconColor}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-bold text-foreground">{menu.title}</h2>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{menu.description}</p>
+                    <Link
+                      to={menu.to}
+                      className={`mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-xs font-semibold shadow-xs transition-opacity hover:opacity-90 active:opacity-80 ${menu.buttonColor}`}
+                    >
+                      {menu.buttonText}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </main>
 

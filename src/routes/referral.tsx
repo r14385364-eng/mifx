@@ -10,17 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const Route = createFileRoute("/referral")({
   head: () => ({
     meta: [
-      { title: "Referral — MIFX" },
+      { title: "Referral — Gotrade" },
       {
         name: "description",
         content:
-          "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
+          "Bagikan kode referral Gotrade kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
       },
-      { property: "og:title", content: "Referral — MIFX" },
+      { property: "og:title", content: "Referral — Gotrade" },
       {
         property: "og:description",
         content:
-          "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
+          "Bagikan kode referral Gotrade kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -29,16 +29,17 @@ export const Route = createFileRoute("/referral")({
   component: ReferralPage,
 });
 
-const referralCode = "MIFX-AND12";
-const referralLink = "https://mifx.app/r/MIFX-AND12";
+const referralCode = "GOTRADE-AND12";
+const referralLink = "https://gotrade.app/r/GOTRADE-AND12";
 
-const invitedFriends = [
-  { name: "Siti Rahmawati", joinedAt: "2026-08-02", status: "Aktif", commission: 150000 },
-  { name: "Budi Santoso", joinedAt: "2026-08-14", status: "Aktif", commission: 150000 },
-  { name: "Dewi Lestari", joinedAt: "2026-08-27", status: "Belum deposit", commission: 0 },
-  { name: "Rizky Ramadhan", joinedAt: "2026-09-08", status: "Aktif", commission: 200000 },
-  { name: "Maya Anggraini", joinedAt: "2026-09-16", status: "Belum deposit", commission: 0 },
-];
+type InvitedFriend = {
+  name: string;
+  joinedAt: string;
+  status: string;
+  commission: number;
+};
+
+const invitedFriends: InvitedFriend[] = [];
 
 const steps = [
   { title: "Bagikan kode", desc: "Kirim kode atau tautan referral ke teman kamu." },
@@ -189,32 +190,44 @@ function ReferralPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Teman yang kamu ajak</CardTitle>
           </CardHeader>
-          <CardContent className="divide-y p-0">
-            {invitedFriends.map((friend) => (
-              <div key={friend.name} className="flex items-center gap-3 px-5 py-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
-                  {friend.name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((p) => p[0])
-                    .join("")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{friend.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Gabung {formatDate(friend.joinedAt)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <Badge variant="outline" className="text-[10px]">
-                    {friend.status}
-                  </Badge>
-                  <p className="mt-1 text-xs font-semibold tabular-nums">
-                    {formatRupiah(friend.commission)}
-                  </p>
-                </div>
+          <CardContent className={invitedFriends.length > 0 ? "divide-y p-0" : "p-6 text-center"}>
+            {invitedFriends.length === 0 ? (
+              <div className="py-4">
+                <Users className="mx-auto size-8 text-muted-foreground/60" />
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  Belum ada teman yang bergabung
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bagikan kode atau tautan referral kamu untuk mulai mengumpulkan komisi!
+                </p>
               </div>
-            ))}
+            ) : (
+              invitedFriends.map((friend) => (
+                <div key={friend.name} className="flex items-center gap-3 px-5 py-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                    {friend.name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((p) => p[0])
+                      .join("")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{friend.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Gabung {formatDate(friend.joinedAt)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="outline" className="text-[10px]">
+                      {friend.status}
+                    </Badge>
+                    <p className="mt-1 text-xs font-semibold tabular-nums">
+                      {formatRupiah(friend.commission)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

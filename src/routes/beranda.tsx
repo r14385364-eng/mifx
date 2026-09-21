@@ -17,21 +17,23 @@ import { SymbolIcon } from "@/components/SymbolIcon";
 import { newsArticles } from "@/lib/news-data";
 import { usePopularInstruments } from "@/lib/popular-market";
 import { defaultSignals, useHomeSignals, type TradingSignal } from "@/lib/signals-data";
+import { useAuth } from "@/lib/auth-context";
+import { AppLogo } from "@/components/AppLogo";
 
 export const Route = createFileRoute("/beranda")({
   head: () => ({
     meta: [
-      { title: "Beranda — MIFX" },
+      { title: "Beranda — Gotrade" },
       {
         name: "description",
         content:
-          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX.",
+          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda Gotrade.",
       },
-      { property: "og:title", content: "Beranda — MIFX" },
+      { property: "og:title", content: "Beranda — Gotrade" },
       {
         property: "og:description",
         content:
-          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX.",
+          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -40,7 +42,7 @@ export const Route = createFileRoute("/beranda")({
   component: BerandaPage,
 });
 
-/* ------------------------------- Mock data ------------------------------- */
+/* ------------------------------- Data & Navigasi ------------------------------- */
 
 const shortcuts: ShortcutItem[] = [
   { label: "Top Up", icon: Wallet, to: "/deposit" },
@@ -53,7 +55,7 @@ const shortcuts: ShortcutItem[] = [
 
 const promos = [
   {
-    title: "Kini Hadir Di MIFX LEVERAGE 1:500",
+    title: "Kini Hadir Di Gotrade LEVERAGE 1:500",
     gradient: "from-sky-900 via-cyan-800 to-sky-950",
   },
   {
@@ -87,57 +89,31 @@ const events = [
 
 const news = newsArticles.slice(0, 4);
 
-/** Data demo yang selalu tampil jika belum ada sinyal yang diatur admin. */
-const demoSignals = defaultSignals.filter((signal) => signal.showOnHome);
+/** Data standar yang selalu tampil jika belum ada sinyal yang diatur admin. */
+const fallbackSignals = defaultSignals.filter((signal) => signal.showOnHome);
 
 /* ------------------------------- Components ------------------------------ */
 
 function Logo() {
-  return (
-    <div className="flex items-center gap-1.5" aria-label="MIFX">
-      <span className="flex items-end gap-[2px]">
-        <span className="h-4 w-[4px] -skew-x-12 rounded-[1px] bg-primary" />
-        <span className="h-3 w-[4px] -skew-x-12 rounded-[1px] bg-amber-400" />
-        <span className="h-2 w-[4px] -skew-x-12 rounded-[1px] bg-slate-400" />
-      </span>
-      <span className="text-lg font-extrabold italic tracking-tight text-foreground">MIFX</span>
-    </div>
-  );
+  return <AppLogo size="sm" />;
 }
 
 function AccountCard() {
+  const { user } = useAuth();
+  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+
   return (
     <section className="rounded-xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-foreground">1006568912</span>
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-lg font-bold leading-tight text-foreground">$10,000.00</p>
-          <p className="text-xs text-muted-foreground">Balance</p>
+          <p className="text-2xl font-bold leading-tight text-foreground">{balance}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Balance</p>
         </div>
-        <div>
-          <p className="text-lg font-bold leading-tight text-foreground">$10,000.00</p>
-          <p className="text-xs text-muted-foreground">Equity</p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-3">
-        {[
-          { label: "Free Margin", value: "$10,000.00" },
-          { label: "Margin", value: "$0.00" },
-          { label: "Margin Level", value: "0.00%" },
-        ].map((item) => (
-          <div key={item.label}>
-            <p className="text-sm font-semibold text-foreground">{item.value}</p>
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              {item.label}
-              <Info className="h-3 w-3" />
-            </p>
-          </div>
-        ))}
+        {user?.role && (
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            {user.role === "admin" ? "Admin" : "Live"}
+          </span>
+        )}
       </div>
     </section>
   );
@@ -278,7 +254,7 @@ function SignalCard({ signal }: { signal: TradingSignal }) {
 
 function SignalSection() {
   const homeSignals = useHomeSignals();
-  const displaySignals = homeSignals.length > 0 ? homeSignals : demoSignals;
+  const displaySignals = homeSignals.length > 0 ? homeSignals : fallbackSignals;
   return (
     <section>
       <div className="flex items-center justify-between">
@@ -408,19 +384,39 @@ function NewsSection() {
 /* --------------------------------- Page ---------------------------------- */
 
 function BerandaPage() {
+  const { user, isAdmin, isAuthenticated } = useAuth();
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
       {/* Header */}
       <header className="flex items-center justify-between bg-background px-4 py-3">
         <Logo />
-        <button
-          type="button"
-          aria-label="Notifikasi"
-          className="relative rounded-full p-1.5 hover:bg-muted"
-        >
-          <Bell className="h-5 w-5 text-foreground" />
-          <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="rounded-full bg-purple-500/15 px-2.5 py-1 text-xs font-bold text-purple-600 hover:bg-purple-500/25"
+            >
+              Admin Panel
+            </Link>
+          )}
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+            >
+              Masuk
+            </Link>
+          )}
+          <button
+            type="button"
+            aria-label="Notifikasi"
+            className="relative rounded-full p-1.5 hover:bg-muted"
+          >
+            <Bell className="h-5 w-5 text-foreground" />
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
+          </button>
+        </div>
       </header>
 
       {/* Content */}

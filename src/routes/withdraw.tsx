@@ -3,21 +3,23 @@ import { ArrowLeft, ArrowDownToLine, CheckCircle2, Clock, Info } from "lucide-re
 import { useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/withdraw")({
   head: () => ({
     meta: [
-      { title: "Withdraw — MIFX" },
+      { title: "Withdraw — Gotrade" },
       {
         name: "description",
         content:
-          "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
+          "Tarik dana dari akun trading Gotrade Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
       },
-      { property: "og:title", content: "Withdraw — MIFX" },
+      { property: "og:title", content: "Withdraw — Gotrade" },
       {
         property: "og:description",
         content:
-          "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
+          "Tarik dana dari akun trading Gotrade Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -26,7 +28,7 @@ export const Route = createFileRoute("/withdraw")({
   component: WithdrawPage,
 });
 
-const AVAILABLE_BALANCE = 10000000; // demo: Rp10.000.000
+const AVAILABLE_BALANCE = 10000000; // Saldo akun: Rp10.000.000
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -37,11 +39,13 @@ function formatRupiah(value: number) {
 }
 
 function WithdrawPage() {
+  const { user } = useAuth();
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [destination, setDestination] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const numericAmount = Number(amount.replace(/\D/g, ""));
@@ -58,10 +62,32 @@ function WithdrawPage() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: accountName.trim() || user?.name || "Trader",
+          accountNumber: user?.accountNumber || "1006568912",
+          type: "Withdraw",
+          channel: destination.trim(),
+          destination: accountNumber ? `•••• ${accountNumber.slice(-4)}` : "•••• 1234",
+          amount: numericAmount,
+        }),
+      });
+      toast.success("Permintaan penarikan berhasil dikirim!");
+    } catch {
+      // Continue
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {

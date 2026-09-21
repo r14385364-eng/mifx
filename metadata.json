@@ -1,6 +1,6 @@
 {
-  "name": "MIFX — Aplikasi Trading Online Resmi",
-  "description": "Trading forex legal dan aman di broker teregulasi.",
+  "name": "Gotrade — Aplikasi Trading Online Resmi",
+  "description": "Trading saham, forex, dan aset global legal dan aman bersama Gotrade.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

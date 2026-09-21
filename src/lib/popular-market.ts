@@ -9,8 +9,6 @@ export type PopularInstrument = {
   up: boolean;
 };
 
-const STORAGE_KEY = "mifx.popular-instruments";
-
 export const flagBySymbol: Record<string, string> = {
   EURUSD: "🇪🇺",
   GBPUSD: "🇬🇧",
@@ -30,43 +28,18 @@ export const defaultPopular: PopularInstrument[] = [
 ];
 
 let current: PopularInstrument[] = defaultPopular;
-let hydrated = false;
 const listeners = new Set<() => void>();
-
-function readStorage(): PopularInstrument[] {
-  if (typeof window === "undefined") return defaultPopular;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultPopular;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as PopularInstrument[]) : defaultPopular;
-  } catch {
-    return defaultPopular;
-  }
-}
 
 function emit() {
   listeners.forEach((listener) => listener());
 }
 
 export function getPopularInstruments(): PopularInstrument[] {
-  if (!hydrated && typeof window !== "undefined") {
-    hydrated = true;
-    current = readStorage();
-  }
   return current;
 }
 
 export function setPopularInstruments(next: PopularInstrument[]) {
-  hydrated = true;
   current = next;
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  }
   emit();
 }
 
@@ -77,7 +50,9 @@ export function togglePopularInstrument(instrument: PopularInstrument, popular: 
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function usePopularInstruments(): PopularInstrument[] {

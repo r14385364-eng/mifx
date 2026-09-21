@@ -1,5 +1,5 @@
 /**
- * Simulasi pergerakan harga (random walk) untuk demo tampilan.
+ * Simulasi pergerakan harga (random walk) untuk tampilan pasar realtime.
  * Semua angka dibuat di sisi klien, bukan data pasar sungguhan.
  */
 

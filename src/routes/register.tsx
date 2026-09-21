@@ -1,24 +1,23 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { AppLogo } from "@/components/AppLogo";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Buka Akun MIFX — Daftar Sekarang" },
+      { title: "Buka Akun Gotrade — Daftar Sekarang" },
       {
         name: "description",
-        content:
-          "Isi lengkap formulir untuk membuat Akun MIFX dan mulai trading dengan MetaTrader 5 atau MetaTrader 4.",
+        content: "Isi lengkap formulir untuk membuat Akun Gotrade dan mulai trading.",
       },
-      { property: "og:title", content: "Buka Akun MIFX — Daftar Sekarang" },
+      { property: "og:title", content: "Buka Akun Gotrade — Daftar Sekarang" },
       {
         property: "og:description",
-        content:
-          "Isi lengkap formulir untuk membuat Akun MIFX dan mulai trading dengan MetaTrader 5 atau MetaTrader 4.",
+        content: "Isi lengkap formulir untuk membuat Akun Gotrade dan mulai trading.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -34,10 +33,75 @@ const passwordRules = [
 ];
 
 function RegisterPage() {
-  const [platform, setPlatform] = useState<"mt5" | "mt4">("mt5");
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (!name.trim() || !email.trim() || !password) {
+      setErrorMsg("Nama lengkap, email, dan password wajib diisi.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Konfirmasi password tidak cocok.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMsg("Password minimal 8 karakter.");
+      return;
+    }
+
+    if (!agreed) {
+      setErrorMsg("Anda harus menyetujui Syarat dan Ketentuan.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() ? `+62 ${phone.trim()}` : "",
+          password,
+        }),
+      });
+
+      const data = await res.json();
+      setIsSubmitting(false);
+
+      if (res.ok && data.success) {
+        toast.success("Pendaftaran Berhasil!", {
+          description: `Selamat datang di MIFX, ${data.user.name}`,
+        });
+        void navigate({ to: "/login" });
+      } else {
+        setErrorMsg(data.message || "Gagal mendaftar.");
+        toast.error("Pendaftaran Gagal", {
+          description: data.message || "Silakan periksa kembali data Anda.",
+        });
+      }
+    } catch {
+      setIsSubmitting(false);
+      setErrorMsg("Gagal terhubung ke server database.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,17 +116,30 @@ function RegisterPage() {
         </Link>
 
         {/* Heading */}
-        <h1 className="text-[28px] font-extrabold tracking-tight text-foreground">
-          Buka Akun MIFX
-        </h1>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-          Isi lengkap formulir berikut untuk membuat Akun MIFX.
+        <div className="mb-2 flex items-center gap-3">
+          <AppLogo size="md" showText={false} />
+          <div>
+            <h1 className="text-[26px] font-extrabold tracking-tight text-foreground">
+              Buka Akun Gotrade
+            </h1>
+          </div>
+        </div>
+        <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+          Isi lengkap formulir berikut untuk membuat Akun Gotrade dan mulai trading.
         </p>
 
-        <form className="mt-7 space-y-5" onSubmit={(e) => e.preventDefault()}>
+        {errorMsg && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            {errorMsg}
+          </div>
+        )}
+
+        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
           {/* Nama Lengkap */}
           <Field label="Nama Lengkap" required>
             <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Masukkan nama lengkap Anda"
               className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
             />
@@ -72,13 +149,15 @@ function RegisterPage() {
           <Field label="Email" required>
             <Input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Masukkan email Anda"
               className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
             />
           </Field>
 
           {/* Nomor Handphone */}
-          <Field label="Nomor Handphone" required>
+          <Field label="Nomor Handphone">
             <div className="flex gap-2">
               <button
                 type="button"
@@ -89,6 +168,8 @@ function RegisterPage() {
               </button>
               <Input
                 inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 placeholder="8xx-xxxx-xxxx"
                 className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
               />
@@ -98,31 +179,18 @@ function RegisterPage() {
           {/* Kode Referral */}
           <Field label="Kode Referral/Promo">
             <Input
-              placeholder="Masukkan kode referral/promo Anda"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value)}
+              placeholder="Masukkan kode referral/promo Anda (opsional)"
               className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
             />
           </Field>
 
-          {/* Trading Platform */}
-          <div>
-            <p className="mb-2 text-[13px] font-semibold text-foreground">Pilih Trading Platform</p>
-            <div className="grid grid-cols-2 gap-3">
-              <PlatformOption
-                active={platform === "mt5"}
-                onClick={() => setPlatform("mt5")}
-                label="MetaTrader 5"
-              />
-              <PlatformOption
-                active={platform === "mt4"}
-                onClick={() => setPlatform("mt4")}
-                label="MetaTrader 4"
-              />
-            </div>
-          </div>
-
           {/* Password */}
           <Field label="Password" required>
             <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Masukkan Password"
               show={showPassword}
               onToggle={() => setShowPassword((v) => !v)}
@@ -132,6 +200,8 @@ function RegisterPage() {
           {/* Konfirmasi Password */}
           <Field label="Konfirmasi Password" required>
             <PasswordInput
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Konfirmasi Password"
               show={showConfirm}
               onToggle={() => setShowConfirm((v) => !v)}
@@ -167,9 +237,10 @@ function RegisterPage() {
           {/* Submit */}
           <button
             type="submit"
-            className="h-[52px] w-full rounded-full bg-primary text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]"
+            disabled={isSubmitting}
+            className="h-[52px] w-full rounded-full bg-primary text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-[0.98] disabled:opacity-60"
           >
-            Lanjut
+            {isSubmitting ? "Mendaftarkan..." : "Daftar Akun"}
           </button>
 
           <p className="pt-1 text-center text-[13px] text-muted-foreground">
@@ -205,10 +276,14 @@ function Field({
 
 function PasswordInput({
   placeholder,
+  value,
+  onChange,
   show,
   onToggle,
 }: {
   placeholder: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   show: boolean;
   onToggle: () => void;
 }) {
@@ -216,6 +291,8 @@ function PasswordInput({
     <div className="relative">
       <Input
         type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
         className="h-12 rounded-lg border-border bg-card pr-12 text-sm placeholder:text-muted-foreground/60"
       />
@@ -228,49 +305,6 @@ function PasswordInput({
         {show ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
       </button>
     </div>
-  );
-}
-
-function PlatformOption({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex h-12 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition-all",
-        active
-          ? "border-primary/30 bg-accent text-foreground"
-          : "border-transparent text-muted-foreground hover:bg-muted/60",
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-[18px] w-[18px] items-center justify-center rounded-full border-2",
-          active ? "border-primary bg-primary" : "border-muted-foreground/40",
-        )}
-      >
-        {active && (
-          <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-primary-foreground" fill="none">
-            <path
-              d="M2.5 6.5L5 9L9.5 3.5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-      </span>
-      {label}
-    </button>
   );
 }
 

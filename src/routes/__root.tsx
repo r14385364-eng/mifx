@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/lib/auth-context";
 
 function NotFoundComponent() {
   return (
@@ -78,21 +79,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "MIFX — Aplikasi Trading Online Resmi" },
-      { name: "description", content: "MIFX: trading forex legal dan aman di broker teregulasi." },
-      { name: "author", content: "MIFX" },
-      { property: "og:title", content: "MIFX — Aplikasi Trading Online Resmi" },
-      { property: "og:description", content: "Trading forex legal dan aman di broker teregulasi." },
+      { title: "Gotrade — Aplikasi Trading Online Resmi" },
+      {
+        name: "description",
+        content:
+          "Gotrade: trading saham, forex, dan aset global legal dan aman di platform teregulasi.",
+      },
+      { name: "author", content: "Gotrade" },
+      { property: "og:title", content: "Gotrade — Aplikasi Trading Online Resmi" },
+      {
+        property: "og:description",
+        content: "Trading saham, forex, dan aset global legal dan aman di platform Gotrade.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@MIFX" },
+      { name: "twitter:site", content: "@Gotrade" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/logo.jpg", type: "image/jpeg" },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
@@ -133,9 +141,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster richColors position="top-center" />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster richColors position="top-center" />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

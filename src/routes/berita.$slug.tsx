@@ -12,15 +12,18 @@ export const Route = createFileRoute("/berita/$slug")({
   head: ({ loaderData }) => {
     if (!loaderData) {
       return {
-        meta: [{ title: "Berita tidak ditemukan — MIFX" }, { name: "robots", content: "noindex" }],
+        meta: [
+          { title: "Berita tidak ditemukan — Gotrade" },
+          { name: "robots", content: "noindex" },
+        ],
       };
     }
     const { article } = loaderData;
     return {
       meta: [
-        { title: `${article.title} — MIFX` },
+        { title: `${article.title} — Gotrade` },
         { name: "description", content: article.excerpt },
-        { property: "og:title", content: `${article.title} — MIFX` },
+        { property: "og:title", content: `${article.title} — Gotrade` },
         { property: "og:description", content: article.excerpt },
         { property: "og:type", content: "article" },
         { name: "twitter:card", content: "summary" },

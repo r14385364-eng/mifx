@@ -8,16 +8,16 @@ import { newsArticles } from "@/lib/news-data";
 export const Route = createFileRoute("/berita/")({
   head: () => ({
     meta: [
-      { title: "Berita — MIFX" },
+      { title: "Berita — Gotrade" },
       {
         name: "description",
         content:
-          "Berita pasar terbaru, analisis teknikal, dan artikel spesial untuk membantu Anda mengambil keputusan trading di MIFX.",
+          "Berita pasar terbaru, analisis teknikal, dan artikel spesial untuk membantu Anda mengambil keputusan trading di Gotrade.",
       },
-      { property: "og:title", content: "Berita — MIFX" },
+      { property: "og:title", content: "Berita — Gotrade" },
       {
         property: "og:description",
-        content: "Berita pasar terbaru dan analisis teknikal di MIFX.",
+        content: "Berita pasar terbaru dan analisis teknikal di Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

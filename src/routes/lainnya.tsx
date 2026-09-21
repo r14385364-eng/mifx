@@ -1,18 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownToLine,
-  Building2,
-  ChevronDown,
   ChevronRight,
   Gift,
-  HelpCircle,
-  IdCard,
-  Landmark,
   LineChart,
   LogOut,
   Newspaper,
-  Settings,
-  Share2,
   User,
   UserPlus,
   Users,
@@ -22,6 +15,8 @@ import type { ReactNode } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { ShortcutMenu, type ShortcutItem } from "@/components/ShortcutMenu";
+import { useAuth } from "@/lib/auth-context";
+import { AppLogo } from "@/components/AppLogo";
 
 /**
  * Menu pintasan seperti di Beranda. Ikon disesuaikan agar tidak ada yang sama
@@ -39,15 +34,15 @@ const shortcuts: ShortcutItem[] = [
 export const Route = createFileRoute("/lainnya")({
   head: () => ({
     meta: [
-      { title: "Lainnya — MIFX" },
+      { title: "Lainnya — Gotrade" },
       {
         name: "description",
-        content: "Ringkasan akun, program, pengaturan, dan bantuan MIFX dalam satu halaman.",
+        content: "Menu program, profil akun, dan pintasan Gotrade.",
       },
-      { property: "og:title", content: "Lainnya — MIFX" },
+      { property: "og:title", content: "Lainnya — Gotrade" },
       {
         property: "og:description",
-        content: "Ringkasan akun, program, pengaturan, dan bantuan MIFX dalam satu halaman.",
+        content: "Menu program, profil akun, dan pintasan Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -65,59 +60,18 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Row({
-  icon: Icon,
-  label,
-  sub,
-  trailing,
-}: {
-  icon: typeof User;
-  label: string;
-  sub?: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
-    >
-      <Icon className="h-5 w-5 text-muted-foreground" />
-      <span className="flex-1">
-        <span className="block text-sm font-medium">{label}</span>
-        {sub ? <span className="block text-xs text-muted-foreground">{sub}</span> : null}
-      </span>
-      {trailing}
-    </button>
-  );
-}
-
-function InfoRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex items-center justify-between px-4 py-2.5 text-sm">
-      <span className="flex items-center gap-1.5 text-muted-foreground">
-        {label}
-        <HelpCircle className="h-3.5 w-3.5" />
-      </span>
-      <span className={`font-semibold tabular-nums ${accent ? "text-blue-600" : ""}`}>{value}</span>
-    </div>
-  );
-}
-
 function LainnyaPage() {
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
+  const displayName = user?.fullName || user?.username || "Pengguna Gotrade";
+  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
       <header className="flex items-center justify-between border-b px-4 py-3">
-        <span className="text-lg font-black tracking-tight text-primary">MIFX</span>
+        <AppLogo size="sm" />
         <div className="flex flex-col items-center">
-          <span className="text-base font-bold tabular-nums">$10,000.00</span>
-          <button
-            type="button"
-            className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
-          >
-            <span className="font-semibold text-emerald-600">Akun</span>
-            1006568912
-            <ChevronDown className="h-3 w-3" />
-          </button>
+          <span className="text-base font-bold tabular-nums">{balance}</span>
         </div>
       </header>
 
@@ -125,15 +79,15 @@ function LainnyaPage() {
         <section className="rounded-xl border p-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <User className="h-4 w-4 text-muted-foreground" />
-            testing
+            {displayName}
           </div>
           <div className="mt-3 flex justify-between">
             <div>
-              <p className="text-base font-bold tabular-nums">$10,000.00</p>
+              <p className="text-base font-bold tabular-nums">{balance}</p>
               <p className="text-xs text-muted-foreground">Balance</p>
             </div>
             <div className="text-right">
-              <p className="text-base font-bold tabular-nums">$10,000.00</p>
+              <p className="text-base font-bold tabular-nums">{balance}</p>
               <p className="text-xs text-muted-foreground">Equity</p>
             </div>
           </div>
@@ -142,26 +96,6 @@ function LainnyaPage() {
         <section className="rounded-xl border p-2">
           <ShortcutMenu items={shortcuts} />
         </section>
-
-        <Section title="Ringkasan Akun">
-          <InfoRow label="Margin" value="$0.00" />
-          <InfoRow label="Free Margin" value="$10,000.00" />
-          <InfoRow label="Margin Level" value="0.00%" />
-          <InfoRow label="Credits" value="$0.00" />
-          <InfoRow label="Floating P/L" value="$0.00" />
-          <div className="flex items-center justify-between px-4 py-2.5 text-sm">
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              Win Rate
-              <HelpCircle className="h-3.5 w-3.5" />
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                <span className="block h-full w-0 bg-rose-600" />
-              </span>
-              <span className="font-semibold tabular-nums text-blue-600">0%</span>
-            </span>
-          </div>
-        </Section>
 
         <Section title="Program">
           <Link
@@ -183,32 +117,29 @@ function LainnyaPage() {
             <span className="flex-1 text-sm font-medium">Profil</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
-          <Row icon={IdCard} label="Akun Saya" />
-          <Row icon={Landmark} label="Informasi Bank" />
-          <Row icon={Settings} label="Pengaturan" />
         </Section>
 
-        <Section title="Bantuan">
-          <Row
-            icon={HelpCircle}
-            label="Pusat Bantuan"
-            sub="Temukan jawaban untuk pertanyaan Anda."
-          />
-          <Row
-            icon={Building2}
-            label="Laporkan Masalah"
-            sub="Ceritakan lebih detail masalah yang Anda hadapi."
-          />
-          <Row icon={Share2} label="Ikuti Kami di Media Sosial" />
-        </Section>
-
-        <Link
-          to="/login"
-          className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-muted/50"
-        >
-          <LogOut className="h-5 w-5" />
-          Keluar
-        </Link>
+        {isAuthenticated ? (
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              navigate({ to: "/login" });
+            }}
+            className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-muted/50"
+          >
+            <LogOut className="h-5 w-5" />
+            Keluar
+          </button>
+        ) : (
+          <Link
+            to="/login"
+            className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/50"
+          >
+            <LogOut className="h-5 w-5" />
+            Masuk
+          </Link>
+        )}
 
         <p className="pb-2 text-center text-xs text-muted-foreground">App Version 4.1.0 CPB: 0</p>
       </main>

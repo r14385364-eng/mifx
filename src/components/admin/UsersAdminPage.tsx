@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, Search, UserCheck, Users, Wallet, UserX } from "lucide-react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -34,6 +34,7 @@ type UserStatus = "aktif" | "nonaktif";
 
 interface ManagedUser {
   id: string;
+  numericId: number;
   name: string;
   email: string;
   phone: string;
@@ -46,82 +47,24 @@ interface ManagedUser {
 const initialUsers: ManagedUser[] = [
   {
     id: "USR-001",
-    name: "Andi Pratama",
-    email: "andi.pratama@gmail.com",
+    numericId: 1,
+    name: "Trader Gotrade",
+    email: "user@mifx.com",
     phone: "0812-3456-7890",
-    registeredAt: "2026-01-12",
+    registeredAt: "2026-03-01",
     status: "aktif",
-    balance: 15750000,
+    balance: 10000,
     accountType: "MT5",
   },
   {
-    id: "USR-002",
-    name: "Siti Rahmawati",
-    email: "siti.rahma@yahoo.com",
-    phone: "0813-9876-5432",
-    registeredAt: "2026-01-28",
+    id: "ADM-002",
+    numericId: 2,
+    name: "Administrator Gotrade",
+    email: "admin@mifx.com",
+    phone: "0811-9876-5432",
+    registeredAt: "2026-01-01",
     status: "aktif",
-    balance: 8200000,
-    accountType: "MT4",
-  },
-  {
-    id: "USR-003",
-    name: "Budi Santoso",
-    email: "budi.santoso@gmail.com",
-    phone: "0821-1122-3344",
-    registeredAt: "2026-02-03",
-    status: "nonaktif",
-    balance: 0,
-    accountType: "MT5",
-  },
-  {
-    id: "USR-004",
-    name: "Dewi Lestari",
-    email: "dewi.lestari@outlook.com",
-    phone: "0857-6677-8899",
-    registeredAt: "2026-02-19",
-    status: "aktif",
-    balance: 43500000,
-    accountType: "MT5",
-  },
-  {
-    id: "USR-005",
-    name: "Rizky Ramadhan",
-    email: "rizky.rmdhn@gmail.com",
-    phone: "0819-2233-4455",
-    registeredAt: "2026-03-05",
-    status: "aktif",
-    balance: 2750000,
-    accountType: "MT4",
-  },
-  {
-    id: "USR-006",
-    name: "Maya Anggraini",
-    email: "maya.anggraini@gmail.com",
-    phone: "0852-7788-9900",
-    registeredAt: "2026-03-22",
-    status: "nonaktif",
-    balance: 150000,
-    accountType: "MT4",
-  },
-  {
-    id: "USR-007",
-    name: "Fajar Nugroho",
-    email: "fajar.nugroho@gmail.com",
-    phone: "0815-3344-5566",
-    registeredAt: "2026-04-10",
-    status: "aktif",
-    balance: 12875000,
-    accountType: "MT5",
-  },
-  {
-    id: "USR-008",
-    name: "Putri Ayudia",
-    email: "putri.ayudia@gmail.com",
-    phone: "0877-8899-0011",
-    registeredAt: "2026-05-02",
-    status: "aktif",
-    balance: 6600000,
+    balance: 999999,
     accountType: "MT5",
   },
 ];
@@ -152,10 +95,48 @@ function initials(name: string) {
 }
 
 export function UsersAdminPage() {
-  const [users] = useState<ManagedUser[]>(initialUsers);
+  const [users, setUsers] = useState<ManagedUser[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"semua" | UserStatus>("semua");
   const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
+
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        const res = await fetch("/api/users");
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.users)) {
+          type ApiUser = {
+            id: number;
+            name: string;
+            email: string;
+            phone: string;
+            created_at: string;
+            balance: number | string;
+            role: string;
+            account_type: string;
+          };
+          const mapped: ManagedUser[] = (data.users as ApiUser[]).map((u) => ({
+            id: `USR-${String(u.id).padStart(3, "0")}`,
+            numericId: u.id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone || "0812-xxxx-xxxx",
+            registeredAt: u.created_at ? u.created_at.split("T")[0] : "2026-03-01",
+            status: "aktif",
+            balance: Number(u.balance) || 10000,
+            accountType: u.account_type?.includes("MT4") ? "MT4" : "MT5",
+          }));
+          if (mapped.length > 0) {
+            setUsers(mapped);
+          }
+        }
+      } catch {
+        // keep fallback
+      }
+    }
+    void loadUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const keyword = search.trim().toLowerCase();

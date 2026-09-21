@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -9,8 +9,13 @@ import {
   ShieldCheck,
   TrendingUp,
   Users,
+  Database,
+  Server,
+  Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 import {
   Sidebar,
@@ -45,6 +50,10 @@ const userNavigation = [
   { label: "Referral", to: "/admin/referral" as const, icon: Gift },
 ];
 
+const systemNavigation = [
+  { label: "Pengaturan", to: "/admin/pengaturan" as const, icon: Settings },
+];
+
 export function AdminLayout({
   title,
   subtitle,
@@ -55,6 +64,23 @@ export function AdminLayout({
   children: ReactNode;
 }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleAdminLogout = async () => {
+    await logout();
+    toast.success("Admin keluar", { description: "Sesi admin telah ditutup." });
+    void navigate({ to: "/login" });
+  };
+
+  const adminName = user?.name || "Administrator MIFX";
+  const adminEmail = user?.email || "admin@mifx.com";
+  const initials = adminName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <SidebarProvider>
@@ -62,11 +88,13 @@ export function AdminLayout({
         <Sidebar collapsible="icon" className="border-sidebar-border">
           <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
             <Link to="/admin/top-up" className="flex items-center gap-3 overflow-hidden px-1">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                <ShieldCheck className="size-5" />
-              </span>
+              <img
+                src="/logo.jpg"
+                alt="Gotrade Logo"
+                className="size-9 rounded-none object-contain"
+              />
               <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-                <span className="block text-sm font-extrabold">MIFX Admin</span>
+                <span className="block text-sm font-extrabold">Gotrade Admin</span>
                 <span className="block text-[11px] text-sidebar-foreground/60">
                   Transaction Center
                 </span>
@@ -145,17 +173,41 @@ export function AdminLayout({
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>SISTEM</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {systemNavigation.map((item) => (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.to}
+                        tooltip={item.label}
+                        size="lg"
+                        className="data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground"
+                      >
+                        <Link to={item.to}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="border-t border-sidebar-border p-3">
             <div className="flex items-center gap-3 overflow-hidden px-1 py-2 group-data-[collapsible=icon]:px-0">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
-                AD
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-xs font-bold text-purple-600">
+                {initials}
               </span>
               <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                <span className="block truncate text-xs font-semibold">Admin MIFX</span>
+                <span className="block truncate text-xs font-semibold">{adminName}</span>
                 <span className="block truncate text-[11px] text-sidebar-foreground/60">
-                  admin@mifx.com
+                  {adminEmail}
                 </span>
               </span>
             </div>
@@ -164,8 +216,18 @@ export function AdminLayout({
                 <SidebarMenuButton asChild tooltip="Kembali ke aplikasi">
                   <Link to="/beranda">
                     <LogOut />
-                    <span>Kembali ke aplikasi</span>
+                    <span>Ke Beranda</span>
                   </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleAdminLogout}
+                  tooltip="Keluar dari akun admin"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut />
+                  <span>Logout Admin</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

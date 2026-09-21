@@ -1,24 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowDownUp, ChevronDown, Search } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Loader2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { SymbolIcon } from "@/components/SymbolIcon";
+import { useAuth } from "@/lib/auth-context";
 import { nextPrice } from "@/lib/price-sim";
 
 export const Route = createFileRoute("/pasar")({
   head: () => ({
     meta: [
-      { title: "Pasar — MIFX" },
+      { title: "Pasar — Gotrade" },
       {
         name: "description",
         content:
-          "Lihat harga bid dan ask untuk pasangan forex, komoditi, dan indeks di halaman Pasar MIFX.",
+          "Lihat harga bid dan ask untuk pasangan forex, komoditi, dan indeks di halaman Pasar Gotrade.",
       },
-      { property: "og:title", content: "Pasar — MIFX" },
+      { property: "og:title", content: "Pasar — Gotrade" },
       {
         property: "og:description",
-        content: "Harga bid dan ask untuk forex, komoditi, dan indeks di MIFX.",
+        content: "Harga bid dan ask untuk forex, komoditi, dan indeks di Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -38,6 +39,7 @@ type Base = {
 };
 
 const baseProducts: Base[] = [
+  // Forex
   {
     symbol: "AUDCAD",
     flags: "🇦🇺🇨🇦",
@@ -111,12 +113,93 @@ const baseProducts: Base[] = [
     category: "Forex",
   },
   {
+    symbol: "EURCHF",
+    flags: "🇪🇺🇨🇭",
+    price: 0.94218,
+    decimals: 5,
+    spread: 112,
+    percent: 75,
+    category: "Forex",
+  },
+  {
+    symbol: "EURGBP",
+    flags: "🇪🇺🇬🇧",
+    price: 0.85781,
+    decimals: 5,
+    spread: 95,
+    percent: 78,
+    category: "Forex",
+  },
+  {
+    symbol: "EURJPY",
+    flags: "🇪🇺🇯🇵",
+    price: 179.845,
+    decimals: 3,
+    spread: 145,
+    percent: 89,
+    category: "Forex",
+  },
+  {
+    symbol: "EURNZD",
+    flags: "🇪🇺🇳🇿",
+    price: 2.00284,
+    decimals: 5,
+    spread: 260,
+    percent: 65,
+    category: "Forex",
+  },
+  {
     symbol: "EURUSD",
     flags: "🇪🇺🇺🇸",
     price: 1.14832,
     decimals: 5,
     spread: 69,
     percent: 74,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPAUD",
+    flags: "🇬🇧🇦🇺",
+    price: 1.87824,
+    decimals: 5,
+    spread: 235,
+    percent: 84,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPCAD",
+    flags: "🇬🇧🇨🇦",
+    price: 1.87129,
+    decimals: 5,
+    spread: 210,
+    percent: 70,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPCHF",
+    flags: "🇬🇧🇨🇭",
+    price: 1.09842,
+    decimals: 5,
+    spread: 140,
+    percent: 76,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPJPY",
+    flags: "🇬🇧🇯🇵",
+    price: 209.681,
+    decimals: 3,
+    spread: 185,
+    percent: 94,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPNZD",
+    flags: "🇬🇧🇳🇿",
+    price: 2.33512,
+    decimals: 5,
+    spread: 290,
+    percent: 62,
     category: "Forex",
   },
   {
@@ -128,6 +211,53 @@ const baseProducts: Base[] = [
     percent: 88,
     category: "Forex",
   },
+  {
+    symbol: "NZDUSD",
+    flags: "🇳🇿🇺🇸",
+    price: 0.57314,
+    decimals: 5,
+    spread: 92,
+    percent: 82,
+    category: "Forex",
+  },
+  {
+    symbol: "USDCAD",
+    flags: "🇺🇸🇨🇦",
+    price: 1.39785,
+    decimals: 5,
+    spread: 88,
+    percent: 86,
+    category: "Forex",
+  },
+  {
+    symbol: "USDCHF",
+    flags: "🇺🇸🇨🇭",
+    price: 0.82054,
+    decimals: 5,
+    spread: 85,
+    percent: 79,
+    category: "Forex",
+  },
+  {
+    symbol: "USDJPY",
+    flags: "🇺🇸🇯🇵",
+    price: 156.612,
+    decimals: 3,
+    spread: 72,
+    percent: 96,
+    category: "Forex",
+  },
+  {
+    symbol: "USDSGD",
+    flags: "🇺🇸🇸🇬",
+    price: 1.3125,
+    decimals: 5,
+    spread: 120,
+    percent: 71,
+    category: "Forex",
+  },
+
+  // Komoditi
   {
     symbol: "XAUUSD",
     flags: "🪙",
@@ -156,6 +286,53 @@ const baseProducts: Base[] = [
     category: "Komoditi",
   },
   {
+    symbol: "BRENT",
+    flags: "🛢️",
+    price: 104.28,
+    decimals: 2,
+    spread: 75,
+    percent: 81,
+    category: "Komoditi",
+  },
+  {
+    symbol: "NGAS",
+    flags: "🔥",
+    price: 3.482,
+    decimals: 3,
+    spread: 60,
+    percent: 65,
+    category: "Komoditi",
+  },
+  {
+    symbol: "COPPER",
+    flags: "🧱",
+    price: 4.892,
+    decimals: 3,
+    spread: 58,
+    percent: 74,
+    category: "Komoditi",
+  },
+  {
+    symbol: "PLATINUM",
+    flags: "⚪",
+    price: 1085.4,
+    decimals: 2,
+    spread: 80,
+    percent: 69,
+    category: "Komoditi",
+  },
+  {
+    symbol: "PALLADIUM",
+    flags: "🪙",
+    price: 1120.8,
+    decimals: 2,
+    spread: 95,
+    percent: 63,
+    category: "Komoditi",
+  },
+
+  // Index
+  {
     symbol: "NASDAQ",
     flags: "🇺🇸",
     price: 29954,
@@ -182,9 +359,64 @@ const baseProducts: Base[] = [
     percent: 61,
     category: "Index",
   },
+  {
+    symbol: "SP500",
+    flags: "🇺🇸",
+    price: 6042,
+    decimals: 1,
+    spread: 45,
+    percent: 93,
+    category: "Index",
+  },
+  {
+    symbol: "DOWJONES",
+    flags: "🇺🇸",
+    price: 44820,
+    decimals: 0,
+    spread: 70,
+    percent: 89,
+    category: "Index",
+  },
+  {
+    symbol: "DAX",
+    flags: "🇪🇺",
+    price: 20150,
+    decimals: 1,
+    spread: 80,
+    percent: 84,
+    category: "Index",
+  },
+  {
+    symbol: "FTSE100",
+    flags: "🇬🇧",
+    price: 8430,
+    decimals: 1,
+    spread: 65,
+    percent: 79,
+    category: "Index",
+  },
+  {
+    symbol: "CAC40",
+    flags: "🇪🇺",
+    price: 7620,
+    decimals: 1,
+    spread: 75,
+    percent: 73,
+    category: "Index",
+  },
+  {
+    symbol: "ASX200",
+    flags: "🇦🇺",
+    price: 8540,
+    decimals: 1,
+    spread: 90,
+    percent: 70,
+    category: "Index",
+  },
 ];
 
 const tabs = ["Forex", "Komoditi", "Index"] as const;
+const PAGE_SIZE = 6;
 
 type Quote = { price: number; open: number; low: number; high: number };
 
@@ -235,7 +467,7 @@ function ProductRow({ base, quote }: { base: Base; quote: Quote }) {
     <Link
       to="/trade"
       search={{ symbol: base.symbol }}
-      className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-colors hover:bg-muted/40"
+      className="relative isolate flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-colors hover:bg-muted/40"
     >
       <SymbolIcon symbol={base.symbol} size={26} />
 
@@ -278,12 +510,56 @@ function ProductRow({ base, quote }: { base: Base; quote: Quote }) {
 
 function PasarPage() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Forex");
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  const { user } = useAuth();
+  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const accountNumber = user?.accountNumber || "1006568912";
   const quotes = useQuotes();
-  const list = useMemo(() => baseProducts.filter((p) => p.category === tab), [tab]);
+
+  // Reset pagination when switching tabs or search query
+  const handleTabChange = (newTab: (typeof tabs)[number]) => {
+    setTab(newTab);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setVisibleCount(PAGE_SIZE);
+  };
+
+  const list = useMemo(() => {
+    return baseProducts.filter((p) => {
+      const matchCategory = p.category === tab;
+      const matchSearch =
+        !searchQuery.trim() || p.symbol.toLowerCase().includes(searchQuery.toLowerCase().trim());
+      return matchCategory && matchSearch;
+    });
+  }, [tab, searchQuery]);
+
+  const visibleList = useMemo(() => {
+    return list.slice(0, visibleCount);
+  }, [list, visibleCount]);
+
+  const hasMore = visibleCount < list.length;
+  const remaining = Math.max(0, list.length - visibleCount);
+  const nextLoadCount = Math.min(PAGE_SIZE, remaining);
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Smooth user feedback
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + PAGE_SIZE);
+      setIsLoadingMore(false);
+    }, 250);
+  };
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
-      <header className="sticky top-0 z-10 bg-background px-4 pb-2 pt-3">
+      <header className="sticky top-0 z-30 border-b bg-background/95 px-4 pb-2 pt-3 backdrop-blur-xs">
         <div className="flex items-center justify-between">
           <span className="flex items-end gap-[2px]" aria-label="MIFX">
             <span className="h-4 w-[4px] -skew-x-12 rounded-[1px] bg-primary" />
@@ -292,12 +568,12 @@ function PasarPage() {
           </span>
 
           <div className="text-center">
-            <p className="text-base font-bold leading-tight text-foreground">$10,000.00</p>
+            <p className="text-base font-bold leading-tight text-foreground">{balance}</p>
             <button
               type="button"
               className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
             >
-              1006568912
+              {accountNumber}
               <ChevronDown className="h-3 w-3" />
             </button>
           </div>
@@ -305,18 +581,45 @@ function PasarPage() {
           <button
             type="button"
             aria-label="Cari produk"
-            className="rounded-full p-1.5 hover:bg-muted"
+            onClick={() => setShowSearch((prev) => !prev)}
+            className={`rounded-full p-1.5 transition-colors ${
+              showSearch ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+            }`}
           >
-            <Search className="h-5 w-5 text-foreground" />
+            <Search className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Search Bar Collapsible */}
+        {showSearch && (
+          <div className="mt-2.5 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-1.5">
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Cari simbol (contoh: EUR, GOLD, US)..."
+              className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => handleSearchChange("")}
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="mt-3 flex items-center gap-2 text-sm">
           {tabs.map((item) => (
             <button
               key={item}
               type="button"
-              onClick={() => setTab(item)}
+              onClick={() => handleTabChange(item)}
               className={`flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium transition-colors ${
                 tab === item
                   ? "bg-primary/10 text-primary"
@@ -331,13 +634,50 @@ function PasarPage() {
 
       <main className="flex flex-1 flex-col gap-2 px-3 py-3">
         {list.length === 0 ? (
-          <p className="mt-16 text-center text-sm text-muted-foreground">
-            Belum ada produk di kategori ini.
-          </p>
+          <div className="mt-16 text-center">
+            <p className="text-sm font-medium text-foreground">Tidak ada produk ditemukan</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Coba gunakan kata kunci pencarian atau kategori lain.
+            </p>
+          </div>
         ) : (
-          list.map((base) => (
-            <ProductRow key={base.symbol} base={base} quote={quotes[base.symbol]!} />
-          ))
+          <>
+            {visibleList.map((base) => (
+              <ProductRow key={base.symbol} base={base} quote={quotes[base.symbol]!} />
+            ))}
+
+            {/* Load More Button & Status */}
+            {hasMore ? (
+              <div className="mt-2 flex flex-col items-center gap-2 pt-1 pb-4">
+                <button
+                  type="button"
+                  id="load-more-btn"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-card py-3 px-4 text-sm font-semibold text-primary shadow-xs transition-all hover:bg-primary/5 active:scale-[0.99] disabled:opacity-60"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Memuat {nextLoadCount} kartu berikutnya...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Muat Lebih Banyak (+{nextLoadCount})</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  Menampilkan {visibleList.length} dari {list.length} instrumen {tab}
+                </p>
+              </div>
+            ) : list.length > PAGE_SIZE ? (
+              <p className="py-3 text-center text-xs text-muted-foreground">
+                Semua {list.length} produk {tab} telah ditampilkan
+              </p>
+            ) : null}
+          </>
         )}
       </main>
 

@@ -2,23 +2,24 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import onboardingLegal from "@/assets/onboarding-legal.png";
-import onboardingDemo from "@/assets/onboarding-demo.png";
+import onboardingSkill from "@/assets/onboarding-demo.png";
 import onboardingFitur from "@/assets/onboarding-fitur.png";
+import { AppLogo } from "@/components/AppLogo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MIFX — Aplikasi Trading Online Resmi" },
+      { title: "Gotrade — Aplikasi Trading Online Resmi" },
       {
         name: "description",
         content:
-          "Trading forex legal dan aman di broker teregulasi. Asah skill trading dan bertransaksi lebih percaya diri bersama MIFX.",
+          "Trading saham, forex, dan aset global legal dan aman di platform Gotrade. Asah skill trading dan bertransaksi lebih percaya diri bersama Gotrade.",
       },
-      { property: "og:title", content: "MIFX — Aplikasi Trading Online Resmi" },
+      { property: "og:title", content: "Gotrade — Aplikasi Trading Online Resmi" },
       {
         property: "og:description",
         content:
-          "Trading forex legal dan aman di broker teregulasi. Asah skill trading dan bertransaksi lebih percaya diri.",
+          "Trading saham, forex, dan aset global legal dan aman di platform Gotrade. Asah skill trading dan bertransaksi lebih percaya diri.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -34,7 +35,7 @@ const slides = [
     title: "Trading Forex Legal dan Aman di Broker Teregulasi",
   },
   {
-    image: onboardingDemo,
+    image: onboardingSkill,
     alt: "Ilustrasi trader berlatih trading dengan grafik dan ikon mata uang",
     title: "Asah Skill Trading Dengan Berlatih",
   },
@@ -85,7 +86,7 @@ function Index() {
     <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-background">
       {/* Brand */}
       <header className="flex items-center justify-center pt-5">
-        <span className="text-lg font-extrabold tracking-[0.18em] text-primary">MIFX</span>
+        <AppLogo size="md" />
       </header>
 
       {/* Carousel */}

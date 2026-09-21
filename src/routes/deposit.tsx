@@ -9,25 +9,26 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/deposit")({
   head: () => ({
     meta: [
-      { title: "Deposit — MIFX" },
+      { title: "Deposit — Gotrade" },
       {
         name: "description",
         content:
-          "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
+          "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
       },
-      { property: "og:title", content: "Deposit — MIFX" },
+      { property: "og:title", content: "Deposit — Gotrade" },
       {
         property: "og:description",
         content:
-          "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
+          "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -58,12 +59,38 @@ function formatRupiah(value: number) {
 }
 
 function DepositPage() {
+  const { user } = useAuth();
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [source, setSource] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Dynamic QRIS from Admin Settings
+  const [qrisImage, setQrisImage] = useState<string>("");
+  const [merchantName, setMerchantName] = useState<string>("Gotrade Indonesia Official");
+  const [qrisPayload, setQrisPayload] = useState<string>(
+    "00020101021226590014ID.LINKAJA.WWW01189360091100223030310215GOTRADEINDONESIA5204581253033605802ID5914GOTRADE INDONESIA6007JAKARTA61051234062070703A016304",
+  );
+
+  useEffect(() => {
+    async function loadQrisSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        if (res.ok && data.success && data.settings) {
+          if (data.settings.qris_image !== undefined) setQrisImage(data.settings.qris_image);
+          if (data.settings.qris_merchant_name) setMerchantName(data.settings.qris_merchant_name);
+          if (data.settings.qris_payload) setQrisPayload(data.settings.qris_payload);
+        }
+      } catch {
+        // use cached state
+      }
+    }
+    void loadQrisSettings();
+  }, []);
 
   const numericAmount = Number(amount.replace(/\D/g, ""));
   const sourceLabel = paymentSources.find((p) => p.id === source)?.label ?? "-";
@@ -80,15 +107,66 @@ function DepositPage() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
+
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+          userName: accountName.trim() || user?.name || "Trader",
+          accountNumber: user?.accountNumber || "1006568912",
+          type: "Top Up",
+          channel: sourceLabel,
+          destination: accountNumber ? `•••• ${accountNumber.slice(-4)}` : "•••• 8421",
+          amount: numericAmount,
+        }),
+      });
+      toast.success("Deposit berhasil diajukan!");
+    } catch {
+      // Continue anyway
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   const copyQris = () => {
-    navigator.clipboard?.writeText("MIFX-QRIS-DEMO-PAYLOAD").catch(() => {});
-    toast.success("Kode QRIS disalin");
+    const textToCopy =
+      qrisPayload || `GOTRADE-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(textToCopy).catch(() => {});
+    }
+    toast.success("Kode QRIS berhasil disalin!");
+  };
+
+  const downloadQris = () => {
+    if (qrisImage) {
+      const a = document.createElement("a");
+      a.href = qrisImage;
+      a.download = "gotrade-qris-official.png";
+      a.click();
+      toast.success("Gambar QRIS berhasil diunduh");
+    } else {
+      const svg = document.getElementById("qris-svg");
+      if (svg) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const a = document.createElement("a");
+        a.href = svgUrl;
+        a.download = "gotrade-qris.svg";
+        a.click();
+        URL.revokeObjectURL(svgUrl);
+        toast.success("QRIS berhasil diunduh");
+      } else {
+        toast.info("QRIS siap digunakan");
+      }
+    }
   };
 
   if (submitted) {
@@ -141,16 +219,30 @@ function DepositPage() {
             <h2 className="text-sm font-semibold text-foreground">Scan QRIS untuk Deposit</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Mendukung semua aplikasi bank & e-wallet (GoPay, OVO, DANA, ShopeePay, m-banking)
+            Mendukung semua aplikasi bank & e-wallet (BCA, Mandiri, BRI, GoPay, OVO, DANA)
           </p>
+          <div className="mt-2 inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-0.5 text-[11px] font-semibold text-primary">
+            {merchantName}
+          </div>
 
-          <div className="mx-auto mt-4 w-fit rounded-xl border bg-white p-3">
-            <QRCodeSVG
-              value={`MIFX-QRIS-DEMO|amount=${numericAmount || 0}|name=${accountName || "-"}`}
-              size={180}
-              level="M"
-              includeMargin={false}
-            />
+          <div className="mx-auto mt-3 flex w-fit items-center justify-center overflow-hidden rounded-xl border bg-white p-3 shadow-sm">
+            {qrisImage ? (
+              <img
+                src={qrisImage}
+                alt="QRIS Deposit"
+                className="max-h-48 max-w-48 object-contain"
+              />
+            ) : (
+              <QRCodeSVG
+                id="qris-svg"
+                value={
+                  qrisPayload || `MIFX-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`
+                }
+                size={180}
+                level="M"
+                includeMargin={false}
+              />
+            )}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
             {numericAmount > 0
@@ -169,7 +261,7 @@ function DepositPage() {
             </button>
             <button
               type="button"
-              onClick={() => toast.info("QRIS tersimpan (demo)")}
+              onClick={downloadQris}
               className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
             >
               <Download className="h-3.5 w-3.5" />
