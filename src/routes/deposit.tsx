@@ -1,0 +1,306 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, CheckCircle2, ChevronDown, Copy, Download, QrCode, ShieldCheck } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { BottomNav } from "@/components/BottomNav";
+
+export const Route = createFileRoute("/deposit")({
+  head: () => ({
+    meta: [
+      { title: "Deposit — MIFX" },
+      { name: "description", content: "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet." },
+      { property: "og:title", content: "Deposit — MIFX" },
+      { property: "og:description", content: "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: DepositPage,
+});
+
+const paymentSources = [
+  { id: "bca", label: "Bank BCA", category: "Bank" },
+  { id: "mandiri", label: "Bank Mandiri", category: "Bank" },
+  { id: "bri", label: "Bank BRI", category: "Bank" },
+  { id: "bni", label: "Bank BNI", category: "Bank" },
+  { id: "gopay", label: "GoPay", category: "E-Wallet" },
+  { id: "ovo", label: "OVO", category: "E-Wallet" },
+  { id: "dana", label: "DANA", category: "E-Wallet" },
+  { id: "shopeepay", label: "ShopeePay", category: "E-Wallet" },
+];
+
+const quickAmounts = [100000, 250000, 500000, 1000000, 2500000, 5000000];
+
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
+function DepositPage() {
+  const [amount, setAmount] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [source, setSource] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const numericAmount = Number(amount.replace(/\D/g, ""));
+  const sourceLabel = paymentSources.find((p) => p.id === source)?.label ?? "-";
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!numericAmount || numericAmount < 10000) next["amount"] = "Minimal deposit Rp10.000";
+    if (numericAmount > 100000000) next["amount"] = "Maksimal deposit Rp100.000.000";
+    if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
+    if (!source) next["source"] = "Pilih rekening atau e-wallet sumber dana";
+    if (accountNumber.trim().length < 5) next["accountNumber"] = "Nomor rekening / e-wallet tidak valid";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSubmitted(true);
+  };
+
+  const copyQris = () => {
+    navigator.clipboard?.writeText("MIFX-QRIS-DEMO-PAYLOAD").catch(() => {});
+    toast.success("Kode QRIS disalin");
+  };
+
+  if (submitted) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
+        <header className="flex items-center gap-3 bg-background px-4 py-3">
+          <Link to="/beranda" aria-label="Kembali" className="rounded-full p-1.5 hover:bg-muted">
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </Link>
+          <h1 className="text-base font-semibold text-foreground">Deposit</h1>
+        </header>
+        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <CheckCircle2 className="h-8 w-8 text-primary" />
+          </span>
+          <h2 className="text-lg font-bold text-foreground">Permintaan Deposit Diterima</h2>
+          <p className="text-sm text-muted-foreground">
+            Deposit sebesar <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span> dari{" "}
+            {sourceLabel} a.n. {accountName} sedang kami verifikasi. Saldo akan masuk ke akun Anda setelah pembayaran
+            terkonfirmasi.
+          </p>
+          <Link
+            to="/beranda"
+            className="mt-2 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground"
+          >
+            Kembali ke Beranda
+          </Link>
+        </main>
+        <BottomNav active="Beranda" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
+      {/* Header */}
+      <header className="flex items-center gap-3 bg-background px-4 py-3">
+        <Link to="/beranda" aria-label="Kembali" className="rounded-full p-1.5 hover:bg-muted">
+          <ArrowLeft className="h-5 w-5 text-foreground" />
+        </Link>
+        <h1 className="text-base font-semibold text-foreground">Deposit</h1>
+      </header>
+
+      <main className="flex flex-col gap-5 px-4 py-4 pb-6">
+        {/* QRIS card */}
+        <section className="rounded-xl border bg-card p-4 text-center shadow-sm">
+          <div className="flex items-center justify-center gap-1.5">
+            <QrCode className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Scan QRIS untuk Deposit</h2>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Mendukung semua aplikasi bank & e-wallet (GoPay, OVO, DANA, ShopeePay, m-banking)
+          </p>
+
+          <div className="mx-auto mt-4 w-fit rounded-xl border bg-white p-3">
+            <QRCodeSVG
+              value={`MIFX-QRIS-DEMO|amount=${numericAmount || 0}|name=${accountName || "-"}`}
+              size={180}
+              level="M"
+              includeMargin={false}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {numericAmount > 0 ? formatRupiah(numericAmount) : "Nominal mengikuti jumlah yang Anda bayar"}
+          </p>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={copyQris}
+              className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Salin Kode
+            </button>
+            <button
+              type="button"
+              onClick={() => toast.info("QRIS tersimpan (demo)")}
+              className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Unduh QRIS
+            </button>
+          </div>
+
+          <p className="mt-3 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+            Transaksi aman & terverifikasi otomatis
+          </p>
+        </section>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Detail Deposit</h2>
+
+          {/* Nominal */}
+          <div>
+            <label htmlFor="amount" className="text-xs font-medium text-foreground">
+              Jumlah Deposit (IDR)
+            </label>
+            <div className="mt-1.5 flex items-center rounded-lg border bg-background px-3 focus-within:border-primary">
+              <span className="text-sm font-semibold text-muted-foreground">Rp</span>
+              <input
+                id="amount"
+                inputMode="numeric"
+                placeholder="0"
+                value={amount ? Number(amount).toLocaleString("id-ID") : ""}
+                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+                className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            {errors["amount"] && <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>}
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {quickAmounts.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setAmount(String(q))}
+                  className={`rounded-lg border py-1.5 text-[11px] font-medium transition-colors ${
+                    numericAmount === q
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {q >= 1000000 ? `${q / 1000000} Jt` : `${q / 1000} Rb`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Atas nama */}
+          <div>
+            <label htmlFor="accountName" className="text-xs font-medium text-foreground">
+              Atas Nama (pemilik rekening / e-wallet)
+            </label>
+            <input
+              id="accountName"
+              type="text"
+              maxLength={100}
+              placeholder="Contoh: Budi Santoso"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+            {errors["accountName"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountName"]}</p>}
+          </div>
+
+          {/* Sumber dana */}
+          <div>
+            <label htmlFor="source" className="text-xs font-medium text-foreground">
+              Rekening / E-Wallet Sumber Dana
+            </label>
+            <div className="relative mt-1.5">
+              <select
+                id="source"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="w-full appearance-none rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="">Pilih bank atau e-wallet</option>
+                <optgroup label="Bank">
+                  {paymentSources
+                    .filter((p) => p.category === "Bank")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="E-Wallet">
+                  {paymentSources
+                    .filter((p) => p.category === "E-Wallet")
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                </optgroup>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            {errors["source"] && <p className="mt-1 text-[11px] text-red-500">{errors["source"]}</p>}
+          </div>
+
+          {/* Nomor rekening */}
+          <div>
+            <label htmlFor="accountNumber" className="text-xs font-medium text-foreground">
+              Nomor Rekening / HP E-Wallet
+            </label>
+            <input
+              id="accountNumber"
+              inputMode="numeric"
+              maxLength={30}
+              placeholder="Contoh: 1234567890"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value.replace(/[^\d\s-]/g, ""))}
+              className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+            {errors["accountNumber"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountNumber"]}</p>}
+          </div>
+
+          {/* Ringkasan */}
+          {numericAmount >= 10000 && (
+            <div className="rounded-lg bg-muted p-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jumlah Deposit</span>
+                <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span>
+              </div>
+              <div className="mt-1 flex justify-between">
+                <span className="text-muted-foreground">Biaya Admin</span>
+                <span className="font-semibold text-primary">Gratis</span>
+              </div>
+              <div className="mt-2 flex justify-between border-t pt-2">
+                <span className="font-medium text-foreground">Total Diterima</span>
+                <span className="font-bold text-foreground">{formatRupiah(numericAmount)}</span>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Ajukan Deposit
+          </button>
+        </form>
+      </main>
+
+      <BottomNav active="Beranda" />
+    </div>
+  );
+}
