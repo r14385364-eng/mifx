@@ -59,10 +59,7 @@ function RegisterPage() {
           Isi lengkap formulir berikut untuk membuat Akun MIFX.
         </p>
 
-        <form
-          className="mt-7 space-y-5"
-          onSubmit={(e) => e.preventDefault()}
-        >
+        <form className="mt-7 space-y-5" onSubmit={(e) => e.preventDefault()}>
           {/* Nama Lengkap */}
           <Field label="Nama Lengkap" required>
             <Input
@@ -108,9 +105,7 @@ function RegisterPage() {
 
           {/* Trading Platform */}
           <div>
-            <p className="mb-2 text-[13px] font-semibold text-foreground">
-              Pilih Trading Platform
-            </p>
+            <p className="mb-2 text-[13px] font-semibold text-foreground">Pilih Trading Platform</p>
             <div className="grid grid-cols-2 gap-3">
               <PlatformOption
                 active={platform === "mt5"}
@@ -149,9 +144,7 @@ function RegisterPage() {
               {passwordRules.map((rule) => (
                 <li key={rule} className="flex items-start gap-2.5">
                   <CheckCircleIcon />
-                  <span className="text-[11.5px] leading-snug text-muted-foreground">
-                    {rule}
-                  </span>
+                  <span className="text-[11.5px] leading-snug text-muted-foreground">{rule}</span>
                 </li>
               ))}
             </ul>
@@ -166,14 +159,8 @@ function RegisterPage() {
             />
             <span className="text-[12px] leading-snug text-foreground">
               Saya telah membaca dan menyetujui{" "}
-              <span className="font-semibold text-primary">
-                Syarat dan Ketentuan
-              </span>{" "}
-              serta{" "}
-              <span className="font-semibold text-primary">
-                Kebijakan Privasi
-              </span>
-              .
+              <span className="font-semibold text-primary">Syarat dan Ketentuan</span> serta{" "}
+              <span className="font-semibold text-primary">Kebijakan Privasi</span>.
             </span>
           </label>
 
@@ -272,7 +259,13 @@ function PlatformOption({
       >
         {active && (
           <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-primary-foreground" fill="none">
-            <path d="M2.5 6.5L5 9L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M2.5 6.5L5 9L9.5 3.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       </span>
@@ -284,7 +277,13 @@ function PlatformOption({
 function ChevronDownIcon() {
   return (
     <svg viewBox="0 0 16 16" className="h-4 w-4 text-muted-foreground" fill="none">
-      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 6l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -293,7 +292,13 @@ function CheckCircleIcon() {
   return (
     <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="none">
       <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.2" opacity="0.35" />
-      <path d="M5 8.2l2 2 4-4.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M5 8.2l2 2 4-4.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

@@ -90,8 +90,7 @@ function BeritaDetailPage() {
                 key={t.label}
                 className="rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
               >
-                {t.label}{" "}
-                <span className={t.up ? "text-primary" : "text-red-500"}>{t.change}</span>
+                {t.label} <span className={t.up ? "text-primary" : "text-red-500"}>{t.change}</span>
               </span>
             ))}
           </div>
@@ -112,7 +111,8 @@ function BeritaDetailPage() {
 
           <p className="mt-5 rounded-lg bg-muted p-3 text-[11px] leading-relaxed text-muted-foreground">
             Konten ini hanya untuk tujuan informasi dan bukan merupakan rekomendasi investasi.
-            Trading mengandung risiko tinggi — pastikan Anda memahami risikonya sebelum bertransaksi.
+            Trading mengandung risiko tinggi — pastikan Anda memahami risikonya sebelum
+            bertransaksi.
           </p>
         </article>
 

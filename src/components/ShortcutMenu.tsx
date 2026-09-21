@@ -4,7 +4,16 @@ import type { LucideIcon } from "lucide-react";
 export type ShortcutItem = {
   label: string;
   icon: LucideIcon;
-  to?: "/deposit" | "/withdraw" | "/referral" | "/berita" | "/pasar" | "/order" | "/trade" | "/profil" | "/beranda";
+  to?:
+    | "/deposit"
+    | "/withdraw"
+    | "/referral"
+    | "/berita"
+    | "/pasar"
+    | "/order"
+    | "/trade"
+    | "/profil"
+    | "/beranda";
 };
 
 /**
@@ -23,7 +32,8 @@ export function ShortcutMenu({ items }: { items: ShortcutItem[] }) {
             <span className="text-[11px] font-medium text-foreground">{item.label}</span>
           </>
         );
-        const cls = "flex flex-col items-center gap-2 rounded-lg py-2 transition-colors hover:bg-muted";
+        const cls =
+          "flex flex-col items-center gap-2 rounded-lg py-2 transition-colors hover:bg-muted";
         if (item.to) {
           return (
             <Link key={item.label} to={item.to} className={cls}>

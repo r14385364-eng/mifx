@@ -105,7 +105,10 @@ function Index() {
           }}
         >
           {slides.map((slide) => (
-            <div key={slide.title} className="flex h-full w-full shrink-0 items-center justify-center px-5">
+            <div
+              key={slide.title}
+              className="flex h-full w-full shrink-0 items-center justify-center px-5"
+            >
               <img
                 src={slide.image}
                 alt={slide.alt}

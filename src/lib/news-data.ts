@@ -69,8 +69,7 @@ export const newsArticles: NewsArticle[] = [
     tag: "Technical Overview",
     category: "Technical Overview",
     title: "USDJPY Terus Naik, Buyer Berpeluang Bidik Resistance 158,455",
-    excerpt:
-      "Pelemahan yen berlanjut. USDJPY kini mengincar resistance kunci di 158,455.",
+    excerpt: "Pelemahan yen berlanjut. USDJPY kini mengincar resistance kunci di 158,455.",
     time: "1 hari lalu",
     date: "18 September 2026",
     readMinutes: 3,
@@ -126,8 +125,7 @@ export const newsArticles: NewsArticle[] = [
     tag: "Market News",
     category: "Market News",
     title: "Euro Tertekan Data PMI Zona Euro yang Mengecewakan",
-    excerpt:
-      "PMI sektor jasa zona euro di bawah ekspektasi. EURUSD melemah ke bawah 1.1500.",
+    excerpt: "PMI sektor jasa zona euro di bawah ekspektasi. EURUSD melemah ke bawah 1.1500.",
     time: "2 hari lalu",
     date: "17 September 2026",
     readMinutes: 3,
@@ -145,8 +143,7 @@ export const newsArticles: NewsArticle[] = [
     tag: "Market News",
     category: "Market News",
     title: "Perak Ikut Menguat, Mengikuti Jejak Reli Emas",
-    excerpt:
-      "XAGUSD naik mengikuti penguatan emas. Rasio emas-perak mulai menyempit.",
+    excerpt: "XAGUSD naik mengikuti penguatan emas. Rasio emas-perak mulai menyempit.",
     time: "3 hari lalu",
     date: "16 September 2026",
     readMinutes: 3,

@@ -4,8 +4,21 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { AdminLayout } from "./AdminLayout";
 
@@ -27,7 +40,11 @@ const statusStyle = {
 };
 
 const formatRupiah = (amount: number) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 export function TransactionPage({
   type,
@@ -57,7 +74,11 @@ export function TransactionPage({
     <AdminLayout title={type} subtitle={`Kelola permintaan ${type.toLowerCase()} pengguna`}>
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Total Permintaan" value={String(transactions.length)} icon={WalletCards} />
+          <SummaryCard
+            label="Total Permintaan"
+            value={String(transactions.length)}
+            icon={WalletCards}
+          />
           <SummaryCard label="Perlu Diproses" value={String(pending.length)} icon={Clock3} accent />
           <SummaryCard label="Selesai Hari Ini" value={String(completed.length)} icon={Check} />
           <SummaryCard label="Nominal Menunggu" value={formatRupiah(pendingTotal)} icon={Clock3} />
@@ -67,7 +88,9 @@ export function TransactionPage({
           <div className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-bold text-card-foreground">Permintaan {type}</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Daftar transaksi terbaru yang masuk ke sistem.</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Daftar transaksi terbaru yang masuk ke sistem.
+              </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative sm:w-64">
@@ -98,7 +121,9 @@ export function TransactionPage({
               <TableRow>
                 <TableHead className="min-w-36 pl-4">ID & Waktu</TableHead>
                 <TableHead className="min-w-44">Pengguna</TableHead>
-                <TableHead className="min-w-44">{type === "Top Up" ? "Sumber Dana" : "Rekening Tujuan"}</TableHead>
+                <TableHead className="min-w-44">
+                  {type === "Top Up" ? "Sumber Dana" : "Rekening Tujuan"}
+                </TableHead>
                 <TableHead className="min-w-36">Nominal</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="pr-4 text-right">Tindakan</TableHead>
@@ -108,7 +133,9 @@ export function TransactionPage({
               {filtered.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell className="pl-4">
-                    <p className="font-mono text-xs font-semibold text-foreground">{transaction.id}</p>
+                    <p className="font-mono text-xs font-semibold text-foreground">
+                      {transaction.id}
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">{transaction.time}</p>
                   </TableCell>
                   <TableCell>
@@ -119,7 +146,9 @@ export function TransactionPage({
                     <p className="font-medium text-foreground">{transaction.channel}</p>
                     <p className="text-xs text-muted-foreground">{transaction.destination}</p>
                   </TableCell>
-                  <TableCell className="font-bold tabular-nums text-foreground">{formatRupiah(transaction.amount)}</TableCell>
+                  <TableCell className="font-bold tabular-nums text-foreground">
+                    {formatRupiah(transaction.amount)}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={statusStyle[transaction.status]}>
                       {transaction.status}
@@ -128,15 +157,26 @@ export function TransactionPage({
                   <TableCell className="pr-4 text-right">
                     {transaction.status === "Menunggu" ? (
                       <div className="flex justify-end gap-1.5">
-                        <Button size="icon" variant="outline" aria-label={`Tolak ${transaction.id}`} title="Tolak">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          aria-label={`Tolak ${transaction.id}`}
+                          title="Tolak"
+                        >
                           <X />
                         </Button>
-                        <Button size="icon" aria-label={`Setujui ${transaction.id}`} title="Setujui">
+                        <Button
+                          size="icon"
+                          aria-label={`Setujui ${transaction.id}`}
+                          title="Setujui"
+                        >
                           <Check />
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="ghost">Detail</Button>
+                      <Button size="sm" variant="ghost">
+                        Detail
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
@@ -175,9 +215,13 @@ function SummaryCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-2 truncate text-xl font-bold tabular-nums text-card-foreground">{value}</p>
+          <p className="mt-2 truncate text-xl font-bold tabular-nums text-card-foreground">
+            {value}
+          </p>
         </div>
-        <span className={`flex size-9 shrink-0 items-center justify-center rounded-md ${accent ? "bg-chart-4/20 text-foreground" : "bg-primary/10 text-primary"}`}>
+        <span
+          className={`flex size-9 shrink-0 items-center justify-center rounded-md ${accent ? "bg-chart-4/20 text-foreground" : "bg-primary/10 text-primary"}`}
+        >
           <Icon className="size-4" />
         </span>
       </div>

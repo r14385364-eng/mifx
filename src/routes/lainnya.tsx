@@ -77,7 +77,10 @@ function Row({
   trailing?: ReactNode;
 }) {
   return (
-    <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50">
+    <button
+      type="button"
+      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
+    >
       <Icon className="h-5 w-5 text-muted-foreground" />
       <span className="flex-1">
         <span className="block text-sm font-medium">{label}</span>
@@ -161,7 +164,10 @@ function LainnyaPage() {
         </Section>
 
         <Section title="Program">
-          <Link to="/referral" className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50">
+          <Link
+            to="/referral"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
+          >
             <Users className="h-5 w-5 text-muted-foreground" />
             <span className="flex-1 text-sm font-medium">Referral</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -169,7 +175,10 @@ function LainnyaPage() {
         </Section>
 
         <Section title="Akun">
-          <Link to="/profil" className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50">
+          <Link
+            to="/profil"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
+          >
             <User className="h-5 w-5 text-muted-foreground" />
             <span className="flex-1 text-sm font-medium">Profil</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -180,11 +189,18 @@ function LainnyaPage() {
         </Section>
 
         <Section title="Bantuan">
-          <Row icon={HelpCircle} label="Pusat Bantuan" sub="Temukan jawaban untuk pertanyaan Anda." />
-          <Row icon={Building2} label="Laporkan Masalah" sub="Ceritakan lebih detail masalah yang Anda hadapi." />
+          <Row
+            icon={HelpCircle}
+            label="Pusat Bantuan"
+            sub="Temukan jawaban untuk pertanyaan Anda."
+          />
+          <Row
+            icon={Building2}
+            label="Laporkan Masalah"
+            sub="Ceritakan lebih detail masalah yang Anda hadapi."
+          />
           <Row icon={Share2} label="Ikuti Kami di Media Sosial" />
         </Section>
-
 
         <Link
           to="/login"

@@ -8,16 +8,23 @@ export const Route = createFileRoute("/withdraw")({
   head: () => ({
     meta: [
       { title: "Withdraw — MIFX" },
-      { name: "description", content: "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman." },
+      {
+        name: "description",
+        content:
+          "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
+      },
       { property: "og:title", content: "Withdraw — MIFX" },
-      { property: "og:description", content: "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman." },
+      {
+        property: "og:description",
+        content:
+          "Tarik dana dari akun trading MIFX Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: WithdrawPage,
 });
-
 
 const AVAILABLE_BALANCE = 10000000; // demo: Rp10.000.000
 
@@ -45,7 +52,8 @@ function WithdrawPage() {
     else if (numericAmount > AVAILABLE_BALANCE) next["amount"] = "Melebihi saldo yang tersedia";
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
-    if (accountNumber.trim().length < 5) next["accountNumber"] = "Nomor rekening / e-wallet tidak valid";
+    if (accountNumber.trim().length < 5)
+      next["accountNumber"] = "Nomor rekening / e-wallet tidak valid";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -71,8 +79,10 @@ function WithdrawPage() {
           </span>
           <h2 className="text-lg font-bold text-foreground">Penarikan Diproses</h2>
           <p className="text-sm text-muted-foreground">
-            Penarikan sebesar <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span> ke{" "}
-            {destination} a.n. {accountName} sedang diproses. Dana biasanya sampai dalam 1x24 jam kerja.
+            Penarikan sebesar{" "}
+            <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span> ke{" "}
+            {destination} a.n. {accountName} sedang diproses. Dana biasanya sampai dalam 1x24 jam
+            kerja.
           </p>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
@@ -122,7 +132,10 @@ function WithdrawPage() {
         </section>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm"
+        >
           <h2 className="text-sm font-semibold text-foreground">Detail Penarikan</h2>
 
           {/* Nominal */}
@@ -141,7 +154,9 @@ function WithdrawPage() {
                 className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
-            {errors["amount"] && <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>}
+            {errors["amount"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>
+            )}
           </div>
 
           {/* Atas nama */}
@@ -158,7 +173,9 @@ function WithdrawPage() {
               onChange={(e) => setAccountName(e.target.value)}
               className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
-            {errors["accountName"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountName"]}</p>}
+            {errors["accountName"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["accountName"]}</p>
+            )}
           </div>
 
           {/* Tujuan */}
@@ -175,7 +192,9 @@ function WithdrawPage() {
               onChange={(e) => setDestination(e.target.value)}
               className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
-            {errors["destination"] && <p className="mt-1 text-[11px] text-red-500">{errors["destination"]}</p>}
+            {errors["destination"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["destination"]}</p>
+            )}
           </div>
 
           {/* Nomor rekening */}
@@ -192,7 +211,9 @@ function WithdrawPage() {
               onChange={(e) => setAccountNumber(e.target.value.replace(/[^\d\s-]/g, ""))}
               className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
-            {errors["accountNumber"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountNumber"]}</p>}
+            {errors["accountNumber"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["accountNumber"]}</p>
+            )}
           </div>
 
           {/* Ringkasan */}
@@ -215,8 +236,8 @@ function WithdrawPage() {
 
           <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Penarikan diproses pada hari kerja (Senin–Jumat, 08.00–17.00 WIB). Pastikan nama pemilik rekening sesuai
-            dengan data akun Anda.
+            Penarikan diproses pada hari kerja (Senin–Jumat, 08.00–17.00 WIB). Pastikan nama pemilik
+            rekening sesuai dengan data akun Anda.
           </p>
 
           <button

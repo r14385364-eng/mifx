@@ -45,7 +45,13 @@ export function tickCandles(candles: Candle[], newCandle: boolean, volatility = 
   const close = nextPrice(last.close, volatility);
 
   if (newCandle) {
-    next.push({ time: Date.now(), open: last.close, high: Math.max(last.close, close), low: Math.min(last.close, close), close });
+    next.push({
+      time: Date.now(),
+      open: last.close,
+      high: Math.max(last.close, close),
+      low: Math.min(last.close, close),
+      close,
+    });
     return next.slice(-60);
   }
 

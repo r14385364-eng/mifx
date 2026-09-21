@@ -1,0 +1,6 @@
+{
+  "name": "MIFX — Aplikasi Trading Online Resmi",
+  "description": "Trading forex legal dan aman di broker teregulasi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

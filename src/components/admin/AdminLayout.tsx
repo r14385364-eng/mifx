@@ -1,5 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowDownToLine, ArrowUpFromLine, CircleDollarSign, Gift, LogOut, Newspaper, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CircleDollarSign,
+  Gift,
+  LogOut,
+  Newspaper,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
@@ -35,7 +45,15 @@ const userNavigation = [
   { label: "Referral", to: "/admin/referral" as const, icon: Gift },
 ];
 
-export function AdminLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+export function AdminLayout({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
@@ -49,7 +67,9 @@ export function AdminLayout({ title, subtitle, children }: { title: string; subt
               </span>
               <span className="min-w-0 group-data-[collapsible=icon]:hidden">
                 <span className="block text-sm font-extrabold">MIFX Admin</span>
-                <span className="block text-[11px] text-sidebar-foreground/60">Transaction Center</span>
+                <span className="block text-[11px] text-sidebar-foreground/60">
+                  Transaction Center
+                </span>
               </span>
             </Link>
           </SidebarHeader>
@@ -134,7 +154,9 @@ export function AdminLayout({ title, subtitle, children }: { title: string; subt
               </span>
               <span className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                 <span className="block truncate text-xs font-semibold">Admin MIFX</span>
-                <span className="block truncate text-[11px] text-sidebar-foreground/60">admin@mifx.com</span>
+                <span className="block truncate text-[11px] text-sidebar-foreground/60">
+                  admin@mifx.com
+                </span>
               </span>
             </div>
             <SidebarMenu>

@@ -44,14 +44,86 @@ interface ManagedUser {
 }
 
 const initialUsers: ManagedUser[] = [
-  { id: "USR-001", name: "Andi Pratama", email: "andi.pratama@gmail.com", phone: "0812-3456-7890", registeredAt: "2026-01-12", status: "aktif", balance: 15750000, accountType: "MT5" },
-  { id: "USR-002", name: "Siti Rahmawati", email: "siti.rahma@yahoo.com", phone: "0813-9876-5432", registeredAt: "2026-01-28", status: "aktif", balance: 8200000, accountType: "MT4" },
-  { id: "USR-003", name: "Budi Santoso", email: "budi.santoso@gmail.com", phone: "0821-1122-3344", registeredAt: "2026-02-03", status: "nonaktif", balance: 0, accountType: "MT5" },
-  { id: "USR-004", name: "Dewi Lestari", email: "dewi.lestari@outlook.com", phone: "0857-6677-8899", registeredAt: "2026-02-19", status: "aktif", balance: 43500000, accountType: "MT5" },
-  { id: "USR-005", name: "Rizky Ramadhan", email: "rizky.rmdhn@gmail.com", phone: "0819-2233-4455", registeredAt: "2026-03-05", status: "aktif", balance: 2750000, accountType: "MT4" },
-  { id: "USR-006", name: "Maya Anggraini", email: "maya.anggraini@gmail.com", phone: "0852-7788-9900", registeredAt: "2026-03-22", status: "nonaktif", balance: 150000, accountType: "MT4" },
-  { id: "USR-007", name: "Fajar Nugroho", email: "fajar.nugroho@gmail.com", phone: "0815-3344-5566", registeredAt: "2026-04-10", status: "aktif", balance: 12875000, accountType: "MT5" },
-  { id: "USR-008", name: "Putri Ayudia", email: "putri.ayudia@gmail.com", phone: "0877-8899-0011", registeredAt: "2026-05-02", status: "aktif", balance: 6600000, accountType: "MT5" },
+  {
+    id: "USR-001",
+    name: "Andi Pratama",
+    email: "andi.pratama@gmail.com",
+    phone: "0812-3456-7890",
+    registeredAt: "2026-01-12",
+    status: "aktif",
+    balance: 15750000,
+    accountType: "MT5",
+  },
+  {
+    id: "USR-002",
+    name: "Siti Rahmawati",
+    email: "siti.rahma@yahoo.com",
+    phone: "0813-9876-5432",
+    registeredAt: "2026-01-28",
+    status: "aktif",
+    balance: 8200000,
+    accountType: "MT4",
+  },
+  {
+    id: "USR-003",
+    name: "Budi Santoso",
+    email: "budi.santoso@gmail.com",
+    phone: "0821-1122-3344",
+    registeredAt: "2026-02-03",
+    status: "nonaktif",
+    balance: 0,
+    accountType: "MT5",
+  },
+  {
+    id: "USR-004",
+    name: "Dewi Lestari",
+    email: "dewi.lestari@outlook.com",
+    phone: "0857-6677-8899",
+    registeredAt: "2026-02-19",
+    status: "aktif",
+    balance: 43500000,
+    accountType: "MT5",
+  },
+  {
+    id: "USR-005",
+    name: "Rizky Ramadhan",
+    email: "rizky.rmdhn@gmail.com",
+    phone: "0819-2233-4455",
+    registeredAt: "2026-03-05",
+    status: "aktif",
+    balance: 2750000,
+    accountType: "MT4",
+  },
+  {
+    id: "USR-006",
+    name: "Maya Anggraini",
+    email: "maya.anggraini@gmail.com",
+    phone: "0852-7788-9900",
+    registeredAt: "2026-03-22",
+    status: "nonaktif",
+    balance: 150000,
+    accountType: "MT4",
+  },
+  {
+    id: "USR-007",
+    name: "Fajar Nugroho",
+    email: "fajar.nugroho@gmail.com",
+    phone: "0815-3344-5566",
+    registeredAt: "2026-04-10",
+    status: "aktif",
+    balance: 12875000,
+    accountType: "MT5",
+  },
+  {
+    id: "USR-008",
+    name: "Putri Ayudia",
+    email: "putri.ayudia@gmail.com",
+    phone: "0877-8899-0011",
+    registeredAt: "2026-05-02",
+    status: "aktif",
+    balance: 6600000,
+    accountType: "MT5",
+  },
 ];
 
 function formatRupiah(value: number) {
@@ -186,7 +258,10 @@ export function UsersAdminPage() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     Tidak ada user yang cocok dengan pencarian.
                   </TableCell>
                 </TableRow>
@@ -250,9 +325,7 @@ export function UsersAdminPage() {
             <>
               <DialogHeader>
                 <DialogTitle>Detail User</DialogTitle>
-                <DialogDescription>
-                  Informasi akun dan saldo {selectedUser.name}
-                </DialogDescription>
+                <DialogDescription>Informasi akun dan saldo {selectedUser.name}</DialogDescription>
               </DialogHeader>
               <div className="flex items-center gap-4 rounded-lg border bg-muted/40 p-4">
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground">
@@ -283,7 +356,9 @@ export function UsersAdminPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Jenis Akun</dt>
-                  <dd><Badge variant="outline">{selectedUser.accountType}</Badge></dd>
+                  <dd>
+                    <Badge variant="outline">{selectedUser.accountType}</Badge>
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-muted-foreground">Status</dt>

@@ -1,5 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, ChevronDown, Copy, Download, QrCode, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  Copy,
+  Download,
+  QrCode,
+  ShieldCheck,
+} from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -10,9 +18,17 @@ export const Route = createFileRoute("/deposit")({
   head: () => ({
     meta: [
       { title: "Deposit — MIFX" },
-      { name: "description", content: "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet." },
+      {
+        name: "description",
+        content:
+          "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
+      },
       { property: "og:title", content: "Deposit — MIFX" },
-      { property: "og:description", content: "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet." },
+      {
+        property: "og:description",
+        content:
+          "Isi saldo akun trading MIFX Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -58,7 +74,8 @@ function DepositPage() {
     if (numericAmount > 100000000) next["amount"] = "Maksimal deposit Rp100.000.000";
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (!source) next["source"] = "Pilih rekening atau e-wallet sumber dana";
-    if (accountNumber.trim().length < 5) next["accountNumber"] = "Nomor rekening / e-wallet tidak valid";
+    if (accountNumber.trim().length < 5)
+      next["accountNumber"] = "Nomor rekening / e-wallet tidak valid";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -89,9 +106,10 @@ function DepositPage() {
           </span>
           <h2 className="text-lg font-bold text-foreground">Permintaan Deposit Diterima</h2>
           <p className="text-sm text-muted-foreground">
-            Deposit sebesar <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span> dari{" "}
-            {sourceLabel} a.n. {accountName} sedang kami verifikasi. Saldo akan masuk ke akun Anda setelah pembayaran
-            terkonfirmasi.
+            Deposit sebesar{" "}
+            <span className="font-semibold text-foreground">{formatRupiah(numericAmount)}</span>{" "}
+            dari {sourceLabel} a.n. {accountName} sedang kami verifikasi. Saldo akan masuk ke akun
+            Anda setelah pembayaran terkonfirmasi.
           </p>
           <Link
             to="/beranda"
@@ -135,7 +153,9 @@ function DepositPage() {
             />
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {numericAmount > 0 ? formatRupiah(numericAmount) : "Nominal mengikuti jumlah yang Anda bayar"}
+            {numericAmount > 0
+              ? formatRupiah(numericAmount)
+              : "Nominal mengikuti jumlah yang Anda bayar"}
           </p>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -164,7 +184,10 @@ function DepositPage() {
         </section>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm"
+        >
           <h2 className="text-sm font-semibold text-foreground">Detail Deposit</h2>
 
           {/* Nominal */}
@@ -183,7 +206,9 @@ function DepositPage() {
                 className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
-            {errors["amount"] && <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>}
+            {errors["amount"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>
+            )}
             <div className="mt-2 grid grid-cols-3 gap-2">
               {quickAmounts.map((q) => (
                 <button
@@ -216,7 +241,9 @@ function DepositPage() {
               onChange={(e) => setAccountName(e.target.value)}
               className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
-            {errors["accountName"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountName"]}</p>}
+            {errors["accountName"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["accountName"]}</p>
+            )}
           </div>
 
           {/* Sumber dana */}
@@ -253,7 +280,9 @@ function DepositPage() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
-            {errors["source"] && <p className="mt-1 text-[11px] text-red-500">{errors["source"]}</p>}
+            {errors["source"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["source"]}</p>
+            )}
           </div>
 
           {/* Nomor rekening */}
@@ -270,7 +299,9 @@ function DepositPage() {
               onChange={(e) => setAccountNumber(e.target.value.replace(/[^\d\s-]/g, ""))}
               className="mt-1.5 w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
-            {errors["accountNumber"] && <p className="mt-1 text-[11px] text-red-500">{errors["accountNumber"]}</p>}
+            {errors["accountNumber"] && (
+              <p className="mt-1 text-[11px] text-red-500">{errors["accountNumber"]}</p>
+            )}
           </div>
 
           {/* Ringkasan */}

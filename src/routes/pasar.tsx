@@ -38,22 +38,150 @@ type Base = {
 };
 
 const baseProducts: Base[] = [
-  { symbol: "AUDCAD", flags: "🇦🇺🇨🇦", price: 0.99564, decimals: 5, spread: 147, percent: 92, category: "Forex" },
-  { symbol: "AUDCHF", flags: "🇦🇺🇨🇭", price: 0.58522, decimals: 5, spread: 118, percent: 83, category: "Forex" },
-  { symbol: "AUDJPY", flags: "🇦🇺🇯🇵", price: 111.696, decimals: 3, spread: 169, percent: 98, category: "Forex" },
-  { symbol: "AUDNZD", flags: "🇦🇺🇳🇿", price: 1.24371, decimals: 5, spread: 257, percent: 68, category: "Forex" },
-  { symbol: "AUDUSD", flags: "🇦🇺🇺🇸", price: 0.71217, decimals: 5, spread: 75, percent: 97, category: "Forex" },
-  { symbol: "CHFJPY", flags: "🇨🇭🇯🇵", price: 190.771, decimals: 3, spread: 234, percent: 69, category: "Forex" },
-  { symbol: "EURAUD", flags: "🇪🇺🇦🇺", price: 1.61083, decimals: 5, spread: 224, percent: 80, category: "Forex" },
-  { symbol: "EURCAD", flags: "🇪🇺🇨🇦", price: 1.60519, decimals: 5, spread: 181, percent: 63, category: "Forex" },
-  { symbol: "EURUSD", flags: "🇪🇺🇺🇸", price: 1.14832, decimals: 5, spread: 69, percent: 74, category: "Forex" },
-  { symbol: "GBPUSD", flags: "🇬🇧🇺🇸", price: 1.33862, decimals: 5, spread: 79, percent: 88, category: "Forex" },
-  { symbol: "XAUUSD", flags: "🪙", price: 4377.23, decimals: 2, spread: 45, percent: 91, category: "Komoditi" },
-  { symbol: "XAGUSD", flags: "🥈", price: 48.312, decimals: 3, spread: 53, percent: 72, category: "Komoditi" },
-  { symbol: "OIL", flags: "🛢️", price: 99.51, decimals: 2, spread: 70, percent: 66, category: "Komoditi" },
-  { symbol: "NASDAQ", flags: "🇺🇸", price: 29954, decimals: 0, spread: 60, percent: 95, category: "Index" },
-  { symbol: "NIKKEI", flags: "🇯🇵", price: 64943, decimals: 0, spread: 150, percent: 77, category: "Index" },
-  { symbol: "HANGSENG", flags: "🇭🇰", price: 25411, decimals: 0, spread: 140, percent: 61, category: "Index" },
+  {
+    symbol: "AUDCAD",
+    flags: "🇦🇺🇨🇦",
+    price: 0.99564,
+    decimals: 5,
+    spread: 147,
+    percent: 92,
+    category: "Forex",
+  },
+  {
+    symbol: "AUDCHF",
+    flags: "🇦🇺🇨🇭",
+    price: 0.58522,
+    decimals: 5,
+    spread: 118,
+    percent: 83,
+    category: "Forex",
+  },
+  {
+    symbol: "AUDJPY",
+    flags: "🇦🇺🇯🇵",
+    price: 111.696,
+    decimals: 3,
+    spread: 169,
+    percent: 98,
+    category: "Forex",
+  },
+  {
+    symbol: "AUDNZD",
+    flags: "🇦🇺🇳🇿",
+    price: 1.24371,
+    decimals: 5,
+    spread: 257,
+    percent: 68,
+    category: "Forex",
+  },
+  {
+    symbol: "AUDUSD",
+    flags: "🇦🇺🇺🇸",
+    price: 0.71217,
+    decimals: 5,
+    spread: 75,
+    percent: 97,
+    category: "Forex",
+  },
+  {
+    symbol: "CHFJPY",
+    flags: "🇨🇭🇯🇵",
+    price: 190.771,
+    decimals: 3,
+    spread: 234,
+    percent: 69,
+    category: "Forex",
+  },
+  {
+    symbol: "EURAUD",
+    flags: "🇪🇺🇦🇺",
+    price: 1.61083,
+    decimals: 5,
+    spread: 224,
+    percent: 80,
+    category: "Forex",
+  },
+  {
+    symbol: "EURCAD",
+    flags: "🇪🇺🇨🇦",
+    price: 1.60519,
+    decimals: 5,
+    spread: 181,
+    percent: 63,
+    category: "Forex",
+  },
+  {
+    symbol: "EURUSD",
+    flags: "🇪🇺🇺🇸",
+    price: 1.14832,
+    decimals: 5,
+    spread: 69,
+    percent: 74,
+    category: "Forex",
+  },
+  {
+    symbol: "GBPUSD",
+    flags: "🇬🇧🇺🇸",
+    price: 1.33862,
+    decimals: 5,
+    spread: 79,
+    percent: 88,
+    category: "Forex",
+  },
+  {
+    symbol: "XAUUSD",
+    flags: "🪙",
+    price: 4377.23,
+    decimals: 2,
+    spread: 45,
+    percent: 91,
+    category: "Komoditi",
+  },
+  {
+    symbol: "XAGUSD",
+    flags: "🥈",
+    price: 48.312,
+    decimals: 3,
+    spread: 53,
+    percent: 72,
+    category: "Komoditi",
+  },
+  {
+    symbol: "OIL",
+    flags: "🛢️",
+    price: 99.51,
+    decimals: 2,
+    spread: 70,
+    percent: 66,
+    category: "Komoditi",
+  },
+  {
+    symbol: "NASDAQ",
+    flags: "🇺🇸",
+    price: 29954,
+    decimals: 0,
+    spread: 60,
+    percent: 95,
+    category: "Index",
+  },
+  {
+    symbol: "NIKKEI",
+    flags: "🇯🇵",
+    price: 64943,
+    decimals: 0,
+    spread: 150,
+    percent: 77,
+    category: "Index",
+  },
+  {
+    symbol: "HANGSENG",
+    flags: "🇭🇰",
+    price: 25411,
+    decimals: 0,
+    spread: 140,
+    percent: 61,
+    category: "Index",
+  },
 ];
 
 const tabs = ["Forex", "Komoditi", "Index"] as const;
@@ -64,7 +192,10 @@ type Quote = { price: number; open: number; low: number; high: number };
 function useQuotes() {
   const [quotes, setQuotes] = useState<Record<string, Quote>>(() =>
     Object.fromEntries(
-      baseProducts.map((p) => [p.symbol, { price: p.price, open: p.price, low: p.price * 0.997, high: p.price * 1.003 }]),
+      baseProducts.map((p) => [
+        p.symbol,
+        { price: p.price, open: p.price, low: p.price * 0.997, high: p.price * 1.003 },
+      ]),
     ),
   );
 
@@ -95,7 +226,9 @@ function ProductRow({ base, quote }: { base: Base; quote: Quote }) {
   const ask = quote.price * (1 + base.spread / 1_000_000);
   const changePct = ((quote.price - quote.open) / quote.open) * 100;
   const up = changePct >= 0;
-  const changeUsd = Math.abs((quote.price - quote.open) * (base.decimals >= 3 ? 10000 : 10)).toFixed(2);
+  const changeUsd = Math.abs(
+    (quote.price - quote.open) * (base.decimals >= 3 ? 10000 : 10),
+  ).toFixed(2);
   const action = up ? "Buy" : "Sell";
 
   return (
@@ -160,13 +293,20 @@ function PasarPage() {
 
           <div className="text-center">
             <p className="text-base font-bold leading-tight text-foreground">$10,000.00</p>
-            <button type="button" className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <button
+              type="button"
+              className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+            >
               1006568912
               <ChevronDown className="h-3 w-3" />
             </button>
           </div>
 
-          <button type="button" aria-label="Cari produk" className="rounded-full p-1.5 hover:bg-muted">
+          <button
+            type="button"
+            aria-label="Cari produk"
+            className="rounded-full p-1.5 hover:bg-muted"
+          >
             <Search className="h-5 w-5 text-foreground" />
           </button>
         </div>
@@ -178,7 +318,9 @@ function PasarPage() {
               type="button"
               onClick={() => setTab(item)}
               className={`flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium transition-colors ${
-                tab === item ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                tab === item
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {item}
@@ -189,9 +331,13 @@ function PasarPage() {
 
       <main className="flex flex-1 flex-col gap-2 px-3 py-3">
         {list.length === 0 ? (
-          <p className="mt-16 text-center text-sm text-muted-foreground">Belum ada produk di kategori ini.</p>
+          <p className="mt-16 text-center text-sm text-muted-foreground">
+            Belum ada produk di kategori ini.
+          </p>
         ) : (
-          list.map((base) => <ProductRow key={base.symbol} base={base} quote={quotes[base.symbol]!} />)
+          list.map((base) => (
+            <ProductRow key={base.symbol} base={base} quote={quotes[base.symbol]!} />
+          ))
         )}
       </main>
 

@@ -24,9 +24,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { saveSignals, useSignals, type TradingSignal } from "@/lib/signals-data";
 
 import { AdminLayout } from "./AdminLayout";
@@ -103,7 +116,9 @@ export function SignalAdminPage() {
       toast.success("Sinyal baru ditambahkan");
     } else {
       saveSignals(
-        signals.map((signal) => (signal.id === editingId ? { ...signal, action, ...form } : signal)),
+        signals.map((signal) =>
+          signal.id === editingId ? { ...signal, action, ...form } : signal,
+        ),
       );
       toast.success("Sinyal berhasil diperbarui");
     }
@@ -117,8 +132,12 @@ export function SignalAdminPage() {
   };
 
   const toggleShowOnHome = (signal: TradingSignal, checked: boolean) => {
-    saveSignals(signals.map((item) => (item.id === signal.id ? { ...item, showOnHome: checked } : item)));
-    toast.success(checked ? `${signal.name} tampil di beranda` : `${signal.name} disembunyikan dari beranda`);
+    saveSignals(
+      signals.map((item) => (item.id === signal.id ? { ...item, showOnHome: checked } : item)),
+    );
+    toast.success(
+      checked ? `${signal.name} tampil di beranda` : `${signal.name} disembunyikan dari beranda`,
+    );
   };
 
   return (
@@ -127,7 +146,9 @@ export function SignalAdminPage() {
         <section className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Total Sinyal</p>
-            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">{signals.length}</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">
+              {signals.length}
+            </p>
           </div>
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Tampil di Beranda</p>
@@ -135,7 +156,9 @@ export function SignalAdminPage() {
           </div>
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Disembunyikan</p>
-            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">{signals.length - onHome}</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">
+              {signals.length - onHome}
+            </p>
           </div>
         </section>
 
@@ -144,7 +167,8 @@ export function SignalAdminPage() {
             <div>
               <h2 className="font-bold text-card-foreground">Daftar Sinyal</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Tambah, ubah, hapus sinyal, dan atur mana yang tampil di komponen Signal Produk Terpopuler di beranda.
+                Tambah, ubah, hapus sinyal, dan atur mana yang tampil di komponen Signal Produk
+                Terpopuler di beranda.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -201,8 +225,12 @@ export function SignalAdminPage() {
                       {signal.action}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm tabular-nums text-foreground">{signal.takeProfit}</TableCell>
-                  <TableCell className="text-sm tabular-nums text-foreground">{signal.stopLoss}</TableCell>
+                  <TableCell className="text-sm tabular-nums text-foreground">
+                    {signal.takeProfit}
+                  </TableCell>
+                  <TableCell className="text-sm tabular-nums text-foreground">
+                    {signal.stopLoss}
+                  </TableCell>
                   <TableCell className="text-sm text-foreground">{signal.source}</TableCell>
                   <TableCell className="text-sm text-foreground">{signal.timeframe}</TableCell>
                   <TableCell>
@@ -212,15 +240,29 @@ export function SignalAdminPage() {
                         onCheckedChange={(checked) => toggleShowOnHome(signal, checked)}
                         aria-label={`Tampilkan ${signal.name} di beranda`}
                       />
-                      <span className="text-xs text-muted-foreground">{signal.showOnHome ? "Ya" : "Tidak"}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {signal.showOnHome ? "Ya" : "Tidak"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="pr-4 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <Button size="icon" variant="outline" aria-label={`Ubah ${signal.name}`} title="Ubah" onClick={() => openEdit(signal)}>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Ubah ${signal.name}`}
+                        title="Ubah"
+                        onClick={() => openEdit(signal)}
+                      >
                         <Pencil />
                       </Button>
-                      <Button size="icon" variant="outline" aria-label={`Hapus ${signal.name}`} title="Hapus" onClick={() => setDeletingId(signal.id)}>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Hapus ${signal.name}`}
+                        title="Hapus"
+                        onClick={() => setDeletingId(signal.id)}
+                      >
                         <Trash2 />
                       </Button>
                     </div>
@@ -259,7 +301,9 @@ export function SignalAdminPage() {
                 <Input
                   id="signal-name"
                   value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
                   placeholder="Contoh: Gold, EURUSD"
                 />
               </div>
@@ -268,7 +312,9 @@ export function SignalAdminPage() {
                 <Input
                   id="signal-flag"
                   value={form.flag}
-                  onChange={(event) => setForm((current) => ({ ...current, flag: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, flag: event.target.value }))
+                  }
                   placeholder="🪙"
                 />
               </div>
@@ -280,7 +326,9 @@ export function SignalAdminPage() {
                 <Input
                   id="signal-time"
                   value={form.time}
-                  onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, time: event.target.value }))
+                  }
                   placeholder="03:06"
                 />
               </div>
@@ -289,7 +337,9 @@ export function SignalAdminPage() {
                 <Input
                   id="signal-tp"
                   value={form.takeProfit}
-                  onChange={(event) => setForm((current) => ({ ...current, takeProfit: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, takeProfit: event.target.value }))
+                  }
                   placeholder="4418.20"
                 />
               </div>
@@ -298,7 +348,9 @@ export function SignalAdminPage() {
                 <Input
                   id="signal-sl"
                   value={form.stopLoss}
-                  onChange={(event) => setForm((current) => ({ ...current, stopLoss: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, stopLoss: event.target.value }))
+                  }
                   placeholder="4342.80"
                 />
               </div>
@@ -307,26 +359,38 @@ export function SignalAdminPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Sumber</Label>
-                <Select value={form.source} onValueChange={(value) => setForm((current) => ({ ...current, source: value }))}>
+                <Select
+                  value={form.source}
+                  onValueChange={(value) => setForm((current) => ({ ...current, source: value }))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {sources.map((item) => (
-                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Timeframe</Label>
-                <Select value={form.timeframe} onValueChange={(value) => setForm((current) => ({ ...current, timeframe: value }))}>
+                <Select
+                  value={form.timeframe}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, timeframe: value }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {timeframes.map((item) => (
-                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -335,7 +399,9 @@ export function SignalAdminPage() {
                 <Label>Arah Sinyal</Label>
                 <Select
                   value={form.variant}
-                  onValueChange={(value) => setForm((current) => ({ ...current, variant: value as "buy" | "sell" }))}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, variant: value as "buy" | "sell" }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -351,11 +417,15 @@ export function SignalAdminPage() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <p className="text-sm font-medium text-foreground">Tampilkan di Beranda</p>
-                <p className="text-xs text-muted-foreground">Sinyal muncul di komponen Signal Produk Terpopuler.</p>
+                <p className="text-xs text-muted-foreground">
+                  Sinyal muncul di komponen Signal Produk Terpopuler.
+                </p>
               </div>
               <Switch
                 checked={form.showOnHome}
-                onCheckedChange={(checked) => setForm((current) => ({ ...current, showOnHome: checked }))}
+                onCheckedChange={(checked) =>
+                  setForm((current) => ({ ...current, showOnHome: checked }))
+                }
               />
             </div>
           </div>

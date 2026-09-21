@@ -11,9 +11,17 @@ export const Route = createFileRoute("/referral")({
   head: () => ({
     meta: [
       { title: "Referral — MIFX" },
-      { name: "description", content: "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil." },
+      {
+        name: "description",
+        content:
+          "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
+      },
       { property: "og:title", content: "Referral — MIFX" },
-      { property: "og:description", content: "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil." },
+      {
+        property: "og:description",
+        content:
+          "Bagikan kode referral MIFX kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -47,7 +55,11 @@ function formatRupiah(value: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function ReferralPage() {
@@ -96,7 +108,9 @@ function ReferralPage() {
             </div>
 
             <div className="rounded-xl border border-dashed border-primary/40 bg-background p-4">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Kode referral kamu</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Kode referral kamu
+              </p>
               <div className="mt-1 flex items-center justify-between gap-3">
                 <span className="text-xl font-extrabold tracking-wider">{referralCode}</span>
                 <Button size="sm" variant="secondary" onClick={() => copy(referralCode, "code")}>
@@ -111,7 +125,11 @@ function ReferralPage() {
                 {copied === "link" ? <Check className="size-4" /> : <Copy className="size-4" />}
                 Salin tautan
               </Button>
-              <Button variant="outline" className="flex-1" onClick={() => copy(referralLink, "link")}>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => copy(referralLink, "link")}
+              >
                 <Share2 className="size-4" />
                 Bagikan
               </Button>
@@ -138,7 +156,9 @@ function ReferralPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <Wallet className="mx-auto size-4 text-muted-foreground" />
-              <p className="mt-2 text-sm font-extrabold tabular-nums">{formatRupiah(totalCommission)}</p>
+              <p className="mt-2 text-sm font-extrabold tabular-nums">
+                {formatRupiah(totalCommission)}
+              </p>
               <p className="text-[11px] text-muted-foreground">Total komisi</p>
             </CardContent>
           </Card>
@@ -173,15 +193,25 @@ function ReferralPage() {
             {invitedFriends.map((friend) => (
               <div key={friend.name} className="flex items-center gap-3 px-5 py-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
-                  {friend.name.split(" ").slice(0, 2).map((p) => p[0]).join("")}
+                  {friend.name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((p) => p[0])
+                    .join("")}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{friend.name}</p>
-                  <p className="text-xs text-muted-foreground">Gabung {formatDate(friend.joinedAt)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Gabung {formatDate(friend.joinedAt)}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <Badge variant="outline" className="text-[10px]">{friend.status}</Badge>
-                  <p className="mt-1 text-xs font-semibold tabular-nums">{formatRupiah(friend.commission)}</p>
+                  <Badge variant="outline" className="text-[10px]">
+                    {friend.status}
+                  </Badge>
+                  <p className="mt-1 text-xs font-semibold tabular-nums">
+                    {formatRupiah(friend.commission)}
+                  </p>
                 </div>
               </div>
             ))}

@@ -28,7 +28,10 @@ export const Route = createFileRoute("/trade")({
   component: TradePage,
 });
 
-const instruments: Record<string, { label: string; price: number; decimals: number; spread: number }> = {
+const instruments: Record<
+  string,
+  { label: string; price: number; decimals: number; spread: number }
+> = {
   // Forex
   AUDCAD: { label: "AUDCAD", price: 0.99564, decimals: 5, spread: 0.00015 },
   AUDCHF: { label: "AUDCHF", price: 0.58522, decimals: 5, spread: 0.00012 },
@@ -90,10 +93,22 @@ function Chart({ candles, decimals }: { candles: Candle[]; decimals: number }) {
   const gridValues = Array.from({ length: 6 }, (_, i) => min + ((max - min) / 5) * i);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-[300px] w-full" role="img" aria-label="Grafik harga simulasi">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-[300px] w-full"
+      role="img"
+      aria-label="Grafik harga simulasi"
+    >
       {gridValues.map((value) => (
         <g key={value}>
-          <line x1={0} x2={plotWidth} y1={y(value)} y2={y(value)} className="stroke-border" strokeWidth={0.5} />
+          <line
+            x1={0}
+            x2={plotWidth}
+            y1={y(value)}
+            y2={y(value)}
+            className="stroke-border"
+            strokeWidth={0.5}
+          />
           <text x={plotWidth + 4} y={y(value) + 3} className="fill-muted-foreground" fontSize={8}>
             {value.toFixed(decimals)}
           </text>
@@ -108,8 +123,21 @@ function Chart({ candles, decimals }: { candles: Candle[]; decimals: number }) {
         const bottom = y(Math.min(candle.open, candle.close));
         return (
           <g key={candle.time}>
-            <line x1={x} x2={x} y1={y(candle.high)} y2={y(candle.low)} stroke={color} strokeWidth={1} />
-            <rect x={x - bodyWidth / 2} y={top} width={bodyWidth} height={Math.max(bottom - top, 1)} fill={color} />
+            <line
+              x1={x}
+              x2={x}
+              y1={y(candle.high)}
+              y2={y(candle.low)}
+              stroke={color}
+              strokeWidth={1}
+            />
+            <rect
+              x={x - bodyWidth / 2}
+              y={top}
+              width={bodyWidth}
+              height={Math.max(bottom - top, 1)}
+              fill={color}
+            />
           </g>
         );
       })}
@@ -123,7 +151,14 @@ function Chart({ candles, decimals }: { candles: Candle[]; decimals: number }) {
         strokeWidth={0.6}
         strokeDasharray="3 3"
       />
-      <rect x={plotWidth} y={y(last.close) - 7} width={padRight} height={14} fill="#e04b4b" rx={2} />
+      <rect
+        x={plotWidth}
+        y={y(last.close) - 7}
+        width={padRight}
+        height={14}
+        fill="#e04b4b"
+        rx={2}
+      />
       <text x={plotWidth + 3} y={y(last.close) + 3.5} fill="#ffffff" fontSize={8}>
         {last.close.toFixed(decimals)}
       </text>
@@ -153,7 +188,9 @@ function TradePage() {
     let ticks = 0;
     const id = setInterval(() => {
       ticks += 1;
-      setCandles((prev) => tickCandles(prev, ticks % config.ticksPerCandle === 0, config.volatility / 2));
+      setCandles((prev) =>
+        tickCandles(prev, ticks % config.ticksPerCandle === 0, config.volatility / 2),
+      );
     }, config.tickMs);
     return () => clearInterval(id);
   }, [key, config.tickMs, config.ticksPerCandle, config.volatility]);
@@ -172,7 +209,11 @@ function TradePage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
       <header className="flex items-center justify-between border-b px-3 py-3">
         <div className="flex items-center gap-2">
-          <Link to="/pasar" aria-label="Kembali ke Pasar" className="rounded-full p-1 hover:bg-muted">
+          <Link
+            to="/pasar"
+            aria-label="Kembali ke Pasar"
+            className="rounded-full p-1 hover:bg-muted"
+          >
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <button type="button" className="flex items-center gap-1 text-base font-semibold">
@@ -189,7 +230,9 @@ function TradePage() {
             type="button"
             onClick={() => setTab(item)}
             className={`whitespace-nowrap border-b-2 py-2.5 font-medium transition-colors ${
-              tab === item ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+              tab === item
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground"
             }`}
           >
             {item}
@@ -203,14 +246,18 @@ function TradePage() {
           className="rounded-md bg-rose-600 py-2 text-center text-white transition-opacity hover:opacity-90"
         >
           <span className="block text-xs font-semibold">SELL</span>
-          <span className="block text-sm font-bold tabular-nums">{sell.toFixed(instrument.decimals)}</span>
+          <span className="block text-sm font-bold tabular-nums">
+            {sell.toFixed(instrument.decimals)}
+          </span>
         </button>
         <button
           type="button"
           className="rounded-md bg-blue-600 py-2 text-center text-white transition-opacity hover:opacity-90"
         >
           <span className="block text-xs font-semibold">BUY</span>
-          <span className="block text-sm font-bold tabular-nums">{buy.toFixed(instrument.decimals)}</span>
+          <span className="block text-sm font-bold tabular-nums">
+            {buy.toFixed(instrument.decimals)}
+          </span>
         </button>
       </div>
 

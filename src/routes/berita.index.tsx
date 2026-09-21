@@ -99,7 +99,9 @@ function BeritaPage() {
                   <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-600">
                     ⚡ {featured.tag}
                   </span>
-                  <h2 className="mt-2 text-base font-bold leading-snug text-foreground">{featured.title}</h2>
+                  <h2 className="mt-2 text-base font-bold leading-snug text-foreground">
+                    {featured.title}
+                  </h2>
                   <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                     {featured.excerpt}
                   </p>
@@ -123,7 +125,9 @@ function BeritaPage() {
                 </span>
                 <div className="mt-2 flex gap-3">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-sm font-semibold leading-snug text-foreground">{item.title}</h2>
+                    <h2 className="text-sm font-semibold leading-snug text-foreground">
+                      {item.title}
+                    </h2>
                     <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                       {item.tickers.map((t) => (
                         <span key={t.label}>

@@ -124,11 +124,20 @@ function formatRupiah(value: number) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function initials(name: string) {
-  return name.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
 }
 
 export function ReferralAdminPage() {
@@ -157,7 +166,9 @@ export function ReferralAdminPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">User dengan Kode</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              User dengan Kode
+            </CardTitle>
             <Users className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -167,7 +178,9 @@ export function ReferralAdminPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Undangan</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Undangan
+            </CardTitle>
             <UserPlus className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -177,7 +190,9 @@ export function ReferralAdminPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Komisi</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Komisi
+            </CardTitle>
             <Gift className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -213,7 +228,10 @@ export function ReferralAdminPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     Tidak ada data referral yang cocok.
                   </TableCell>
                 </TableRow>
@@ -232,7 +250,9 @@ export function ReferralAdminPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">{user.code}</Badge>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {user.code}
+                      </Badge>
                     </TableCell>
                     <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                       {user.referredBy ?? "—"}
@@ -291,9 +311,13 @@ export function ReferralAdminPage() {
                     <div key={invitee.name} className="flex items-center justify-between gap-3 p-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{invitee.name}</p>
-                        <p className="text-xs text-muted-foreground">Gabung {formatDate(invitee.joinedAt)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Gabung {formatDate(invitee.joinedAt)}
+                        </p>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">{invitee.status}</Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {invitee.status}
+                      </Badge>
                     </div>
                   ))
                 )}

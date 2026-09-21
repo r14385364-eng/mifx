@@ -52,7 +52,11 @@ function OrderPage() {
         <div className="flex flex-col items-center">
           <span className="text-base font-bold tabular-nums">$10,000.00</span>
         </div>
-        <button type="button" aria-label="Notifikasi" className="relative rounded-full p-1 hover:bg-muted">
+        <button
+          type="button"
+          aria-label="Notifikasi"
+          className="relative rounded-full p-1 hover:bg-muted"
+        >
           <Bell className="h-5 w-5" />
           <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white">
             5
@@ -67,7 +71,9 @@ function OrderPage() {
             type="button"
             onClick={() => setTab(item)}
             className={`border-b-2 py-2.5 font-medium transition-colors ${
-              tab === item ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+              tab === item
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground"
             }`}
           >
             {item}

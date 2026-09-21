@@ -74,7 +74,11 @@ function ProfilePage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <span className="text-base font-bold">Profil</span>
-        <button type="button" aria-label="Notifikasi" className="relative rounded-full p-1 hover:bg-muted">
+        <button
+          type="button"
+          aria-label="Notifikasi"
+          className="relative rounded-full p-1 hover:bg-muted"
+        >
           <Bell className="h-5 w-5" />
           <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white">
             5

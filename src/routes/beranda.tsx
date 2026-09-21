@@ -22,9 +22,17 @@ export const Route = createFileRoute("/beranda")({
   head: () => ({
     meta: [
       { title: "Beranda — MIFX" },
-      { name: "description", content: "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX." },
+      {
+        name: "description",
+        content:
+          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX.",
+      },
       { property: "og:title", content: "Beranda — MIFX" },
-      { property: "og:description", content: "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX." },
+      {
+        property: "og:description",
+        content:
+          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda MIFX.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -43,7 +51,6 @@ const shortcuts: ShortcutItem[] = [
   { label: "Rewards", icon: Gift },
 ];
 
-
 const promos = [
   {
     title: "Kini Hadir Di MIFX LEVERAGE 1:500",
@@ -60,8 +67,22 @@ const promos = [
 ];
 
 const events = [
-  { country: "Amerika Serikat", flag: "🇺🇸", time: "21:00", title: "Richmond Fed Manufacturing Index SEP", forecast: "5", previous: "4" },
-  { country: "Amerika Serikat", flag: "🇺🇸", time: "21:00", title: "S&P Global Services PMI Flash SEP", forecast: "56", previous: "56" },
+  {
+    country: "Amerika Serikat",
+    flag: "🇺🇸",
+    time: "21:00",
+    title: "Richmond Fed Manufacturing Index SEP",
+    forecast: "5",
+    previous: "4",
+  },
+  {
+    country: "Amerika Serikat",
+    flag: "🇺🇸",
+    time: "21:00",
+    title: "S&P Global Services PMI Flash SEP",
+    forecast: "56",
+    previous: "56",
+  },
 ];
 
 const news = newsArticles.slice(0, 4);
@@ -118,7 +139,6 @@ function AccountCard() {
           </div>
         ))}
       </div>
-
     </section>
   );
 }
@@ -174,7 +194,9 @@ function PromoCarousel() {
           key={promo.title}
           className={`relative flex h-32 w-[85%] shrink-0 snap-center flex-col justify-end overflow-hidden rounded-xl bg-gradient-to-br ${promo.gradient} p-4`}
         >
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">MIFX</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+            MIFX
+          </span>
           <p className="max-w-[75%] text-sm font-bold leading-snug text-white">{promo.title}</p>
           <span className="absolute -right-4 -top-6 h-24 w-24 rounded-full bg-white/10" />
           <span className="absolute -bottom-8 right-10 h-20 w-20 rounded-full bg-white/5" />
@@ -198,11 +220,26 @@ function SignalCard({ signal }: { signal: TradingSignal }) {
 
       {/* Chart placeholder */}
       <div className={`mt-2 h-24 rounded-lg ${isBuy ? "bg-sky-50" : "bg-rose-50"} p-2`}>
-        <svg viewBox="0 0 200 80" className="h-full w-full" preserveAspectRatio="none" aria-hidden="true">
+        <svg
+          viewBox="0 0 200 80"
+          className="h-full w-full"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
           {isBuy ? (
-            <path d="M0 70 L25 55 L45 62 L70 40 L95 48 L120 28 L150 34 L175 15 L200 8" fill="none" stroke="#0891b2" strokeWidth="2" />
+            <path
+              d="M0 70 L25 55 L45 62 L70 40 L95 48 L120 28 L150 34 L175 15 L200 8"
+              fill="none"
+              stroke="#0891b2"
+              strokeWidth="2"
+            />
           ) : (
-            <path d="M0 15 L25 25 L45 18 L70 38 L95 30 L120 48 L150 42 L175 62 L200 70" fill="none" stroke="#e11d48" strokeWidth="2" />
+            <path
+              d="M0 15 L25 25 L45 18 L70 38 L95 30 L120 48 L150 42 L175 62 L200 70"
+              fill="none"
+              stroke="#e11d48"
+              strokeWidth="2"
+            />
           )}
         </svg>
       </div>
@@ -249,7 +286,9 @@ function SignalSection() {
           Signal Produk Terpopuler
           <Info className="h-3.5 w-3.5 text-muted-foreground" />
         </h2>
-        <button type="button" className="text-xs font-medium text-primary">Lihat Semua</button>
+        <button type="button" className="text-xs font-medium text-primary">
+          Lihat Semua
+        </button>
       </div>
       <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {displaySignals.map((signal) => (
@@ -268,19 +307,27 @@ function EventSection() {
           Event Ekonomi Penting
           <Info className="h-3.5 w-3.5 text-muted-foreground" />
         </h2>
-        <button type="button" className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium text-foreground">
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium text-foreground"
+        >
           Gold
           <ChevronDown className="h-3 w-3 text-muted-foreground" />
         </button>
       </div>
       <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {events.map((event) => (
-          <div key={event.title} className="w-[280px] shrink-0 snap-start rounded-xl border bg-card p-3 shadow-sm">
+          <div
+            key={event.title}
+            className="w-[280px] shrink-0 snap-start rounded-xl border bg-card p-3 shadow-sm"
+          >
             <div className="flex items-center justify-between text-[11px]">
               <span className="flex items-center gap-1.5">
                 <span>{event.flag}</span>
                 <span className="text-muted-foreground">{event.country}</span>
-                <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">Upcoming</span>
+                <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">
+                  Upcoming
+                </span>
               </span>
               <span className="text-muted-foreground">{event.time}</span>
             </div>
@@ -311,7 +358,8 @@ function NewsSection() {
     <section>
       <h2 className="text-base font-semibold text-foreground">Berita Terkini</h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Berita pasar terbaru yang membantu Anda tetap update dengan pergerakan harga produk dan kondisi pasar saat ini.
+        Berita pasar terbaru yang membantu Anda tetap update dengan pergerakan harga produk dan
+        kondisi pasar saat ini.
       </p>
       <div className="mt-3 flex flex-col gap-3">
         {news.map((item) => (
@@ -365,7 +413,11 @@ function BerandaPage() {
       {/* Header */}
       <header className="flex items-center justify-between bg-background px-4 py-3">
         <Logo />
-        <button type="button" aria-label="Notifikasi" className="relative rounded-full p-1.5 hover:bg-muted">
+        <button
+          type="button"
+          aria-label="Notifikasi"
+          className="relative rounded-full p-1.5 hover:bg-muted"
+        >
           <Bell className="h-5 w-5 text-foreground" />
           <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
         </button>

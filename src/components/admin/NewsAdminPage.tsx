@@ -24,8 +24,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { newsArticles } from "@/lib/news-data";
 
@@ -148,7 +161,15 @@ export function NewsAdminPage() {
       setArticles((current) =>
         current.map((article) =>
           article.id === editingId
-            ? { ...article, title: form.title, category: form.category, excerpt: form.excerpt, body, status: form.status, imageUrl: form.imageUrl }
+            ? {
+                ...article,
+                title: form.title,
+                category: form.category,
+                excerpt: form.excerpt,
+                body,
+                status: form.status,
+                imageUrl: form.imageUrl,
+              }
             : article,
         ),
       );
@@ -169,7 +190,9 @@ export function NewsAdminPage() {
         <section className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Total Berita</p>
-            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">{articles.length}</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">
+              {articles.length}
+            </p>
           </div>
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Terbit</p>
@@ -177,7 +200,9 @@ export function NewsAdminPage() {
           </div>
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">Draf</p>
-            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">{articles.length - published}</p>
+            <p className="mt-2 text-xl font-bold tabular-nums text-card-foreground">
+              {articles.length - published}
+            </p>
           </div>
         </section>
 
@@ -185,7 +210,9 @@ export function NewsAdminPage() {
           <div className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-bold text-card-foreground">Daftar Berita</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Tambah, ubah, atau hapus artikel yang tampil di aplikasi.</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Tambah, ubah, atau hapus artikel yang tampil di aplikasi.
+              </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative sm:w-64">
@@ -204,7 +231,9 @@ export function NewsAdminPage() {
                 <SelectContent>
                   <SelectItem value="Semua">Semua kategori</SelectItem>
                   {categories.map((item) => (
-                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -231,7 +260,11 @@ export function NewsAdminPage() {
                   <TableCell className="pl-4">
                     <div className="flex items-center gap-3">
                       {article.imageUrl ? (
-                        <img src={article.imageUrl} alt="" className="size-10 shrink-0 rounded-md object-cover" />
+                        <img
+                          src={article.imageUrl}
+                          alt=""
+                          className="size-10 shrink-0 rounded-md object-cover"
+                        />
                       ) : (
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Newspaper className="size-4" />
@@ -259,10 +292,22 @@ export function NewsAdminPage() {
                   </TableCell>
                   <TableCell className="pr-4 text-right">
                     <div className="flex justify-end gap-1.5">
-                      <Button size="icon" variant="outline" aria-label={`Ubah ${article.title}`} title="Ubah" onClick={() => openEdit(article)}>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Ubah ${article.title}`}
+                        title="Ubah"
+                        onClick={() => openEdit(article)}
+                      >
                         <Pencil />
                       </Button>
-                      <Button size="icon" variant="outline" aria-label={`Hapus ${article.title}`} title="Hapus" onClick={() => setDeletingId(article.id)}>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        aria-label={`Hapus ${article.title}`}
+                        title="Hapus"
+                        onClick={() => setDeletingId(article.id)}
+                      >
                         <Trash2 />
                       </Button>
                     </div>
@@ -288,7 +333,9 @@ export function NewsAdminPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingId === null ? "Tambah Berita" : "Ubah Berita"}</DialogTitle>
-            <DialogDescription>Isi detail berita di bawah ini. Pisahkan paragraf dengan baris kosong.</DialogDescription>
+            <DialogDescription>
+              Isi detail berita di bawah ini. Pisahkan paragraf dengan baris kosong.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -303,12 +350,25 @@ export function NewsAdminPage() {
               />
               {form.imageUrl ? (
                 <div className="relative overflow-hidden rounded-lg border">
-                  <img src={form.imageUrl} alt="Pratinjau sampul" className="h-44 w-full object-cover" />
+                  <img
+                    src={form.imageUrl}
+                    alt="Pratinjau sampul"
+                    className="h-44 w-full object-cover"
+                  />
                   <div className="absolute right-2 top-2 flex gap-1.5">
-                    <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       Ganti
                     </Button>
-                    <Button size="icon" variant="secondary" aria-label="Hapus gambar" onClick={() => setForm((current) => ({ ...current, imageUrl: null }))}>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      aria-label="Hapus gambar"
+                      onClick={() => setForm((current) => ({ ...current, imageUrl: null }))}
+                    >
                       <X />
                     </Button>
                   </div>
@@ -331,7 +391,9 @@ export function NewsAdminPage() {
               <Input
                 id="news-title"
                 value={form.title}
-                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, title: event.target.value }))
+                }
                 placeholder="Judul berita..."
               />
             </div>
@@ -339,13 +401,18 @@ export function NewsAdminPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Kategori</Label>
-                <Select value={form.category} onValueChange={(value) => setForm((current) => ({ ...current, category: value }))}>
+                <Select
+                  value={form.category}
+                  onValueChange={(value) => setForm((current) => ({ ...current, category: value }))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((item) => (
-                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -354,7 +421,9 @@ export function NewsAdminPage() {
                 <Label>Status</Label>
                 <Select
                   value={form.status}
-                  onValueChange={(value) => setForm((current) => ({ ...current, status: value as "Terbit" | "Draf" }))}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, status: value as "Terbit" | "Draf" }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -372,7 +441,9 @@ export function NewsAdminPage() {
               <Textarea
                 id="news-excerpt"
                 value={form.excerpt}
-                onChange={(event) => setForm((current) => ({ ...current, excerpt: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, excerpt: event.target.value }))
+                }
                 placeholder="Ringkasan singkat yang tampil di kartu berita..."
                 rows={2}
               />
@@ -383,8 +454,12 @@ export function NewsAdminPage() {
               <Textarea
                 id="news-body"
                 value={form.body}
-                onChange={(event) => setForm((current) => ({ ...current, body: event.target.value }))}
-                placeholder={"Tulis isi berita di sini...\n\nPisahkan setiap paragraf dengan baris kosong."}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, body: event.target.value }))
+                }
+                placeholder={
+                  "Tulis isi berita di sini...\n\nPisahkan setiap paragraf dengan baris kosong."
+                }
                 rows={8}
               />
               <p className="text-xs text-muted-foreground">

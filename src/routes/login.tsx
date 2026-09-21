@@ -9,14 +9,12 @@ export const Route = createFileRoute("/login")({
       { title: "Masuk ke Akun MIFX" },
       {
         name: "description",
-        content:
-          "Masuk ke Akun MIFX Anda dengan email dan password untuk mulai trading.",
+        content: "Masuk ke Akun MIFX Anda dengan email dan password untuk mulai trading.",
       },
       { property: "og:title", content: "Masuk ke Akun MIFX" },
       {
         property: "og:description",
-        content:
-          "Masuk ke Akun MIFX Anda dengan email dan password untuk mulai trading.",
+        content: "Masuk ke Akun MIFX Anda dengan email dan password untuk mulai trading.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -55,10 +53,7 @@ function LoginPage() {
         </div>
 
         {/* Form */}
-        <form
-          className="mt-12 space-y-4"
-          onSubmit={(e) => e.preventDefault()}
-        >
+        <form className="mt-12 space-y-4" onSubmit={(e) => e.preventDefault()}>
           <div>
             <p className="mb-2 text-[13px] font-medium text-foreground">Email</p>
             <Input
