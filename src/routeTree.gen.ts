@@ -25,6 +25,7 @@ import { Route as TradeRouteImport } from './routes/trade'
 import { Route as WithdrawRouteImport } from './routes/withdraw'
 import { Route as AdminBeritaRouteImport } from './routes/admin.berita'
 import { Route as AdminMataUangRouteImport } from './routes/admin.mata-uang'
+import { Route as AdminPengaturanRouteImport } from './routes/admin.pengaturan'
 import { Route as AdminReferralRouteImport } from './routes/admin.referral'
 import { Route as AdminSinyalRouteImport } from './routes/admin.sinyal'
 import { Route as AdminTopUpRouteImport } from './routes/admin.top-up'
@@ -113,6 +114,11 @@ const AdminMataUangRoute = AdminMataUangRouteImport.update({
   path: '/mata-uang',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReferralRoute = AdminReferralRouteImport.update({
   id: '/referral',
   path: '/referral',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/withdraw': typeof WithdrawRoute
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/mata-uang': typeof AdminMataUangRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/referral': typeof AdminReferralRoute
   '/admin/sinyal': typeof AdminSinyalRoute
   '/admin/top-up': typeof AdminTopUpRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/withdraw': typeof WithdrawRoute
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/mata-uang': typeof AdminMataUangRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/referral': typeof AdminReferralRoute
   '/admin/sinyal': typeof AdminSinyalRoute
   '/admin/top-up': typeof AdminTopUpRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/withdraw': typeof WithdrawRoute
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/mata-uang': typeof AdminMataUangRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/referral': typeof AdminReferralRoute
   '/admin/sinyal': typeof AdminSinyalRoute
   '/admin/top-up': typeof AdminTopUpRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/withdraw'
     | '/admin/berita'
     | '/admin/mata-uang'
+    | '/admin/pengaturan'
     | '/admin/referral'
     | '/admin/sinyal'
     | '/admin/top-up'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/withdraw'
     | '/admin/berita'
     | '/admin/mata-uang'
+    | '/admin/pengaturan'
     | '/admin/referral'
     | '/admin/sinyal'
     | '/admin/top-up'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/withdraw'
     | '/admin/berita'
     | '/admin/mata-uang'
+    | '/admin/pengaturan'
     | '/admin/referral'
     | '/admin/sinyal'
     | '/admin/top-up'
@@ -432,6 +444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMataUangRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/pengaturan': {
+      id: '/admin/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/pengaturan'
+      preLoaderRoute: typeof AdminPengaturanRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/referral': {
       id: '/admin/referral'
       path: '/referral'
@@ -487,6 +506,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminBeritaRoute: typeof AdminBeritaRoute
   AdminMataUangRoute: typeof AdminMataUangRoute
+  AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminReferralRoute: typeof AdminReferralRoute
   AdminSinyalRoute: typeof AdminSinyalRoute
   AdminTopUpRoute: typeof AdminTopUpRoute
@@ -497,6 +517,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBeritaRoute: AdminBeritaRoute,
   AdminMataUangRoute: AdminMataUangRoute,
+  AdminPengaturanRoute: AdminPengaturanRoute,
   AdminReferralRoute: AdminReferralRoute,
   AdminSinyalRoute: AdminSinyalRoute,
   AdminTopUpRoute: AdminTopUpRoute,
