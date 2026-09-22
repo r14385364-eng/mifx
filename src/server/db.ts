@@ -19,6 +19,7 @@ export type DbUser = {
   role: "user" | "admin";
   account_number: string;
   balance: number;
+  profit: number;
   account_type: string;
   created_at: string;
 };
@@ -184,9 +185,11 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       role VARCHAR(50) NOT NULL DEFAULT 'user',
       account_number VARCHAR(50) NOT NULL,
       balance NUMERIC(15, 2) NOT NULL DEFAULT 10000.00,
+      profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
       account_type VARCHAR(50) NOT NULL DEFAULT 'Standard Live',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
   `);
 
   // Create transactions table
@@ -245,6 +248,38 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       read_minutes INT NOT NULL DEFAULT 3,
       status VARCHAR(50) NOT NULL DEFAULT 'Terbit',
       image_url TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create currencies table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS currencies (
+      id SERIAL PRIMARY KEY,
+      symbol VARCHAR(50) UNIQUE NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      price NUMERIC(15, 5) NOT NULL,
+      decimals INT NOT NULL DEFAULT 5,
+      spread INT NOT NULL DEFAULT 50,
+      direction VARCHAR(20) NOT NULL DEFAULT 'Acak',
+      volatility INT NOT NULL DEFAULT 30,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create referrals table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS referrals (
+      id SERIAL PRIMARY KEY,
+      user_id INT,
+      user_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      code VARCHAR(50) UNIQUE NOT NULL,
+      referred_by VARCHAR(50),
+      commission NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+      invitees_count INT NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -392,15 +427,23 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ]);
   }
 
+  // Migrate any previous mifx.com accounts to gotrade.com
+  try {
+    await pool.query(`UPDATE users SET email = 'user@gotrade.com' WHERE email = 'user@mifx.com'`);
+    await pool.query(`UPDATE users SET email = 'admin@gotrade.com' WHERE email = 'admin@mifx.com'`);
+  } catch {
+    // Ignore if already migrated
+  }
+
   // Seed default accounts if not existing
-  const userCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, ["user@mifx.com"]);
+  const userCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, ["user@gotrade.com"]);
   if (userCheck.rows.length === 0) {
     await pool.query(
       `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         "Trader Gotrade",
-        "user@mifx.com",
+        "user@gotrade.com",
         "user123",
         "+62 812-3456-7890",
         "user",
@@ -409,12 +452,12 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
         "Standard Live",
       ],
     );
-    console.log("[PostgreSQL] Seeded Trader account: user@mifx.com / user123");
+    console.log("[PostgreSQL] Seeded Trader account: user@gotrade.com / user123");
   }
 
   // Seed standard admin account
   const defaultAdminCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, [
-    "admin@mifx.com",
+    "admin@gotrade.com",
   ]);
   if (defaultAdminCheck.rows.length === 0) {
     await pool.query(
@@ -422,7 +465,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         "Administrator Gotrade",
-        "admin@mifx.com",
+        "admin@gotrade.com",
         "admin123",
         "+62 811-9876-5432",
         "admin",
@@ -431,27 +474,22 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
         "Admin Master",
       ],
     );
-    console.log("[PostgreSQL] Seeded Administrator account: admin@mifx.com / admin123");
+    console.log("[PostgreSQL] Seeded Administrator account: admin@gotrade.com / admin123");
   }
 
-  // Seed default signals if none
-  const signalCheck = await pool.query(`SELECT id FROM signals LIMIT 1`);
-  if (signalCheck.rows.length === 0) {
-    await pool.query(`
-      INSERT INTO signals (id, symbol, category, action, entry_price, tp1, tp2, sl, rationale, timeframe, status)
-      VALUES
-      ('SIG-001', 'XAUUSD', 'Komoditi', 'BUY', 2650.50, 2670.00, 2685.00, 2635.00, 'Gold rebound dari area support M30 dengan konfirmasi RSI bullish divergence.', '30m', 'Aktif'),
-      ('SIG-002', 'EURUSD', 'Forex', 'SELL', 1.0850, 1.0810, 1.0780, 1.0890, 'Tekanan suku bunga ECB membuat Euro tertekan di bawah resistance H1.', '1h', 'Aktif'),
-      ('SIG-003', 'NASDAQ', 'Indeks', 'BUY', 20150.00, 20300.00, 20450.00, 20000.00, 'Sektor teknologi menguat menjelang laporan rilis laporan pendapatan kuartalan.', '4h', 'Aktif')
-    `);
-  }
+  // Default signals omitted to start with clean state
 
   // Seed or update custom admin account from environment (.env)
   const envAdminEmail = process.env.ADMIN_EMAIL?.replace(/^["']|["']$/g, "").trim();
   const envAdminPassword =
     process.env.ADMIN_PASSWORD?.replace(/^["']|["']$/g, "").trim() || "password123";
 
-  if (envAdminEmail && envAdminEmail.length > 0 && envAdminEmail !== "admin@mifx.com") {
+  if (
+    envAdminEmail &&
+    envAdminEmail.length > 0 &&
+    envAdminEmail !== "admin@gotrade.com" &&
+    envAdminEmail !== "admin@mifx.com"
+  ) {
     const envAdminCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, [
       envAdminEmail,
     ]);

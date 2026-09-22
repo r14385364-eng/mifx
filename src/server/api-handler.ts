@@ -18,7 +18,7 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
 }
 
 function generateToken(userId: number): string {
-  const token = `mifx_tok_${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const token = `gotrade_tok_${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   activeSessions.set(token, userId);
   return token;
 }
@@ -63,7 +63,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       {
         role: "user",
         title: "Akun Trader",
-        email: "user@mifx.com",
+        email: "user@gotrade.com",
         password: "user123",
         name: "Trader Gotrade",
         accountNumber: "88910243",
@@ -74,7 +74,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       {
         role: "admin",
         title: "Akun Administrator",
-        email: envAdminEmail || "admin@mifx.com",
+        email: envAdminEmail || "admin@gotrade.com",
         password: envAdminPassword || "admin123",
         name: envAdminEmail ? "Administrator (.env)" : "Administrator Gotrade",
         accountNumber: "10000001",
@@ -84,11 +84,15 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       },
     ];
 
-    if (envAdminEmail && envAdminEmail !== "admin@mifx.com") {
+    if (
+      envAdminEmail &&
+      envAdminEmail !== "admin@gotrade.com" &&
+      envAdminEmail !== "admin@mifx.com"
+    ) {
       accounts.push({
         role: "admin",
         title: "Akun Admin Cadangan",
-        email: "admin@mifx.com",
+        email: "admin@gotrade.com",
         password: "admin123",
         name: "Administrator Gotrade (Default)",
         accountNumber: "10000002",
@@ -116,9 +120,15 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
 
       const trimmedEmail = String(email).trim().toLowerCase();
+      const altEmail = trimmedEmail.includes("@mifx.com")
+        ? trimmedEmail.replace("@mifx.com", "@gotrade.com")
+        : trimmedEmail.includes("@gotrade.com")
+          ? trimmedEmail.replace("@gotrade.com", "@mifx.com")
+          : trimmedEmail;
+
       const rows = await query<DbUser>(
-        "SELECT * FROM users WHERE LOWER(email) = $1 AND password = $2",
-        [trimmedEmail, String(password).trim()],
+        "SELECT * FROM users WHERE (LOWER(email) = $1 OR LOWER(email) = $2) AND password = $3",
+        [trimmedEmail, altEmail, String(password).trim()],
       );
 
       if (rows.length === 0) {
@@ -153,7 +163,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         {
           headers: {
             "Content-Type": "application/json",
-            "Set-Cookie": `mifx_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+            "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
           },
         },
       );
@@ -226,7 +236,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         {
           headers: {
             "Content-Type": "application/json",
-            "Set-Cookie": `mifx_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+            "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
           },
         },
       );
@@ -246,7 +256,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const cookies = parseCookies(cookieHeader);
     const token = authHeader.startsWith("Bearer ")
       ? authHeader.substring(7)
-      : cookies["mifx_session"] || "";
+      : cookies["gotrade_session"] || cookies["mifx_session"] || "";
 
     if (!token || !activeSessions.has(token)) {
       return new Response(
@@ -292,14 +302,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const cookies = parseCookies(cookieHeader);
     const token = authHeader.startsWith("Bearer ")
       ? authHeader.substring(7)
-      : cookies["mifx_session"] || "";
+      : cookies["gotrade_session"] || cookies["mifx_session"] || "";
     if (token) {
       activeSessions.delete(token);
     }
     return new Response(JSON.stringify({ success: true, message: "Berhasil keluar." }), {
       headers: {
         "Content-Type": "application/json",
-        "Set-Cookie": "mifx_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+        "Set-Cookie": "gotrade_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
       },
     });
   }
@@ -309,7 +319,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (request.method === "GET") {
       try {
         const users = await query<DbUser>(
-          "SELECT id, name, email, phone, role, account_number, balance, account_type, created_at FROM users ORDER BY id ASC",
+          "SELECT id, name, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, account_type, created_at FROM users ORDER BY id ASC",
         );
         return new Response(JSON.stringify({ success: true, users }), {
           headers: { "Content-Type": "application/json" },
@@ -560,6 +570,26 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           amount: number;
         };
 
+        if (body.type === "Top Up" && body.amount < 16000000) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: "Minimal deposit adalah $1,000 USD (sekitar Rp16.000.000)",
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        if (body.type === "Withdraw" && body.amount < 100000) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: "Minimal penarikan adalah Rp100.000 (sekitar $6.25 USD)",
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
         const txId = (body.type === "Top Up" ? "TU-" : "WD-") + Date.now().toString().slice(-6);
         const insert = await query(
           `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
@@ -587,6 +617,62 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           headers: { "Content-Type": "application/json" },
         });
       }
+    }
+  }
+
+  // /api/admin/profit (Grant Profit to User)
+  if (url.pathname === "/api/admin/profit" && request.method === "POST") {
+    try {
+      const body = (await request.json()) as { userId: number; amount: number; note?: string };
+      const { userId, amount } = body;
+
+      if (!userId || !amount || amount <= 0) {
+        return new Response(
+          JSON.stringify({ success: false, message: "ID User dan nominal profit harus valid" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      const existing = await query<DbUser>("SELECT * FROM users WHERE id = $1", [userId]);
+      if (existing.length === 0) {
+        return new Response(JSON.stringify({ success: false, message: "User tidak ditemukan" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const targetUser = existing[0];
+      const updated = await query<DbUser>(
+        `UPDATE users
+         SET profit = COALESCE(profit, 0) + $1,
+             balance = COALESCE(balance, 0) + $1
+         WHERE id = $2
+         RETURNING id, name, email, phone, role, account_number, balance, profit, account_type`,
+        [amount, userId],
+      );
+
+      // Record profit grant in transactions table
+      const txId = "PRF-" + Date.now().toString().slice(-6);
+      await query(
+        `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
+         VALUES ($1, $2, $3, $4, 'Profit', 'Admin Profit Grant', 'Gotrade Wallet', $5, 'Berhasil')`,
+        [txId, targetUser.id, targetUser.name, targetUser.account_number, amount],
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Berhasil menambahkan profit $${amount.toLocaleString()} ke user ${targetUser.name}!`,
+          user: updated[0],
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error granting profit";
+      return new Response(JSON.stringify({ success: false, message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   }
 
@@ -884,6 +970,310 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting news";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+  }
+
+  // /api/currencies
+  if (url.pathname === "/api/currencies") {
+    if (request.method === "GET") {
+      try {
+        const rows = await query("SELECT * FROM currencies ORDER BY id ASC");
+        return new Response(JSON.stringify({ success: true, currencies: rows }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching currencies";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          symbol: string;
+          name: string;
+          category: string;
+          price: number;
+          decimals?: number;
+          spread?: number;
+          direction?: string;
+          volatility?: number;
+          active?: boolean;
+        };
+
+        const insert = await query(
+          `INSERT INTO currencies (symbol, name, category, price, decimals, spread, direction, volatility, active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [
+            body.symbol.toUpperCase().trim(),
+            body.name,
+            body.category || "Forex",
+            body.price,
+            body.decimals ?? 5,
+            body.spread ?? 50,
+            body.direction || "Acak",
+            body.volatility ?? 30,
+            body.active ?? true,
+          ],
+        );
+
+        return new Response(JSON.stringify({ success: true, currency: insert[0] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error creating currency";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "PUT" || request.method === "PATCH") {
+      try {
+        const body = (await request.json()) as {
+          id: number;
+          symbol?: string;
+          name?: string;
+          category?: string;
+          price?: number;
+          decimals?: number;
+          spread?: number;
+          direction?: string;
+          volatility?: number;
+          active?: boolean;
+        };
+
+        type DbCurr = {
+          id: number;
+          symbol: string;
+          name: string;
+          category: string;
+          price: number;
+          decimals: number;
+          spread: number;
+          direction: string;
+          volatility: number;
+          active: boolean;
+        };
+
+        const existing = await query<DbCurr>("SELECT * FROM currencies WHERE id = $1", [body.id]);
+        if (existing.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, message: "Mata uang tidak ditemukan" }),
+            { status: 404, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        const curr = existing[0];
+        const updated = await query(
+          `UPDATE currencies SET
+             symbol = $1, name = $2, category = $3, price = $4, decimals = $5,
+             spread = $6, direction = $7, volatility = $8, active = $9
+           WHERE id = $10
+           RETURNING *`,
+          [
+            body.symbol ? body.symbol.toUpperCase().trim() : curr.symbol,
+            body.name ?? curr.name,
+            body.category ?? curr.category,
+            body.price !== undefined ? body.price : curr.price,
+            body.decimals !== undefined ? body.decimals : curr.decimals,
+            body.spread !== undefined ? body.spread : curr.spread,
+            body.direction ?? curr.direction,
+            body.volatility !== undefined ? body.volatility : curr.volatility,
+            body.active !== undefined ? body.active : curr.active,
+            body.id,
+          ],
+        );
+
+        return new Response(JSON.stringify({ success: true, currency: updated[0] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error updating currency";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "DELETE") {
+      try {
+        const urlObj = new URL(request.url);
+        const idParam = urlObj.searchParams.get("id");
+        let id = idParam ? parseInt(idParam, 10) : null;
+        if (!id) {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          id = body.id || null;
+        }
+
+        if (!id) {
+          return new Response(
+            JSON.stringify({ success: false, message: "ID mata uang diperlukan" }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        await query("DELETE FROM currencies WHERE id = $1", [id]);
+        return new Response(
+          JSON.stringify({ success: true, message: "Mata uang berhasil dihapus" }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error deleting currency";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+  }
+
+  // /api/referrals
+  if (url.pathname === "/api/referrals") {
+    if (request.method === "GET") {
+      try {
+        const rows = await query("SELECT * FROM referrals ORDER BY id DESC");
+        return new Response(JSON.stringify({ success: true, referrals: rows }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching referrals";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          userName: string;
+          email: string;
+          code: string;
+          referredBy?: string;
+          commission?: number;
+        };
+
+        const insert = await query(
+          `INSERT INTO referrals (user_name, email, code, referred_by, commission, invitees_count)
+           VALUES ($1, $2, $3, $4, $5, 0)
+           RETURNING *`,
+          [
+            body.userName,
+            body.email.toLowerCase().trim(),
+            body.code.toUpperCase().trim(),
+            body.referredBy || null,
+            body.commission ?? 0,
+          ],
+        );
+
+        return new Response(JSON.stringify({ success: true, referral: insert[0] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error creating referral";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "PUT" || request.method === "PATCH") {
+      try {
+        const body = (await request.json()) as {
+          id: number;
+          userName?: string;
+          email?: string;
+          code?: string;
+          referredBy?: string;
+          commission?: number;
+          inviteesCount?: number;
+        };
+
+        type DbRef = {
+          id: number;
+          user_name: string;
+          email: string;
+          code: string;
+          referred_by: string;
+          commission: number;
+          invitees_count: number;
+        };
+
+        const existing = await query<DbRef>("SELECT * FROM referrals WHERE id = $1", [body.id]);
+        if (existing.length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, message: "Referral tidak ditemukan" }),
+            { status: 404, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        const curr = existing[0];
+        const updated = await query(
+          `UPDATE referrals SET
+             user_name = $1, email = $2, code = $3, referred_by = $4, commission = $5, invitees_count = $6
+           WHERE id = $7
+           RETURNING *`,
+          [
+            body.userName ?? curr.user_name,
+            body.email ? body.email.toLowerCase().trim() : curr.email,
+            body.code ? body.code.toUpperCase().trim() : curr.code,
+            body.referredBy !== undefined ? body.referredBy : curr.referred_by,
+            body.commission !== undefined ? body.commission : curr.commission,
+            body.inviteesCount !== undefined ? body.inviteesCount : curr.invitees_count,
+            body.id,
+          ],
+        );
+
+        return new Response(JSON.stringify({ success: true, referral: updated[0] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error updating referral";
+        return new Response(JSON.stringify({ success: false, message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (request.method === "DELETE") {
+      try {
+        const urlObj = new URL(request.url);
+        const idParam = urlObj.searchParams.get("id");
+        let id = idParam ? parseInt(idParam, 10) : null;
+        if (!id) {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          id = body.id || null;
+        }
+
+        if (!id) {
+          return new Response(
+            JSON.stringify({ success: false, message: "ID referral diperlukan" }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          );
+        }
+
+        await query("DELETE FROM referrals WHERE id = $1", [id]);
+        return new Response(
+          JSON.stringify({ success: true, message: "Referral berhasil dihapus" }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error deleting referral";
         return new Response(JSON.stringify({ success: false, message }), {
           status: 500,
           headers: { "Content-Type": "application/json" },

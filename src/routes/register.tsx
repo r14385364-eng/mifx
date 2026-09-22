@@ -88,7 +88,7 @@ function RegisterPage() {
 
       if (res.ok && data.success) {
         toast.success("Pendaftaran Berhasil!", {
-          description: `Selamat datang di MIFX, ${data.user.name}`,
+          description: `Selamat datang di Gotrade, ${data.user.name}`,
         });
         void navigate({ to: "/login" });
       } else {

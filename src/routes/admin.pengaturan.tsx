@@ -5,17 +5,17 @@ import { SettingsAdminPage } from "@/components/admin/SettingsAdminPage";
 export const Route = createFileRoute("/admin/pengaturan")({
   head: () => ({
     meta: [
-      { title: "Pengaturan — MIFX Admin" },
+      { title: "Pengaturan — Gotrade Admin" },
       {
         name: "description",
         content:
-          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi MIFX.",
+          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi Gotrade.",
       },
-      { property: "og:title", content: "Pengaturan — MIFX Admin" },
+      { property: "og:title", content: "Pengaturan — Gotrade Admin" },
       {
         property: "og:description",
         content:
-          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi MIFX.",
+          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

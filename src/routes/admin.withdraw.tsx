@@ -5,12 +5,12 @@ import { TransactionPage, type Transaction } from "@/components/admin/Transactio
 export const Route = createFileRoute("/admin/withdraw")({
   head: () => ({
     meta: [
-      { title: "Withdraw — MIFX Admin" },
-      { name: "description", content: "Kelola dan tinjau permintaan withdraw pengguna MIFX." },
-      { property: "og:title", content: "Withdraw — MIFX Admin" },
+      { title: "Withdraw — Gotrade Admin" },
+      { name: "description", content: "Kelola dan tinjau permintaan withdraw pengguna Gotrade." },
+      { property: "og:title", content: "Withdraw — Gotrade Admin" },
       {
         property: "og:description",
-        content: "Kelola dan tinjau permintaan withdraw pengguna MIFX.",
+        content: "Kelola dan tinjau permintaan withdraw pengguna Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

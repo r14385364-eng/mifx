@@ -28,8 +28,6 @@ export const Route = createFileRoute("/withdraw")({
   component: WithdrawPage,
 });
 
-const AVAILABLE_BALANCE = 10000000; // Saldo akun: Rp10.000.000
-
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -48,12 +46,15 @@ function WithdrawPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const availableBalanceRupiah = (user?.balance ?? 10000) * 16000;
   const numericAmount = Number(amount.replace(/\D/g, ""));
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!numericAmount || numericAmount < 50000) next["amount"] = "Minimal penarikan Rp50.000";
-    else if (numericAmount > AVAILABLE_BALANCE) next["amount"] = "Melebihi saldo yang tersedia";
+    if (!numericAmount || numericAmount < 100000)
+      next["amount"] = "Minimal penarikan Rp100.000 (sekitar $6.25 USD)";
+    else if (numericAmount > availableBalanceRupiah)
+      next["amount"] = "Melebihi saldo yang tersedia";
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
     if (accountNumber.trim().length < 5)
@@ -137,6 +138,18 @@ function WithdrawPage() {
       </header>
 
       <main className="flex flex-col gap-5 px-4 py-4 pb-6">
+        {/* Minimal Withdraw Banner */}
+        <div className="flex items-center gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3.5 text-blue-600 dark:text-blue-400">
+          <Info className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+          <div className="text-xs">
+            <p className="font-bold text-foreground">Minimal Penarikan / Withdraw</p>
+            <p className="mt-0.5 text-muted-foreground">
+              <span className="font-extrabold text-blue-600 dark:text-blue-400">Rp100.000 IDR</span>{" "}
+              (setara <span className="font-semibold text-foreground">$6.25 USD</span>)
+            </p>
+          </div>
+        </div>
+
         {/* Saldo */}
         <section className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
@@ -145,12 +158,14 @@ function WithdrawPage() {
             </span>
             <div>
               <p className="text-xs text-muted-foreground">Saldo Tersedia</p>
-              <p className="text-lg font-bold text-foreground">{formatRupiah(AVAILABLE_BALANCE)}</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatRupiah(availableBalanceRupiah)}
+              </p>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => setAmount(String(AVAILABLE_BALANCE))}
+            onClick={() => setAmount(String(availableBalanceRupiah))}
             className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
           >
             Tarik Semua

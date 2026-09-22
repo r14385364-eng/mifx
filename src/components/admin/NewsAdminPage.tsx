@@ -98,6 +98,44 @@ export function NewsAdminPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchNews = async () => {
+    try {
+      const res = await fetch("/api/news");
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.news) && data.news.length > 0) {
+        type DbNewsItem = {
+          id: number;
+          title: string;
+          category: string;
+          excerpt: string;
+          body: string;
+          date: string;
+          read_minutes: number;
+          status: "Terbit" | "Draf";
+          image_url: string;
+        };
+        const mapped: AdminArticle[] = (data.news as DbNewsItem[]).map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          excerpt: item.excerpt,
+          body: typeof item.body === "string" ? item.body.split("\n\n") : [item.excerpt],
+          date: item.date || "20 September 2026",
+          readMinutes: item.read_minutes || 3,
+          status: item.status === "Draf" ? "Draf" : "Terbit",
+          imageUrl: item.image_url || null,
+        }));
+        setArticles(mapped);
+      }
+    } catch {
+      // keep initial
+    }
+  };
+
+  useEffect(() => {
+    void fetchNews();
+  }, []);
+
   const filtered = useMemo(
     () =>
       articles.filter((article) => {
@@ -135,16 +173,23 @@ export function NewsAdminPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!form.title || !form.excerpt) {
+      toast.error("Judul dan Ringkasan Berita wajib diisi");
+      return;
+    }
+
     const body = form.body
       .split(/\n\s*\n/)
       .map((paragraph) => paragraph.trim())
       .filter(Boolean);
 
-    if (editingId === null) {
-      setArticles((current) => [
-        {
-          id: Math.max(0, ...current.map((article) => article.id)) + 1,
+    const bodyText = body.join("\n\n");
+
+    try {
+      if (editingId === null) {
+        const newArt: AdminArticle = {
+          id: Math.max(0, ...articles.map((article) => article.id)) + 1,
           title: form.title,
           category: form.category,
           excerpt: form.excerpt,
@@ -153,35 +198,76 @@ export function NewsAdminPage() {
           readMinutes: Math.max(1, Math.ceil(body.join(" ").split(" ").length / 200)),
           status: form.status,
           imageUrl: form.imageUrl,
-        },
-        ...current,
-      ]);
-      toast.success("Berita baru ditambahkan");
-    } else {
-      setArticles((current) =>
-        current.map((article) =>
-          article.id === editingId
-            ? {
-                ...article,
-                title: form.title,
-                category: form.category,
-                excerpt: form.excerpt,
-                body,
-                status: form.status,
-                imageUrl: form.imageUrl,
-              }
-            : article,
-        ),
-      );
-      toast.success("Berita berhasil diperbarui");
+        };
+        setArticles((current) => [newArt, ...current]);
+
+        fetch("/api/news", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: form.title,
+            category: form.category,
+            excerpt: form.excerpt,
+            body: bodyText,
+            status: form.status,
+            imageUrl: form.imageUrl,
+          }),
+        }).catch(() => {});
+
+        toast.success("Berita baru berhasil ditambahkan");
+      } else {
+        setArticles((current) =>
+          current.map((article) =>
+            article.id === editingId
+              ? {
+                  ...article,
+                  title: form.title,
+                  category: form.category,
+                  excerpt: form.excerpt,
+                  body,
+                  status: form.status,
+                  imageUrl: form.imageUrl,
+                }
+              : article,
+          ),
+        );
+
+        fetch("/api/news", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingId,
+            title: form.title,
+            category: form.category,
+            excerpt: form.excerpt,
+            body: bodyText,
+            status: form.status,
+            imageUrl: form.imageUrl,
+          }),
+        }).catch(() => {});
+
+        toast.success("Berita berhasil diperbarui");
+      }
+    } catch {
+      toast.error("Gagal menyimpan berita");
+    } finally {
+      setDialogOpen(false);
     }
-    setDialogOpen(false);
   };
 
-  const handleDelete = () => {
-    setArticles((current) => current.filter((article) => article.id !== deletingId));
-    toast.success("Berita dihapus");
-    setDeletingId(null);
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    const targetId = deletingId;
+    setArticles((current) => current.filter((article) => article.id !== targetId));
+
+    try {
+      await fetch(`/api/news?id=${targetId}`, { method: "DELETE" });
+      toast.success("Berita berhasil dihapus");
+    } catch {
+      toast.success("Berita dihapus dari tampilan");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (

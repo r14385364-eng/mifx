@@ -60,74 +60,7 @@ type ApiTransaction = {
   status?: string;
 };
 
-const initialTransactions: TransactionItem[] = [
-  {
-    id: "TX-98421",
-    type: "Top Up",
-    title: "Deposit QRIS BCA",
-    channel: "QRIS Bank BCA",
-    amount: "+ Rp1.000.000",
-    amountRaw: 1000000,
-    isPositive: true,
-    date: "21 Sep 2026, 14:20",
-    status: "Selesai",
-  },
-  {
-    id: "TX-98418",
-    type: "Buy",
-    title: "Buy 0.1 Lot XAUUSD",
-    channel: "MetaTrader 5",
-    amount: "+ $145.20",
-    amountRaw: 145.2,
-    isPositive: true,
-    date: "21 Sep 2026, 11:05",
-    status: "Selesai",
-  },
-  {
-    id: "TX-98410",
-    type: "Withdraw",
-    title: "Penarikan ke Bank Mandiri",
-    channel: "Bank Mandiri (•••• 8421)",
-    amount: "- Rp500.000",
-    amountRaw: 500000,
-    isPositive: false,
-    date: "20 Sep 2026, 18:45",
-    status: "Selesai",
-  },
-  {
-    id: "TX-98395",
-    type: "Sell",
-    title: "Sell 0.5 Lot EURUSD",
-    channel: "MetaTrader 5",
-    amount: "- $32.10",
-    amountRaw: 32.1,
-    isPositive: false,
-    date: "20 Sep 2026, 09:30",
-    status: "Selesai",
-  },
-  {
-    id: "TX-98380",
-    type: "Top Up",
-    title: "Deposit Transfer Mandiri",
-    channel: "Bank Mandiri",
-    amount: "+ Rp2.500.000",
-    amountRaw: 2500000,
-    isPositive: true,
-    date: "18 Sep 2026, 16:15",
-    status: "Selesai",
-  },
-  {
-    id: "TX-98350",
-    type: "Withdraw",
-    title: "Penarikan ke GoPay",
-    channel: "GoPay (0812••••345)",
-    amount: "- Rp250.000",
-    amountRaw: 250000,
-    isPositive: false,
-    date: "15 Sep 2026, 13:10",
-    status: "Diproses",
-  },
-];
+const initialTransactions: TransactionItem[] = [];
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -139,7 +72,7 @@ function formatRupiah(value: number) {
 
 function RiwayatPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"Semua" | "Trading" | "Top Up" | "Withdraw">("Semua");
+  const [activeTab, setActiveTab] = useState<"Semua" | "Top Up" | "Withdraw">("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [transactions, setTransactions] = useState<TransactionItem[]>(initialTransactions);
 
@@ -197,7 +130,6 @@ function RiwayatPage() {
   const filteredTransactions = transactions.filter((tx) => {
     const matchesTab =
       activeTab === "Semua" ||
-      (activeTab === "Trading" && (tx.type === "Buy" || tx.type === "Sell")) ||
       (activeTab === "Top Up" && tx.type === "Top Up") ||
       (activeTab === "Withdraw" && tx.type === "Withdraw");
 
@@ -233,7 +165,7 @@ function RiwayatPage() {
 
       {/* Navigation Tabs */}
       <nav className="flex gap-1 border-b bg-card px-4 py-2 text-xs">
-        {(["Semua", "Top Up", "Withdraw", "Trading"] as const).map((tab) => (
+        {(["Semua", "Top Up", "Withdraw"] as const).map((tab) => (
           <button
             key={tab}
             type="button"

@@ -41,7 +41,7 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "user",
     title: "Akun Trader",
-    email: "user@mifx.com",
+    email: "user@gotrade.com",
     password: "user123",
     name: "Trader Gotrade",
     accountNumber: "88910243",
@@ -52,7 +52,7 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "admin",
     title: "Akun Administrator",
-    email: "admin@mifx.com",
+    email: "admin@gotrade.com",
     password: "admin123",
     name: "Administrator Gotrade",
     accountNumber: "10000001",

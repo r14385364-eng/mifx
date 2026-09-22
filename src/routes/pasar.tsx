@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { SymbolIcon } from "@/components/SymbolIcon";
+import { AppLogo } from "@/components/AppLogo";
 import { useAuth } from "@/lib/auth-context";
 import { nextPrice } from "@/lib/price-sim";
 
@@ -517,7 +518,6 @@ function PasarPage() {
 
   const { user } = useAuth();
   const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
-  const accountNumber = user?.accountNumber || "1006568912";
   const quotes = useQuotes();
 
   // Reset pagination when switching tabs or search query
@@ -561,21 +561,12 @@ function PasarPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
       <header className="sticky top-0 z-30 border-b bg-background/95 px-4 pb-2 pt-3 backdrop-blur-xs">
         <div className="flex items-center justify-between">
-          <span className="flex items-end gap-[2px]" aria-label="MIFX">
-            <span className="h-4 w-[4px] -skew-x-12 rounded-[1px] bg-primary" />
-            <span className="h-3 w-[4px] -skew-x-12 rounded-[1px] bg-amber-400" />
-            <span className="h-2 w-[4px] -skew-x-12 rounded-[1px] bg-slate-400" />
-          </span>
+          <Link to="/beranda" className="flex items-center">
+            <AppLogo size="sm" />
+          </Link>
 
           <div className="text-center">
             <p className="text-base font-bold leading-tight text-foreground">{balance}</p>
-            <button
-              type="button"
-              className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
-            >
-              {accountNumber}
-              <ChevronDown className="h-3 w-3" />
-            </button>
           </div>
 
           <button

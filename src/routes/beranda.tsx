@@ -205,7 +205,7 @@ function PromoCarousel() {
           className={`relative flex h-32 w-[85%] shrink-0 snap-center flex-col justify-end overflow-hidden rounded-xl bg-gradient-to-br ${promo.gradient} p-4`}
         >
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-            MIFX
+            Gotrade
           </span>
           <p className="max-w-[75%] text-sm font-bold leading-snug text-white">{promo.title}</p>
           <span className="absolute -right-4 -top-6 h-24 w-24 rounded-full bg-white/10" />
@@ -296,15 +296,21 @@ function SignalSection() {
           Signal Produk Terpopuler
           <Info className="h-3.5 w-3.5 text-muted-foreground" />
         </h2>
-        <button type="button" className="text-xs font-medium text-primary">
+        <Link to="/pasar" className="text-xs font-medium text-primary hover:underline">
           Lihat Semua
-        </button>
+        </Link>
       </div>
-      <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {displaySignals.map((signal) => (
-          <SignalCard key={signal.id} signal={signal} />
-        ))}
-      </div>
+      {displaySignals.length > 0 ? (
+        <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {displaySignals.map((signal) => (
+            <SignalCard key={signal.id} signal={signal} />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+          Belum ada sinyal trading aktif.
+        </p>
+      )}
     </section>
   );
 }

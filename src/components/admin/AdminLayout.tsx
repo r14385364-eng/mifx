@@ -3,6 +3,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CircleDollarSign,
+  Coins,
   Gift,
   LogOut,
   Newspaper,
@@ -47,6 +48,7 @@ const contentNavigation = [
 
 const userNavigation = [
   { label: "Manajemen User", to: "/admin/users" as const, icon: Users },
+  { label: "Kelola Profit", to: "/admin/profit" as const, icon: Coins },
   { label: "Referral", to: "/admin/referral" as const, icon: Gift },
 ];
 
@@ -73,8 +75,8 @@ export function AdminLayout({
     void navigate({ to: "/login" });
   };
 
-  const adminName = user?.name || "Administrator MIFX";
-  const adminEmail = user?.email || "admin@mifx.com";
+  const adminName = user?.name || "Administrator Gotrade";
+  const adminEmail = user?.email || "admin@gotrade.com";
   const initials = adminName
     .split(" ")
     .map((n) => n[0])

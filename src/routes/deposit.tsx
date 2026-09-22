@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Copy,
   Download,
+  Info,
   QrCode,
   ShieldCheck,
 } from "lucide-react";
@@ -48,7 +49,7 @@ const paymentSources = [
   { id: "shopeepay", label: "ShopeePay", category: "E-Wallet" },
 ];
 
-const quickAmounts = [100000, 250000, 500000, 1000000, 2500000, 5000000];
+const quickAmounts = [16000000, 25000000, 50000000, 100000000];
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -97,8 +98,9 @@ function DepositPage() {
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!numericAmount || numericAmount < 10000) next["amount"] = "Minimal deposit Rp10.000";
-    if (numericAmount > 100000000) next["amount"] = "Maksimal deposit Rp100.000.000";
+    if (!numericAmount || numericAmount < 16000000)
+      next["amount"] = "Minimal deposit $1,000 USD (sekitar Rp16.000.000)";
+    if (numericAmount > 500000000) next["amount"] = "Maksimal deposit Rp500.000.000";
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (!source) next["source"] = "Pilih rekening atau e-wallet sumber dana";
     if (accountNumber.trim().length < 5)
@@ -212,6 +214,18 @@ function DepositPage() {
       </header>
 
       <main className="flex flex-col gap-5 px-4 py-4 pb-6">
+        {/* Minimal Deposit Banner */}
+        <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-amber-600 dark:text-amber-400">
+          <Info className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="text-xs">
+            <p className="font-bold text-foreground">Minimal Top Up / Deposit</p>
+            <p className="mt-0.5 text-muted-foreground">
+              <span className="font-extrabold text-amber-600 dark:text-amber-400">$1,000 USD</span>{" "}
+              (setara <span className="font-semibold text-foreground">Rp16.000.000 IDR</span>)
+            </p>
+          </div>
+        </div>
+
         {/* QRIS card */}
         <section className="rounded-xl border bg-card p-4 text-center shadow-sm">
           <div className="flex items-center justify-center gap-1.5">
@@ -236,7 +250,8 @@ function DepositPage() {
               <QRCodeSVG
                 id="qris-svg"
                 value={
-                  qrisPayload || `MIFX-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`
+                  qrisPayload ||
+                  `Gotrade-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`
                 }
                 size={180}
                 level="M"

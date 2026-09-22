@@ -1,6 +1,45 @@
 {
   "users": [
     {
+      "name": "Trader Gotrade",
+      "email": "user@gotrade.com",
+      "password": "user123",
+      "phone": "+62 812-3456-7890",
+      "role": "user",
+      "account_number": "88910243",
+      "balance": 510000,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-21T19:04:48.345Z",
+      "id": 3,
+      "profit": 0
+    },
+    {
+      "name": "Trader Penguji",
+      "email": "newtrader_1790049239218@example.com",
+      "password": "Password123!",
+      "phone": "+62 81234567890",
+      "role": "user",
+      "account_number": "13899039",
+      "balance": 10000,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-22T03:53:59.394Z",
+      "id": 1,
+      "profit": 0
+    },
+    {
+      "name": "Administrator Gotrade",
+      "email": "admin@gotrade.com",
+      "password": "admin123",
+      "phone": "+62 811-9876-5432",
+      "role": "admin",
+      "account_number": "10000001",
+      "balance": 999999,
+      "account_type": "Admin Master",
+      "created_at": "2026-09-21T19:04:48.345Z",
+      "id": 2,
+      "profit": 0
+    },
+    {
       "name": "Admin (Configured)",
       "email": "admin@mixf.com",
       "password": "password123",
@@ -9,98 +48,14 @@
       "account_number": "10000002",
       "balance": 999999,
       "account_type": "Admin Master",
-      "id": 3,
-      "created_at": "2026-09-21T19:04:48.345Z"
-    },
-    {
-      "name": "Administrator Gotrade",
-      "email": "admin@mifx.com",
-      "password": "admin123",
-      "phone": "+62 811-9876-5432",
-      "role": "admin",
-      "account_number": "10000001",
-      "balance": 999999,
-      "account_type": "Admin Master",
-      "id": 2,
-      "created_at": "2026-09-21T19:04:48.345Z"
-    },
-    {
-      "name": "Trader Gotrade",
-      "email": "user@mifx.com",
-      "password": "user123",
-      "phone": "+62 812-3456-7890",
-      "role": "user",
-      "account_number": "88910243",
-      "balance": 510000,
-      "account_type": "Standard Live",
-      "id": 1,
-      "created_at": "2026-09-21T19:04:48.345Z"
+      "created_at": "2026-09-21T19:04:48.345Z",
+      "id": 4,
+      "profit": 0
     }
   ],
-  "transactions": [
-    {
-      "id": "TU-488501",
-      "user_id": null,
-      "user_name": "Trader Gotrade",
-      "account_number": "88910243",
-      "type": "Top Up",
-      "channel": "QRIS",
-      "destination": "BCA 123456",
-      "amount": 500000,
-      "status": "Berhasil",
-      "created_at": "2026-09-21T19:04:48.352Z"
-    }
-  ],
-  "signals": [
-    {
-      "id": "SIG-001",
-      "symbol": "XAUUSD",
-      "category": "Komoditi",
-      "action": "BUY",
-      "entry_price": 2650.5,
-      "tp1": 2670,
-      "tp2": 2685,
-      "sl": 2635,
-      "rationale": "Gold rebound dari area support M30 dengan konfirmasi RSI bullish divergence.",
-      "timeframe": "30m",
-      "status": "Aktif",
-      "created_at": "2026-09-21T19:04:48.364Z"
-    },
-    {
-      "id": "SIG-002",
-      "symbol": "EURUSD",
-      "category": "Forex",
-      "action": "SELL",
-      "entry_price": 1.085,
-      "tp1": 1.081,
-      "tp2": 1.078,
-      "sl": 1.089,
-      "rationale": "Tekanan suku bunga ECB membuat Euro tertekan di bawah resistance H1.",
-      "timeframe": "1h",
-      "status": "Aktif",
-      "created_at": "2026-09-21T19:04:48.364Z"
-    },
-    {
-      "id": "SIG-003",
-      "symbol": "NASDAQ",
-      "category": "Indeks",
-      "action": "BUY",
-      "entry_price": 20150,
-      "tp1": 20300,
-      "tp2": 20450,
-      "sl": 20000,
-      "rationale": "Sektor teknologi menguat menjelang laporan rilis laporan pendapatan kuartalan.",
-      "timeframe": "4h",
-      "status": "Aktif",
-      "created_at": "2026-09-21T19:04:48.364Z"
-    }
-  ],
+  "transactions": [],
+  "signals": [],
   "settings": [
-    {
-      "key": "qris_image",
-      "value": "",
-      "updated_at": "2026-09-21T19:04:48.368Z"
-    },
     {
       "key": "min_deposit",
       "value": "15000",
@@ -112,11 +67,16 @@
       "updated_at": "2026-09-21T19:04:48.368Z"
     },
     {
+      "key": "qris_image",
+      "value": "",
+      "updated_at": "2026-09-21T19:04:48.368Z"
+    },
+    {
       "key": "qris_merchant_name",
       "value": "Gotrade Indonesia Official",
       "updated_at": "2026-09-21T19:04:48.616Z"
     }
   ],
   "news": [],
-  "savedAt": "2026-09-21T19:04:48.630Z"
+  "savedAt": "2026-09-22T04:42:05.030Z"
 }

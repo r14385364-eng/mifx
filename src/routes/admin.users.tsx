@@ -5,15 +5,15 @@ import { UsersAdminPage } from "@/components/admin/UsersAdminPage";
 export const Route = createFileRoute("/admin/users")({
   head: () => ({
     meta: [
-      { title: "Manajemen User — MIFX Admin" },
+      { title: "Manajemen User — Gotrade Admin" },
       {
         name: "description",
-        content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna MIFX.",
+        content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna Gotrade.",
       },
-      { property: "og:title", content: "Manajemen User — MIFX Admin" },
+      { property: "og:title", content: "Manajemen User — Gotrade Admin" },
       {
         property: "og:description",
-        content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna MIFX.",
+        content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

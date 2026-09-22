@@ -3,8 +3,6 @@ import {
   AtSign,
   Bell,
   Building2,
-  Check,
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   FileText,
@@ -28,6 +26,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
+import { AppLogo } from "@/components/AppLogo";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/lainnya")({
@@ -50,21 +49,8 @@ export const Route = createFileRoute("/lainnya")({
   component: LainnyaPage,
 });
 
-function GreenSlashLogo() {
-  return (
-    <div className="flex cursor-pointer items-center gap-1.5">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 28 28"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d="M12 4L4 24H8.5L16.5 4H12Z" fill="#8CC63F" />
-        <path d="M19.5 4L11.5 24H16L24 4H19.5Z" fill="#00A651" />
-      </svg>
-    </div>
-  );
+function HeaderLogo() {
+  return <AppLogo size="sm" />;
 }
 
 export function LainnyaPage() {
@@ -73,8 +59,6 @@ export function LainnyaPage() {
 
   // Dynamic user data & states
   const [demoBalance, setDemoBalance] = useState<number>(user?.balance ?? 10000);
-  const [accountType, setAccountType] = useState<"Demo" | "Live">("Demo");
-  const [accountNumber, setAccountNumber] = useState<string>(user?.accountNumber || "1006568912");
 
   // Modals state
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -132,27 +116,16 @@ export function LainnyaPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-[#f5f6f8] pb-16 font-sans text-gray-900">
       {/* 1. Header Bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-2.5 shadow-2xs">
-        {/* Left: Green Logo */}
+        {/* Left: Gotrade Logo */}
         <Link to="/beranda" className="flex items-center">
-          <GreenSlashLogo />
+          <HeaderLogo />
         </Link>
 
-        {/* Center: Balance & Account Picker */}
+        {/* Center: Balance */}
         <div className="flex flex-col items-center">
           <span className="tabular-nums text-sm font-bold tracking-tight text-gray-900">
             {formattedBalance}
           </span>
-          <button
-            type="button"
-            onClick={() => setActiveModal("accountPicker")}
-            className="mt-0.5 flex items-center gap-1 rounded bg-transparent px-1.5 py-0.5 text-xs transition-colors hover:bg-gray-100"
-          >
-            <span className="rounded bg-[#00a651] px-1.5 py-0.2 text-[10px] font-bold text-white uppercase tracking-wider">
-              {accountType}
-            </span>
-            <span className="text-xs font-semibold text-gray-700">{accountNumber}</span>
-            <ChevronDown className="h-3 w-3 text-gray-500" />
-          </button>
         </div>
 
         {/* Right: Notifications Bell */}
@@ -163,9 +136,6 @@ export function LainnyaPage() {
           title="Notifikasi"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#e53935] text-[9px] font-bold text-white shadow-2xs">
-            3
-          </span>
         </button>
       </header>
 
@@ -325,7 +295,7 @@ export function LainnyaPage() {
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
             >
               <Gift className="h-5 w-5 text-gray-700" />
-              <span className="flex-1 text-sm font-medium text-gray-900">MIFX Rewards</span>
+              <span className="flex-1 text-sm font-medium text-gray-900">Gotrade Rewards</span>
             </button>
             <Link
               to="/referral"
@@ -421,9 +391,9 @@ export function LainnyaPage() {
           <ChevronRight className="h-5 w-5 text-gray-400" />
         </button>
 
-        {/* 8. Contact Person MIFX Anda */}
+        {/* 8. Contact Person Gotrade Anda */}
         <div>
-          <p className="mb-1.5 px-1 text-xs font-bold text-gray-700">Contact Person MIFX Anda</p>
+          <p className="mb-1.5 px-1 text-xs font-bold text-gray-700">Contact Person Gotrade Anda</p>
           <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-2xs">
             {/* Header MIRA */}
             <div className="flex items-center gap-3">
@@ -432,7 +402,9 @@ export function LainnyaPage() {
               </div>
               <div className="flex flex-col">
                 <span className="text-base font-extrabold tracking-wide text-gray-900">MIRA</span>
-                <span className="text-xs text-gray-400">MIFX Intelligent Response Assistant</span>
+                <span className="text-xs text-gray-400">
+                  Gotrade Intelligent Response Assistant
+                </span>
               </div>
             </div>
 
@@ -452,13 +424,13 @@ export function LainnyaPage() {
               </a>
 
               <a
-                href="mailto:mira.support@mifx.com"
+                href="mailto:support@gotrade.com"
                 className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
               >
                 <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
                 <div className="flex flex-col">
                   <span className="text-xs font-medium text-gray-900">Email</span>
-                  <span className="text-xs font-medium text-gray-500">mira.support@mifx.com</span>
+                  <span className="text-xs font-medium text-gray-500">support@gotrade.com</span>
                 </div>
               </a>
             </div>
@@ -549,80 +521,6 @@ export function LainnyaPage() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 2: Account Picker */}
-      {activeModal === "accountPicker" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-bold text-gray-900">Pilih Akun Trading</h3>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2.5">
-              {/* Demo Account Option */}
-              <button
-                type="button"
-                onClick={() => {
-                  setAccountType("Demo");
-                  setAccountNumber("1006568912");
-                  toast.info("Beralih ke Akun Demo 1006568912");
-                  setActiveModal(null);
-                }}
-                className={`flex items-center justify-between rounded-xl border p-3 text-left transition-colors ${
-                  accountType === "Demo"
-                    ? "border-[#00a651] bg-[#e6f7ef]/50"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-[#00a651] px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                      Demo
-                    </span>
-                    <span className="text-xs font-bold text-gray-900">1006568912</span>
-                  </div>
-                  <p className="mt-1 text-xs font-semibold text-gray-700">{formattedBalance}</p>
-                </div>
-                {accountType === "Demo" && <Check className="h-5 w-5 text-[#00a651]" />}
-              </button>
-
-              {/* Live Account Option */}
-              <button
-                type="button"
-                onClick={() => {
-                  setAccountType("Live");
-                  setAccountNumber("88910243");
-                  toast.info("Beralih ke Akun Live 88910243");
-                  setActiveModal(null);
-                }}
-                className={`flex items-center justify-between rounded-xl border p-3 text-left transition-colors ${
-                  accountType === "Live"
-                    ? "border-[#00a651] bg-[#e6f7ef]/50"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                      Live
-                    </span>
-                    <span className="text-xs font-bold text-gray-900">88910243</span>
-                  </div>
-                  <p className="mt-1 text-xs font-semibold text-gray-700">$0.00</p>
-                </div>
-                {accountType === "Live" && <Check className="h-5 w-5 text-[#00a651]" />}
-              </button>
             </div>
           </div>
         </div>
@@ -745,14 +643,14 @@ export function LainnyaPage() {
         </div>
       )}
 
-      {/* Modal 6: MIFX Rewards */}
+      {/* Modal 6: Gotrade Rewards */}
       {activeModal === "rewards" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
                 <Gift className="h-5 w-5 text-[#00a651]" />
-                <h3 className="text-base font-bold text-gray-900">MIFX Rewards</h3>
+                <h3 className="text-base font-bold text-gray-900">Gotrade Rewards</h3>
               </div>
               <button
                 type="button"

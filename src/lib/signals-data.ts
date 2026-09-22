@@ -14,60 +14,7 @@ export type TradingSignal = {
   showOnHome: boolean;
 };
 
-export const defaultSignals: TradingSignal[] = [
-  {
-    id: 1,
-    name: "Gold",
-    flag: "🪙",
-    time: "03:06",
-    takeProfit: "4418.20",
-    stopLoss: "4342.80",
-    source: "Autochartist",
-    timeframe: "30 menit",
-    action: "Potensi Buy",
-    variant: "buy",
-    showOnHome: true,
-  },
-  {
-    id: 2,
-    name: "EURUSD",
-    flag: "🇪🇺",
-    time: "02:35",
-    takeProfit: "1.14520",
-    stopLoss: "1.15120",
-    source: "Trading Central",
-    timeframe: "30 menit",
-    action: "Potensi Sell",
-    variant: "sell",
-    showOnHome: true,
-  },
-  {
-    id: 3,
-    name: "USDJPY",
-    flag: "🇯🇵",
-    time: "01:10",
-    takeProfit: "158.400",
-    stopLoss: "157.900",
-    source: "Trading Central",
-    timeframe: "30 menit",
-    action: "Potensi Sell",
-    variant: "sell",
-    showOnHome: true,
-  },
-  {
-    id: 4,
-    name: "NASDAQ",
-    flag: "🇺🇸",
-    time: "00:42",
-    takeProfit: "30150.00",
-    stopLoss: "29720.00",
-    source: "Autochartist",
-    timeframe: "1 jam",
-    action: "Potensi Buy",
-    variant: "buy",
-    showOnHome: false,
-  },
-];
+export const defaultSignals: TradingSignal[] = [];
 
 let currentSignals: TradingSignal[] = defaultSignals;
 const listeners = new Set<() => void>();

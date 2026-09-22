@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowDownToLine, Bell, ChevronRight, History, Wallet } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { AppLogo } from "@/components/AppLogo";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/order")({
@@ -67,7 +68,9 @@ function OrderPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between border-b px-4 py-3">
-        <span className="text-lg font-black tracking-tight text-primary">MIFX</span>
+        <Link to="/beranda" className="flex items-center">
+          <AppLogo size="sm" />
+        </Link>
         <div className="flex flex-col items-center">
           <span className="text-base font-bold tabular-nums">{balance}</span>
         </div>

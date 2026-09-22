@@ -86,7 +86,7 @@ function ProfilePage() {
     void navigate({ to: "/login" });
   };
 
-  const displayName = user?.name || "Pengguna MIFX";
+  const displayName = user?.name || "Pengguna Gotrade";
   const displayEmail = user?.email || "Belum masuk akun";
   const displayPhone = user?.phone || "+62 821-1178-1198";
   const displayAccountNumber = user?.accountNumber || "1006568912";
@@ -142,7 +142,7 @@ function ProfilePage() {
                   : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
               }`}
             >
-              {isAdmin ? "Super Admin" : "Trader MIFX"}
+              {isAdmin ? "Super Admin" : "Trader Gotrade"}
             </span>
 
             <button
