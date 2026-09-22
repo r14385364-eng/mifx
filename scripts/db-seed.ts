@@ -54,7 +54,7 @@ async function seedDatabase() {
         phone VARCHAR(50),
         role VARCHAR(50) NOT NULL DEFAULT 'user',
         account_number VARCHAR(50) NOT NULL,
-        balance NUMERIC(15, 2) NOT NULL DEFAULT 10000.00,
+        balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
         account_type VARCHAR(50) NOT NULL DEFAULT 'Standard Live',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

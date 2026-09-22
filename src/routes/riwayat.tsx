@@ -41,7 +41,7 @@ export const Route = createFileRoute("/riwayat")({
 
 type TransactionItem = {
   id: string;
-  type: "Top Up" | "Withdraw" | "Buy" | "Sell";
+  type: "Top Up" | "Withdraw" | "Buy" | "Sell" | "Profit";
   title: string;
   channel: string;
   amount: string;
@@ -71,7 +71,7 @@ function formatRupiah(value: number) {
 }
 
 function RiwayatPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [activeTab, setActiveTab] = useState<"Semua" | "Top Up" | "Withdraw">("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [transactions, setTransactions] = useState<TransactionItem[]>(initialTransactions);
@@ -79,18 +79,58 @@ function RiwayatPage() {
   useEffect(() => {
     async function loadApiTransactions() {
       try {
-        const res = await fetch("/api/transactions");
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api/transactions", {
+          headers,
+          credentials: "include",
+        });
         const data = (await res.json()) as { success?: boolean; transactions?: ApiTransaction[] };
         if (res.ok && data.success && Array.isArray(data.transactions)) {
           const apiItems: TransactionItem[] = data.transactions.map((t) => {
             const amountVal = t.amount ?? 0;
             const isWd = t.type === "Withdraw";
+            const isProfit = t.type === "Profit";
+
+            const statusStr = (t.status || "").trim().toLowerCase();
+            const isCompleted =
+              statusStr === "berhasil" ||
+              statusStr === "approved" ||
+              statusStr === "selesai" ||
+              statusStr === "success";
+            const isFailed =
+              statusStr === "ditolak" ||
+              statusStr === "rejected" ||
+              statusStr === "gagal" ||
+              statusStr === "failed";
+            const txStatus: "Selesai" | "Diproses" | "Gagal" = isCompleted
+              ? "Selesai"
+              : isFailed
+                ? "Gagal"
+                : "Diproses";
+
+            let formattedAmount = "";
+            if (isWd) {
+              const valUSD = amountVal >= 10000 ? amountVal / 16000 : amountVal;
+              const valIDR = amountVal >= 10000 ? amountVal : amountVal * 16000;
+              formattedAmount = `- ${formatRupiah(valIDR)} ($${valUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+            } else if (isProfit) {
+              const valUSD = amountVal < 10000 ? amountVal : amountVal / 16000;
+              const valIDR = amountVal < 10000 ? amountVal * 16000 : amountVal;
+              formattedAmount = `+ $${valUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${formatRupiah(valIDR)})`;
+            } else {
+              const valUSD = amountVal >= 10000 ? amountVal / 16000 : amountVal;
+              const valIDR = amountVal >= 10000 ? amountVal : amountVal * 16000;
+              formattedAmount = `+ ${formatRupiah(valIDR)} ($${valUSD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+            }
+
             return {
               id: `TX-${t.id || Math.floor(Math.random() * 100000)}`,
-              type: t.type === "Top Up" ? "Top Up" : isWd ? "Withdraw" : "Buy",
+              type:
+                t.type === "Top Up" ? "Top Up" : isWd ? "Withdraw" : isProfit ? "Profit" : "Buy",
               title: `${t.type || "Transaksi"} ${t.channel || ""}`.trim(),
               channel: t.channel || "Gotrade Wallet",
-              amount: isWd ? `- ${formatRupiah(amountVal)}` : `+ ${formatRupiah(amountVal)}`,
+              amount: formattedAmount,
               amountRaw: amountVal,
               isPositive: !isWd,
               date: t.created_at
@@ -102,12 +142,7 @@ function RiwayatPage() {
                     minute: "2-digit",
                   })
                 : "Hari Ini",
-              status:
-                t.status === "Approved"
-                  ? "Selesai"
-                  : t.status === "Rejected"
-                    ? "Gagal"
-                    : "Diproses",
+              status: txStatus,
             };
           });
 
@@ -123,9 +158,12 @@ function RiwayatPage() {
       }
     }
     void loadApiTransactions();
-  }, []);
+  }, [token]);
 
-  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const balance =
+    user?.balance != null
+      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "$0.00";
 
   const filteredTransactions = transactions.filter((tx) => {
     const matchesTab =
@@ -207,6 +245,7 @@ function RiwayatPage() {
           {filteredTransactions.map((tx) => {
             const isTopUp = tx.type === "Top Up";
             const isWithdraw = tx.type === "Withdraw";
+            const isProfit = tx.type === "Profit";
             const isBuy = tx.type === "Buy";
 
             return (
@@ -221,15 +260,19 @@ function RiwayatPage() {
                         ? "bg-primary/10 text-primary"
                         : isWithdraw
                           ? "bg-amber-500/10 text-amber-600"
-                          : isBuy
-                            ? "bg-blue-500/10 text-blue-600"
-                            : "bg-rose-500/10 text-rose-600"
+                          : isProfit
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : isBuy
+                              ? "bg-blue-500/10 text-blue-600"
+                              : "bg-rose-500/10 text-rose-600"
                     }`}
                   >
                     {isTopUp ? (
                       <ArrowDownToLine className="h-5 w-5" />
                     ) : isWithdraw ? (
                       <ArrowUpFromLine className="h-5 w-5" />
+                    ) : isProfit ? (
+                      <TrendingUp className="h-5 w-5" />
                     ) : isBuy ? (
                       <TrendingUp className="h-5 w-5" />
                     ) : (

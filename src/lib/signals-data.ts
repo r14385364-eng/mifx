@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { secureFetch } from "./api-client";
 
 export type TradingSignal = {
   id: number;
@@ -25,7 +26,7 @@ function emit() {
 
 async function loadFromApi() {
   try {
-    const res = await fetch("/api/signals");
+    const res = await secureFetch("/api/signals");
     const data = await res.json();
     if (res.ok && data.success && Array.isArray(data.signals) && data.signals.length > 0) {
       type RawSignal = {
@@ -70,7 +71,7 @@ export function saveSignals(signals: TradingSignal[]) {
   currentSignals = signals;
   emit();
   // Asynchronously push changes to backend
-  void fetch("/api/signals", {
+  void secureFetch("/api/signals", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

@@ -7,10 +7,23 @@
       "phone": "+62 812-3456-7890",
       "role": "user",
       "account_number": "88910243",
-      "balance": 510000,
+      "balance": 11500,
       "account_type": "Standard Live",
       "created_at": "2026-09-21T19:04:48.345Z",
-      "id": 3,
+      "id": 5,
+      "profit": 0
+    },
+    {
+      "name": "User Uji Baru",
+      "email": "test_saldo_nol@example.com",
+      "password": "Password123!",
+      "phone": "08123456789",
+      "role": "user",
+      "account_number": "37131044",
+      "balance": 0,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-22T05:08:35.738Z",
+      "id": 1,
       "profit": 0
     },
     {
@@ -20,22 +33,9 @@
       "phone": "+62 81234567890",
       "role": "user",
       "account_number": "13899039",
-      "balance": 10000,
+      "balance": 0,
       "account_type": "Standard Live",
       "created_at": "2026-09-22T03:53:59.394Z",
-      "id": 1,
-      "profit": 0
-    },
-    {
-      "name": "Administrator Gotrade",
-      "email": "admin@gotrade.com",
-      "password": "admin123",
-      "phone": "+62 811-9876-5432",
-      "role": "admin",
-      "account_number": "10000001",
-      "balance": 999999,
-      "account_type": "Admin Master",
-      "created_at": "2026-09-21T19:04:48.345Z",
       "id": 2,
       "profit": 0
     },
@@ -49,11 +49,77 @@
       "balance": 999999,
       "account_type": "Admin Master",
       "created_at": "2026-09-21T19:04:48.345Z",
+      "id": 3,
+      "profit": 0
+    },
+    {
+      "name": "Administrator Gotrade",
+      "email": "admin@gotrade.com",
+      "password": "admin123",
+      "phone": "+62 811-9876-5432",
+      "role": "admin",
+      "account_number": "10000001",
+      "balance": 999999,
+      "account_type": "Admin Master",
+      "created_at": "2026-09-21T19:04:48.345Z",
       "id": 4,
+      "profit": 0
+    },
+    {
+      "name": "User Test Baru",
+      "email": "usertestbaru@gotrade.com",
+      "password": "Password123!",
+      "phone": "",
+      "role": "user",
+      "account_number": "86591700",
+      "balance": 0,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-22T05:36:00.879Z",
+      "id": 6,
       "profit": 0
     }
   ],
-  "transactions": [],
+  "transactions": [
+    {
+      "id": "PRF-914284",
+      "user_id": 5,
+      "user_name": "Trader Gotrade",
+      "account_number": "88910243",
+      "type": "Profit",
+      "channel": "Admin Profit Grant",
+      "destination": "Gotrade Wallet",
+      "amount": 500,
+      "status": "Berhasil",
+      "proof_image": null,
+      "created_at": "2026-09-22T05:28:17.835Z"
+    },
+    {
+      "id": "TU-908833",
+      "user_id": 5,
+      "user_name": "Trader Gotrade",
+      "account_number": "88910243",
+      "type": "Top Up",
+      "channel": "Bank BCA",
+      "destination": "Gotrade BCA",
+      "amount": 16000000,
+      "status": "Berhasil",
+      "proof_image": null,
+      "created_at": "2026-09-22T05:28:17.835Z"
+    },
+    {
+      "id": "TU-226953",
+      "user_id": null,
+      "user_name": "Trader Test",
+      "account_number": "88910243",
+      "type": "Top Up",
+      "channel": "Bank BCA",
+      "destination": "•••• 8421",
+      "amount": 16000000,
+      "status": "Menunggu",
+      "proof_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "created_at": "2026-09-22T05:33:42.502Z"
+    }
+  ],
   "signals": [],
   "settings": [
     {
@@ -78,5 +144,5 @@
     }
   ],
   "news": [],
-  "savedAt": "2026-09-22T04:42:05.030Z"
+  "savedAt": "2026-09-22T05:53:12.535Z"
 }

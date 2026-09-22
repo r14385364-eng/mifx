@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { secureFetch } from "@/lib/api-client";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +24,6 @@ import { Label } from "@/components/ui/label";
 export function SettingsAdminPage() {
   const [qrisImage, setQrisImage] = useState<string>("");
   const [qrisMerchantName, setQrisMerchantName] = useState<string>("Gotrade Indonesia Official");
-  const [qrisPayload, setQrisPayload] = useState<string>(
-    "00020101021226590014ID.LINKAJA.WWW01189360091100223030310215GOTRADEINDONESIA5204581253033605802ID5914GOTRADE INDONESIA6007JAKARTA61051234062070703A016304",
-  );
-  const [minDeposit, setMinDeposit] = useState<string>("10000");
-  const [maxDeposit, setMaxDeposit] = useState<string>("100000000");
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -39,15 +35,12 @@ export function SettingsAdminPage() {
     async function loadSettings() {
       setLoading(true);
       try {
-        const res = await fetch("/api/settings");
+        const res = await secureFetch("/api/settings");
         const data = await res.json();
         if (res.ok && data.success && data.settings) {
           if (data.settings.qris_image) setQrisImage(data.settings.qris_image);
           if (data.settings.qris_merchant_name)
             setQrisMerchantName(data.settings.qris_merchant_name);
-          if (data.settings.qris_payload) setQrisPayload(data.settings.qris_payload);
-          if (data.settings.min_deposit) setMinDeposit(data.settings.min_deposit);
-          if (data.settings.max_deposit) setMaxDeposit(data.settings.max_deposit);
         }
       } catch {
         // use default state
@@ -96,12 +89,9 @@ export function SettingsAdminPage() {
       const payload = {
         qris_image: qrisImage,
         qris_merchant_name: qrisMerchantName,
-        qris_payload: qrisPayload,
-        min_deposit: minDeposit,
-        max_deposit: maxDeposit,
       };
 
-      const res = await fetch("/api/settings", {
+      const res = await secureFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -130,10 +120,7 @@ export function SettingsAdminPage() {
   };
 
   return (
-    <AdminLayout
-      title="Pengaturan Sistem"
-      subtitle="Kelola konfigurasi platform, QRIS deposit, dan batas transaksi"
-    >
+    <AdminLayout title="Pengaturan Sistem" subtitle="Kelola konfigurasi platform dan QRIS deposit">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header Action Bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -264,50 +251,6 @@ export function SettingsAdminPage() {
                     Nama ini akan ditampilkan pada instruksi pembayaran trader.
                   </p>
                 </div>
-
-                {/* QRIS Payload / Code String */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="qris-payload" className="text-xs font-semibold">
-                    Payload / Kode QRIS (Salin Cepat)
-                  </Label>
-                  <Input
-                    id="qris-payload"
-                    value={qrisPayload}
-                    onChange={(e) => setQrisPayload(e.target.value)}
-                    placeholder="Kode payload QRIS EMVCo..."
-                    className="font-mono text-xs"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Kode ini digunakan trader saat menekan tombol &apos;Salin Kode&apos; di
-                    aplikasi.
-                  </p>
-                </div>
-
-                {/* Transaction Limits */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="min-deposit" className="text-xs font-semibold">
-                      Minimal Deposit (IDR)
-                    </Label>
-                    <Input
-                      id="min-deposit"
-                      type="number"
-                      value={minDeposit}
-                      onChange={(e) => setMinDeposit(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="max-deposit" className="text-xs font-semibold">
-                      Maksimal Deposit (IDR)
-                    </Label>
-                    <Input
-                      id="max-deposit"
-                      type="number"
-                      value={maxDeposit}
-                      onChange={(e) => setMaxDeposit(e.target.value)}
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -348,7 +291,7 @@ export function SettingsAdminPage() {
                         />
                       ) : (
                         <QRCodeSVG
-                          value={qrisPayload || "GOTRADE-QRIS-OFFICIAL"}
+                          value="GOTRADE-QRIS-OFFICIAL"
                           size={176}
                           level="M"
                           includeMargin={false}

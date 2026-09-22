@@ -90,7 +90,10 @@ function ProfilePage() {
   const displayEmail = user?.email || "Belum masuk akun";
   const displayPhone = user?.phone || "+62 821-1178-1198";
   const displayAccountNumber = user?.accountNumber || "1006568912";
-  const displayBalance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const displayBalance =
+    user?.balance != null
+      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "$0.00";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background pb-20">

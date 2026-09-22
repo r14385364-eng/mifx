@@ -22,7 +22,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -58,7 +58,13 @@ export function LainnyaPage() {
   const { user, logout, isAuthenticated } = useAuth();
 
   // Dynamic user data & states
-  const [demoBalance, setDemoBalance] = useState<number>(user?.balance ?? 10000);
+  const [demoBalance, setDemoBalance] = useState<number>(user?.balance ?? 0);
+
+  useEffect(() => {
+    if (user?.balance !== undefined && user?.balance !== null) {
+      setDemoBalance(user.balance);
+    }
+  }, [user?.balance]);
 
   // Modals state
   const [activeModal, setActiveModal] = useState<string | null>(null);

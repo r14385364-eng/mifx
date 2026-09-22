@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { secureFetch } from "@/lib/api-client";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +80,7 @@ export function ProfitAdminPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/users");
+      const res = await secureFetch("/api/users");
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.users)) {
         type ApiUser = {
@@ -93,7 +94,7 @@ export function ProfitAdminPage() {
           profit: number | string;
         };
         const mapped: UserProfitData[] = (data.users as ApiUser[]).map((u) => {
-          const totalBal = Number(u.balance) || 10000;
+          const totalBal = u.balance !== undefined && u.balance !== null ? Number(u.balance) : 0;
           const profBal = Number(u.profit) || 0;
           const depBal = Math.max(0, totalBal - profBal);
           return {
@@ -149,7 +150,7 @@ export function ProfitAdminPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/profit", {
+      const res = await secureFetch("/api/admin/profit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

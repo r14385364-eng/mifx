@@ -7,16 +7,21 @@ import {
   Gift,
   LogOut,
   Newspaper,
+  ShieldAlert,
   ShieldCheck,
   TrendingUp,
   Users,
   Database,
   Server,
   Settings,
+  LogIn,
+  ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -66,7 +71,7 @@ export function AdminLayout({
   children: ReactNode;
 }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { user, logout } = useAuth();
+  const { user, isLoading, isAuthenticated, isAdmin, loginAsDemo, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleAdminLogout = async () => {
@@ -74,6 +79,83 @@ export function AdminLayout({
     toast.success("Admin keluar", { description: "Sesi admin telah ditutup." });
     void navigate({ to: "/login" });
   };
+
+  // RBAC Loading Screen
+  if (isLoading) {
+    return (
+      <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Loader2 className="size-7 animate-spin" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-bold">Memverifikasi Izin Akses...</h2>
+            <p className="text-xs text-muted-foreground">
+              Memeriksa kredensial dan hak akses administrator (RBAC)
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // RBAC Access Control Gatekeeper: Block if not authenticated or not an admin
+  if (!isAuthenticated || !isAdmin) {
+    return (
+      <div className="flex min-h-svh w-full flex-col items-center justify-center bg-slate-950 px-4 text-slate-100">
+        <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-slate-900/90 p-6 sm:p-8 text-center shadow-2xl backdrop-blur-xl">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500">
+            <ShieldAlert className="size-8 animate-pulse" />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 border border-red-500/20 mb-3">
+            <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
+            403 Forbidden • RBAC Protected
+          </div>
+
+          <h2 className="text-xl font-bold tracking-tight text-white mb-2">
+            Akses Ditolak: Hak Administrator Diperlukan
+          </h2>
+
+          <p className="text-xs text-slate-400 leading-relaxed mb-6">
+            Halaman ini dikunci oleh kebijakan Role-Based Access Control (RBAC). Anda saat ini login
+            sebagai{" "}
+            <strong className="text-slate-200">
+              {user ? user.name + " (" + user.role + ")" : "Tamu (Belum Login)"}
+            </strong>
+            . Hanya pengguna dengan peran <strong className="text-purple-400">admin</strong> yang
+            diizinkan mengakses panel ini.
+          </p>
+
+          <div className="flex flex-col gap-2.5">
+            <Button
+              onClick={async () => {
+                const res = await loginAsDemo("admin");
+                if (res.success) {
+                  toast.success("Berhasil masuk sebagai Admin", {
+                    description: "Hak akses administrator telah diverifikasi.",
+                  });
+                } else {
+                  void navigate({ to: "/login" });
+                }
+              }}
+              className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
+            >
+              <LogIn className="mr-2 size-4" /> Masuk Sebagai Administrator
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => void navigate({ to: "/beranda" })}
+              className="w-full h-11 border-slate-800 bg-slate-950/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+            >
+              <ArrowLeft className="mr-2 size-4" /> Kembali ke Beranda Trader
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const adminName = user?.name || "Administrator Gotrade";
   const adminEmail = user?.email || "admin@gotrade.com";

@@ -1,6 +1,30 @@
-import { ensureDbReady, query, isDatabaseInMemory, DbUser } from "./db";
+import {
+  ensureDbReady,
+  query,
+  isDatabaseInMemory,
+  DbUser,
+  DbTransaction,
+  DbSignal,
+  DbNews,
+} from "./db";
 
+// In-memory token & session store
 const activeSessions = new Map<string, number>();
+
+// In-memory rate limiting store: Key -> array of timestamps
+const rateLimitMap = new Map<string, number[]>();
+
+function checkRateLimit(key: string, limit = 15, windowMs = 60000): boolean {
+  const now = Date.now();
+  const timestamps = (rateLimitMap.get(key) || []).filter((t) => now - t < windowMs);
+  if (timestamps.length >= limit) {
+    rateLimitMap.set(key, timestamps);
+    return false; // Exceeded
+  }
+  timestamps.push(now);
+  rateLimitMap.set(key, timestamps);
+  return true; // Allowed
+}
 
 function parseCookies(cookieHeader: string | null): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -23,6 +47,127 @@ function generateToken(userId: number): string {
   return token;
 }
 
+function getUserIdFromToken(token: string): number | null {
+  if (!token) return null;
+  const existing = activeSessions.get(token);
+  if (existing) return existing;
+
+  // Support server reboot / reconnect if token format is valid
+  if (token.startsWith("gotrade_tok_")) {
+    const parts = token.split("_");
+    const parsedId = parseInt(parts[2], 10);
+    if (!isNaN(parsedId) && parsedId > 0) {
+      activeSessions.set(token, parsedId);
+      return parsedId;
+    }
+  }
+  return null;
+}
+
+// Security & RBAC response helpers
+function jsonResponse(
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      ...extraHeaders,
+    },
+  });
+}
+
+function unauthorizedResponse(
+  message = "Autentikasi diperlukan untuk mengakses layanan ini.",
+): Response {
+  return jsonResponse(
+    {
+      success: false,
+      error: "UNAUTHORIZED",
+      message,
+    },
+    401,
+  );
+}
+
+function forbiddenResponse(
+  message = "Akses ditolak. Tindakan ini memerlukan hak akses Administrator (RBAC).",
+): Response {
+  return jsonResponse(
+    {
+      success: false,
+      error: "FORBIDDEN",
+      message,
+    },
+    403,
+  );
+}
+
+function rateLimitResponse(
+  message = "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.",
+): Response {
+  return jsonResponse(
+    {
+      success: false,
+      error: "RATE_LIMITED",
+      message,
+    },
+    429,
+  );
+}
+
+// Input sanitizer to prevent HTML/script injection
+function sanitizeText(input?: string): string {
+  if (!input) return "";
+  return String(input).replace(/[<>]/g, "").trim();
+}
+
+async function getAuthenticatedUser(request: Request): Promise<DbUser | null> {
+  const authHeader = request.headers.get("authorization") || "";
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookies = parseCookies(cookieHeader);
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.substring(7)
+    : cookies["gotrade_session"] || cookies["mifx_session"] || "";
+
+  const userId = getUserIdFromToken(token);
+  if (!userId) return null;
+
+  try {
+    const rows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [userId]);
+    return rows.length > 0 ? rows[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+async function requireAuth(
+  request: Request,
+): Promise<{ user: DbUser } | { errorResponse: Response }> {
+  const user = await getAuthenticatedUser(request);
+  if (!user) {
+    return { errorResponse: unauthorizedResponse() };
+  }
+  return { user };
+}
+
+async function requireAdmin(
+  request: Request,
+): Promise<{ user: DbUser } | { errorResponse: Response }> {
+  const authResult = await requireAuth(request);
+  if ("errorResponse" in authResult) {
+    return authResult;
+  }
+  if (authResult.user.role !== "admin") {
+    return { errorResponse: forbiddenResponse() };
+  }
+  return { user: authResult.user };
+}
+
 export async function handleApiRequest(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) {
@@ -31,26 +176,28 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
   await ensureDbReady();
 
+  // Client identifier for rate limiting
+  const clientIp =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("cf-connecting-ip") ||
+    "client-default";
+
   // /api/health
   if (url.pathname === "/api/health" && request.method === "GET") {
     try {
       const userCount = await query<{ count: string }>("SELECT COUNT(*) as count FROM users");
-      return new Response(
-        JSON.stringify({
-          status: "ok",
-          server: "Online",
-          database: "Connected",
-          totalUsers: parseInt(userCount[0]?.count || "0", 10),
-          timestamp: new Date().toISOString(),
-        }),
-        { headers: { "Content-Type": "application/json" } },
-      );
+      return jsonResponse({
+        status: "ok",
+        server: "Online",
+        database: "Connected",
+        totalUsers: parseInt(userCount[0]?.count || "0", 10),
+        rbacEnabled: true,
+        securityShield: "Active",
+        timestamp: new Date().toISOString(),
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return new Response(JSON.stringify({ status: "error", message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse({ status: "error", message }, 500);
     }
   }
 
@@ -102,24 +249,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       });
     }
 
-    return new Response(JSON.stringify({ accounts }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ accounts });
   }
 
-  // /api/auth/login
+  // /api/auth/login (Protected with Rate Limiting)
   if (url.pathname === "/api/auth/login" && request.method === "POST") {
+    if (!checkRateLimit(`login_${clientIp}`, 15, 60000)) {
+      return rateLimitResponse("Terlalu banyak percobaan login. Silakan tunggu 1 menit.");
+    }
+
     try {
       const body = (await request.json()) as { email?: string; password?: string };
       const { email, password } = body;
       if (!email || !password) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Email dan password wajib diisi." }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
-        );
+        return jsonResponse({ success: false, message: "Email dan password wajib diisi." }, 400);
       }
 
-      const trimmedEmail = String(email).trim().toLowerCase();
+      const trimmedEmail = sanitizeText(email).toLowerCase();
       const altEmail = trimmedEmail.includes("@mifx.com")
         ? trimmedEmail.replace("@mifx.com", "@gotrade.com")
         : trimmedEmail.includes("@gotrade.com")
@@ -132,20 +278,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
 
       if (rows.length === 0) {
-        return new Response(
-          JSON.stringify({
+        return jsonResponse(
+          {
             success: false,
             message: "Email atau password salah. Cek akun yang tersedia.",
-          }),
-          { status: 401, headers: { "Content-Type": "application/json" } },
+          },
+          401,
         );
       }
 
       const user = rows[0];
       const token = generateToken(user.id);
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
           token,
           user: {
@@ -159,25 +305,24 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             accountType: user.account_type,
             createdAt: user.created_at,
           },
-        }),
+        },
+        200,
         {
-          headers: {
-            "Content-Type": "application/json",
-            "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
-          },
+          "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
         },
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Gagal masuk";
-      return new Response(JSON.stringify({ success: false, message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, message }, 500);
     }
   }
 
-  // /api/auth/register
+  // /api/auth/register (Protected with Rate Limiting & Validation)
   if (url.pathname === "/api/auth/register" && request.method === "POST") {
+    if (!checkRateLimit(`reg_${clientIp}`, 10, 60000)) {
+      return rateLimitResponse("Terlalu banyak permintaan pendaftaran. Silakan tunggu sebentar.");
+    }
+
     try {
       const body = (await request.json()) as {
         name?: string;
@@ -188,38 +333,52 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       const { name, email, password, phone } = body;
 
       if (!name || !email || !password) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Nama, email, dan password wajib diisi." }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+        return jsonResponse(
+          { success: false, message: "Nama, email, dan password wajib diisi." },
+          400,
         );
       }
 
-      const cleanEmail = String(email).trim().toLowerCase();
+      const cleanName = sanitizeText(name);
+      const cleanEmail = sanitizeText(email).toLowerCase();
+      const cleanPhone = sanitizeText(phone);
+
+      if (cleanEmail.length < 5 || !cleanEmail.includes("@")) {
+        return jsonResponse({ success: false, message: "Format email tidak valid." }, 400);
+      }
+
+      if (String(password).length < 6) {
+        return jsonResponse(
+          { success: false, message: "Password minimal 6 karakter demi keamanan akun." },
+          400,
+        );
+      }
+
       const existing = await query<DbUser>("SELECT id FROM users WHERE LOWER(email) = $1", [
         cleanEmail,
       ]);
       if (existing.length > 0) {
-        return new Response(
-          JSON.stringify({ success: false, message: "Email sudah terdaftar. Silakan login." }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+        return jsonResponse(
+          { success: false, message: "Email sudah terdaftar. Silakan gunakan menu login." },
+          400,
         );
       }
 
       const randomAcc = Math.floor(10000000 + Math.random() * 90000000).toString();
       const insertRes = await query<DbUser>(
         `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
-         VALUES ($1, $2, $3, $4, 'user', $5, 10000.00, 'Standard Live')
+         VALUES ($1, $2, $3, $4, 'user', $5, 0.00, 'Standard Live')
          RETURNING *`,
-        [name.trim(), cleanEmail, String(password).trim(), phone?.trim() || "", randomAcc],
+        [cleanName, cleanEmail, String(password).trim(), cleanPhone, randomAcc],
       );
 
       const newUser = insertRes[0];
       const token = generateToken(newUser.id);
 
-      return new Response(
-        JSON.stringify({
+      return jsonResponse(
+        {
           success: true,
-          message: "Akun berhasil dibuat!",
+          message: "Akun trader berhasil didaftarkan secara aman!",
           token,
           user: {
             id: newUser.id,
@@ -232,67 +391,41 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             accountType: newUser.account_type,
             createdAt: newUser.created_at,
           },
-        }),
+        },
+        200,
         {
-          headers: {
-            "Content-Type": "application/json",
-            "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
-          },
+          "Set-Cookie": `gotrade_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
         },
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Gagal mendaftar";
-      return new Response(JSON.stringify({ success: false, message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, message }, 500);
     }
   }
 
-  // /api/auth/me
+  // /api/auth/me (Protected: Requires Authenticated User)
   if (url.pathname === "/api/auth/me" && request.method === "GET") {
-    const authHeader = request.headers.get("authorization") || "";
-    const cookieHeader = request.headers.get("cookie") || "";
-    const cookies = parseCookies(cookieHeader);
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : cookies["gotrade_session"] || cookies["mifx_session"] || "";
-
-    if (!token || !activeSessions.has(token)) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Sesi tidak valid atau telah berakhir." }),
-        { status: 401, headers: { "Content-Type": "application/json" } },
-      );
+    const authResult = await requireAuth(request);
+    if ("errorResponse" in authResult) {
+      return authResult.errorResponse;
     }
 
-    const userId = activeSessions.get(token);
-    const rows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [userId]);
-
-    if (rows.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Pengguna tidak ditemukan." }),
-        { status: 404, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const user = rows[0];
-    return new Response(
-      JSON.stringify({
-        success: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          accountNumber: user.account_number,
-          balance: Number(user.balance),
-          accountType: user.account_type,
-          createdAt: user.created_at,
-        },
-      }),
-      { headers: { "Content-Type": "application/json" } },
-    );
+    const user = authResult.user;
+    return jsonResponse({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        accountNumber: user.account_number,
+        balance: Number(user.balance),
+        profit: Number(user.profit || 0),
+        accountType: user.account_type,
+        createdAt: user.created_at,
+      },
+    });
   }
 
   // /api/auth/logout
@@ -306,30 +439,29 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (token) {
       activeSessions.delete(token);
     }
-    return new Response(JSON.stringify({ success: true, message: "Berhasil keluar." }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Set-Cookie": "gotrade_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
-      },
+    return jsonResponse({ success: true, message: "Berhasil keluar secara aman." }, 200, {
+      "Set-Cookie": "gotrade_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
     });
   }
 
-  // /api/users (Admin & management)
+  // ==========================================
+  // RBAC RESTRICTED: /api/users (ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/users") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
     if (request.method === "GET") {
       try {
         const users = await query<DbUser>(
           "SELECT id, name, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, account_type, created_at FROM users ORDER BY id ASC",
         );
-        return new Response(JSON.stringify({ success: true, users }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, users });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching users";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -349,28 +481,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const created = await query<DbUser>(
           `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING *`,
+           RETURNING id, name, email, phone, role, account_number, balance, profit, account_type, created_at`,
           [
-            body.name,
-            body.email.toLowerCase().trim(),
+            sanitizeText(body.name),
+            sanitizeText(body.email).toLowerCase(),
             body.password || "user123",
-            body.phone || "",
-            body.role || "user",
+            sanitizeText(body.phone),
+            body.role === "admin" ? "admin" : "user",
             randomAcc,
-            body.balance ?? 10000.0,
-            body.accountType || "Standard Live",
+            body.balance !== undefined ? Math.max(0, Number(body.balance)) : 0.0,
+            sanitizeText(body.accountType) || "Standard Live",
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, user: created[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, user: created[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating user";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -388,10 +515,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const existing = await query<DbUser>("SELECT * FROM users WHERE id = $1", [body.id]);
         if (existing.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Pengguna tidak ditemukan" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "Pengguna tidak ditemukan" }, 404);
         }
 
         const curr = existing[0];
@@ -404,27 +528,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
              balance = $5,
              account_type = $6
            WHERE id = $7
-           RETURNING *`,
+           RETURNING id, name, email, phone, role, account_number, balance, profit, account_type, created_at`,
           [
-            body.name ?? curr.name,
-            body.email ? body.email.toLowerCase().trim() : curr.email,
-            body.phone ?? curr.phone,
-            body.role ?? curr.role,
-            body.balance !== undefined ? Number(body.balance) : Number(curr.balance),
-            body.accountType ?? curr.account_type,
+            body.name !== undefined ? sanitizeText(body.name) : curr.name,
+            body.email ? sanitizeText(body.email).toLowerCase() : curr.email,
+            body.phone !== undefined ? sanitizeText(body.phone) : curr.phone,
+            body.role !== undefined ? (body.role === "admin" ? "admin" : "user") : curr.role,
+            body.balance !== undefined ? Math.max(0, Number(body.balance)) : Number(curr.balance),
+            body.accountType !== undefined ? sanitizeText(body.accountType) : curr.account_type,
             body.id,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, user: updated[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, user: updated[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating user";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -440,74 +559,82 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (!id) {
-          return new Response(
-            JSON.stringify({ success: false, message: "ID pengguna diperlukan" }),
+          return jsonResponse({ success: false, message: "ID pengguna diperlukan" }, 400);
+        }
+
+        // Prevent admin from deleting themselves
+        if (id === adminCheck.user.id) {
+          return jsonResponse(
             {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
+              success: false,
+              message: "Anda tidak dapat menghapus akun administrator Anda sendiri.",
             },
+            400,
           );
         }
 
         await query("DELETE FROM users WHERE id = $1", [id]);
-        return new Response(
-          JSON.stringify({ success: true, message: "Pengguna berhasil dihapus" }),
-          {
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return jsonResponse({ success: true, message: "Pengguna berhasil dihapus" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting user";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/transactions
+  // ==========================================
+  // /api/transactions (RBAC Protected Data Scoping)
+  // ==========================================
   if (url.pathname === "/api/transactions") {
+    // GET: Admin sees all transactions; Regular Trader sees ONLY their own transactions
     if (request.method === "GET") {
+      const authResult = await requireAuth(request);
+      if ("errorResponse" in authResult) {
+        // Fallback: if preview without session, only return empty or safe public
+        return authResult.errorResponse;
+      }
+
       try {
-        const rows = await query("SELECT * FROM transactions ORDER BY created_at DESC");
-        return new Response(JSON.stringify({ success: true, transactions: rows }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        const currentUser = authResult.user;
+        let rows: DbTransaction[] = [];
+
+        if (currentUser.role === "admin") {
+          // Admin has access to all transactions across all users
+          rows = await query<DbTransaction>("SELECT * FROM transactions ORDER BY created_at DESC");
+        } else {
+          // Trader can only access transactions linked to their user_id or account_number
+          rows = await query<DbTransaction>(
+            "SELECT * FROM transactions WHERE user_id = $1 OR account_number = $2 ORDER BY created_at DESC",
+            [currentUser.id, currentUser.account_number],
+          );
+        }
+
+        return jsonResponse({ success: true, transactions: rows });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching transactions";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
+    // PATCH / PUT: ADMIN ONLY (Approve/Reject Top Up & Withdraw)
     if (request.method === "PATCH" || request.method === "PUT") {
+      const adminCheck = await requireAdmin(request);
+      if ("errorResponse" in adminCheck) {
+        return adminCheck.errorResponse;
+      }
+
       try {
         const body = (await request.json()) as { id: string; status: "Berhasil" | "Ditolak" };
         const { id, status } = body;
         if (!id || !status) {
-          return new Response(
-            JSON.stringify({ success: false, message: "ID dan status diperlukan" }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return jsonResponse({ success: false, message: "ID dan status diperlukan" }, 400);
         }
 
         const existingTx = await query<DbTransaction>("SELECT * FROM transactions WHERE id = $1", [
           id,
         ]);
         if (existingTx.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Transaksi tidak ditemukan" }),
-            {
-              status: 404,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return jsonResponse({ success: false, message: "Transaksi tidak ditemukan" }, 404);
         }
 
         const tx = existingTx[0];
@@ -516,129 +643,182 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           [status, id],
         );
 
-        // Balance adjustment if transaction approved
+        // Balance adjustment if transaction approved (Kurs: 1 USD = 16,000 IDR)
         if (status === "Berhasil" && tx.status !== "Berhasil") {
-          const amount = Number(tx.amount);
+          const rawAmount = Number(tx.amount);
+          const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
           if (tx.type === "Top Up") {
             if (tx.user_id) {
               await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
-                amount,
+                amountUSD,
                 tx.user_id,
               ]);
             } else if (tx.account_number) {
               await query("UPDATE users SET balance = balance + $1 WHERE account_number = $2", [
-                amount,
+                amountUSD,
                 tx.account_number,
               ]);
             }
           } else if (tx.type === "Withdraw") {
             if (tx.user_id) {
               await query("UPDATE users SET balance = GREATEST(0, balance - $1) WHERE id = $2", [
-                amount,
+                amountUSD,
                 tx.user_id,
               ]);
             } else if (tx.account_number) {
               await query(
                 "UPDATE users SET balance = GREATEST(0, balance - $1) WHERE account_number = $2",
-                [amount, tx.account_number],
+                [amountUSD, tx.account_number],
               );
+            }
+          }
+        } else if (tx.status === "Berhasil" && status !== "Berhasil") {
+          // Revert previous approval if status changes from Berhasil to Menunggu/Ditolak
+          const rawAmount = Number(tx.amount);
+          const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
+          if (tx.type === "Top Up") {
+            if (tx.user_id) {
+              await query("UPDATE users SET balance = GREATEST(0, balance - $1) WHERE id = $2", [
+                amountUSD,
+                tx.user_id,
+              ]);
+            } else if (tx.account_number) {
+              await query(
+                "UPDATE users SET balance = GREATEST(0, balance - $1) WHERE account_number = $2",
+                [amountUSD, tx.account_number],
+              );
+            }
+          } else if (tx.type === "Withdraw") {
+            if (tx.user_id) {
+              await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
+                amountUSD,
+                tx.user_id,
+              ]);
+            } else if (tx.account_number) {
+              await query("UPDATE users SET balance = balance + $1 WHERE account_number = $2", [
+                amountUSD,
+                tx.account_number,
+              ]);
             }
           }
         }
 
-        return new Response(JSON.stringify({ success: true, transaction: update[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, transaction: update[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating transaction";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
+    // POST: Authenticated User submits Deposit or Withdraw
     if (request.method === "POST") {
+      const authResult = await requireAuth(request);
+      if ("errorResponse" in authResult) {
+        return authResult.errorResponse;
+      }
+
       try {
+        const currentUser = authResult.user;
         const body = (await request.json()) as {
-          userId?: number;
-          userName: string;
-          accountNumber: string;
           type: "Top Up" | "Withdraw";
           channel: string;
           destination: string;
           amount: number;
+          proofImage?: string;
         };
 
-        if (body.type === "Top Up" && body.amount < 16000000) {
-          return new Response(
-            JSON.stringify({
+        const numericAmount = Number(body.amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+          return jsonResponse({ success: false, message: "Nominal transaksi tidak valid." }, 400);
+        }
+
+        if (body.type === "Top Up" && numericAmount < 16000000) {
+          return jsonResponse(
+            {
               success: false,
               message: "Minimal deposit adalah $1,000 USD (sekitar Rp16.000.000)",
-            }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
+            },
+            400,
           );
         }
 
-        if (body.type === "Withdraw" && body.amount < 100000) {
-          return new Response(
-            JSON.stringify({
-              success: false,
-              message: "Minimal penarikan adalah Rp100.000 (sekitar $6.25 USD)",
-            }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+        if (body.type === "Withdraw") {
+          if (numericAmount < 100000) {
+            return jsonResponse(
+              {
+                success: false,
+                message: "Minimal penarikan adalah Rp100.000 (sekitar $6.25 USD)",
+              },
+              400,
+            );
+          }
+
+          // Balance Validation for Withdrawal
+          const amountUSD = numericAmount / 16000;
+          if (Number(currentUser.balance) < amountUSD) {
+            return jsonResponse(
+              {
+                success: false,
+                message: `Saldo tidak mencukupi. Saldo Anda: $${Number(currentUser.balance).toFixed(2)} USD (dibutuhkan ~$${amountUSD.toFixed(2)} USD).`,
+              },
+              400,
+            );
+          }
         }
 
+        // Enforce binding to the verified authenticated user (prevents identity spoofing)
         const txId = (body.type === "Top Up" ? "TU-" : "WD-") + Date.now().toString().slice(-6);
         const insert = await query(
-          `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Menunggu')
+          `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status, proof_image)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Menunggu', $9)
            RETURNING *`,
           [
             txId,
-            body.userId || null,
-            body.userName,
-            body.accountNumber,
+            currentUser.id,
+            currentUser.name,
+            currentUser.account_number,
             body.type,
-            body.channel,
-            body.destination,
-            body.amount,
+            sanitizeText(body.channel),
+            sanitizeText(body.destination),
+            numericAmount,
+            body.proofImage || null,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, transaction: insert[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, transaction: insert[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating transaction";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/admin/profit (Grant Profit to User)
+  // ==========================================
+  // RBAC RESTRICTED: /api/admin/profit (ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/admin/profit" && request.method === "POST") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
     try {
       const body = (await request.json()) as { userId: number; amount: number; note?: string };
       const { userId, amount } = body;
 
       if (!userId || !amount || amount <= 0) {
-        return new Response(
-          JSON.stringify({ success: false, message: "ID User dan nominal profit harus valid" }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
+        return jsonResponse(
+          {
+            success: false,
+            message: "ID User dan nominal profit harus valid dan bernilai positif.",
+          },
+          400,
         );
       }
 
       const existing = await query<DbUser>("SELECT * FROM users WHERE id = $1", [userId]);
       if (existing.length === 0) {
-        return new Response(JSON.stringify({ success: false, message: "User tidak ditemukan" }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message: "User tujuan tidak ditemukan" }, 404);
       }
 
       const targetUser = existing[0];
@@ -659,38 +839,35 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         [txId, targetUser.id, targetUser.name, targetUser.account_number, amount],
       );
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: `Berhasil menambahkan profit $${amount.toLocaleString()} ke user ${targetUser.name}!`,
-          user: updated[0],
-        }),
-        { headers: { "Content-Type": "application/json" } },
-      );
+      return jsonResponse({
+        success: true,
+        message: `Berhasil menambahkan profit $${amount.toLocaleString()} ke user ${targetUser.name}!`,
+        user: updated[0],
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error granting profit";
-      return new Response(JSON.stringify({ success: false, message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: false, message }, 500);
     }
   }
 
-  // /api/signals
+  // ==========================================
+  // /api/signals (GET is Public; MUTATIONS ARE ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/signals") {
     if (request.method === "GET") {
       try {
         const rows = await query("SELECT * FROM signals ORDER BY created_at DESC");
-        return new Response(JSON.stringify({ success: true, signals: rows }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, signals: rows });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching signals";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
+    }
+
+    // Mutations require Admin Role
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
     }
 
     if (request.method === "POST") {
@@ -715,28 +892,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            RETURNING *`,
           [
             sigId,
-            body.symbol,
-            body.category || "Forex",
-            body.action,
-            body.entryPrice,
-            body.tp1,
-            body.tp2,
-            body.sl,
-            body.rationale || "",
-            body.timeframe || "30m",
-            body.status || "Aktif",
+            sanitizeText(body.symbol).toUpperCase(),
+            sanitizeText(body.category) || "Forex",
+            sanitizeText(body.action).toUpperCase(),
+            Number(body.entryPrice),
+            Number(body.tp1),
+            Number(body.tp2),
+            Number(body.sl),
+            sanitizeText(body.rationale),
+            sanitizeText(body.timeframe) || "30m",
+            sanitizeText(body.status) || "Aktif",
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, signal: insert[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, signal: insert[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating signal";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -758,10 +930,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const existing = await query<DbSignal>("SELECT * FROM signals WHERE id = $1", [body.id]);
         if (existing.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Sinyal tidak ditemukan" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "Sinyal tidak ditemukan" }, 404);
         }
 
         const curr = existing[0];
@@ -772,29 +941,24 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            WHERE id = $11
            RETURNING *`,
           [
-            body.symbol ?? curr.symbol,
-            body.category ?? curr.category,
-            body.action ?? curr.action,
-            body.entryPrice !== undefined ? body.entryPrice : curr.entry_price,
-            body.tp1 !== undefined ? body.tp1 : curr.tp1,
-            body.tp2 !== undefined ? body.tp2 : curr.tp2,
-            body.sl !== undefined ? body.sl : curr.sl,
-            body.rationale ?? curr.rationale,
-            body.timeframe ?? curr.timeframe,
-            body.status ?? curr.status,
+            body.symbol ? sanitizeText(body.symbol).toUpperCase() : curr.symbol,
+            body.category ? sanitizeText(body.category) : curr.category,
+            body.action ? sanitizeText(body.action).toUpperCase() : curr.action,
+            body.entryPrice !== undefined ? Number(body.entryPrice) : curr.entry_price,
+            body.tp1 !== undefined ? Number(body.tp1) : curr.tp1,
+            body.tp2 !== undefined ? Number(body.tp2) : curr.tp2,
+            body.sl !== undefined ? Number(body.sl) : curr.sl,
+            body.rationale !== undefined ? sanitizeText(body.rationale) : curr.rationale,
+            body.timeframe !== undefined ? sanitizeText(body.timeframe) : curr.timeframe,
+            body.status !== undefined ? sanitizeText(body.status) : curr.status,
             body.id,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, signal: updated[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, signal: updated[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating signal";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -809,41 +973,36 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (!id) {
-          return new Response(JSON.stringify({ success: false, message: "ID sinyal diperlukan" }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          });
+          return jsonResponse({ success: false, message: "ID sinyal diperlukan" }, 400);
         }
 
         await query("DELETE FROM signals WHERE id = $1", [id]);
-        return new Response(JSON.stringify({ success: true, message: "Sinyal berhasil dihapus" }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, message: "Sinyal berhasil dihapus" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting signal";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/news
+  // ==========================================
+  // /api/news (GET is Public; MUTATIONS ARE ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/news") {
     if (request.method === "GET") {
       try {
         const rows = await query("SELECT * FROM news ORDER BY created_at DESC");
-        return new Response(JSON.stringify({ success: true, news: rows }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, news: rows });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching news";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
+    }
+
+    // Mutations require Admin Role
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
     }
 
     if (request.method === "POST") {
@@ -857,8 +1016,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           imageUrl?: string;
         };
 
+        const cleanTitle = sanitizeText(body.title);
         const slug =
-          body.title
+          cleanTitle
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/(^-|-$)+/g, "") +
@@ -871,10 +1031,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            RETURNING *`,
           [
             slug,
-            body.title,
-            body.category || "Special Article",
-            body.excerpt,
-            body.body,
+            cleanTitle,
+            sanitizeText(body.category) || "Special Article",
+            sanitizeText(body.excerpt),
+            body.body || "",
             new Date().toLocaleDateString("id-ID", {
               day: "numeric",
               month: "long",
@@ -886,15 +1046,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, news: insert[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, news: insert[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating news";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -912,10 +1067,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const existing = await query<DbNews>("SELECT * FROM news WHERE id = $1", [body.id]);
         if (existing.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Berita tidak ditemukan" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "Berita tidak ditemukan" }, 404);
         }
 
         const curr = existing[0];
@@ -925,25 +1077,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            WHERE id = $7
            RETURNING *`,
           [
-            body.title ?? curr.title,
-            body.category ?? curr.category,
-            body.excerpt ?? curr.excerpt,
-            body.body ?? curr.body,
-            body.status ?? curr.status,
-            body.imageUrl ?? curr.image_url,
+            body.title !== undefined ? sanitizeText(body.title) : curr.title,
+            body.category !== undefined ? sanitizeText(body.category) : curr.category,
+            body.excerpt !== undefined ? sanitizeText(body.excerpt) : curr.excerpt,
+            body.body !== undefined ? body.body : curr.body,
+            body.status !== undefined ? sanitizeText(body.status) : curr.status,
+            body.imageUrl !== undefined ? body.imageUrl : curr.image_url,
             body.id,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, news: updated[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, news: updated[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating news";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -958,41 +1105,36 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (!id) {
-          return new Response(JSON.stringify({ success: false, message: "ID berita diperlukan" }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          });
+          return jsonResponse({ success: false, message: "ID berita diperlukan" }, 400);
         }
 
         await query("DELETE FROM news WHERE id = $1", [id]);
-        return new Response(JSON.stringify({ success: true, message: "Berita berhasil dihapus" }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, message: "Berita berhasil dihapus" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting news";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/currencies
+  // ==========================================
+  // /api/currencies (GET is Public; MUTATIONS ARE ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/currencies") {
     if (request.method === "GET") {
       try {
         const rows = await query("SELECT * FROM currencies ORDER BY id ASC");
-        return new Response(JSON.stringify({ success: true, currencies: rows }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, currencies: rows });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching currencies";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
+    }
+
+    // Mutations require Admin Role
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
     }
 
     if (request.method === "POST") {
@@ -1014,27 +1156,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING *`,
           [
-            body.symbol.toUpperCase().trim(),
-            body.name,
-            body.category || "Forex",
-            body.price,
+            sanitizeText(body.symbol).toUpperCase(),
+            sanitizeText(body.name),
+            sanitizeText(body.category) || "Forex",
+            Number(body.price),
             body.decimals ?? 5,
             body.spread ?? 50,
-            body.direction || "Acak",
+            sanitizeText(body.direction) || "Acak",
             body.volatility ?? 30,
             body.active ?? true,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, currency: insert[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, currency: insert[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating currency";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -1068,10 +1205,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const existing = await query<DbCurr>("SELECT * FROM currencies WHERE id = $1", [body.id]);
         if (existing.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Mata uang tidak ditemukan" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "Mata uang tidak ditemukan" }, 404);
         }
 
         const curr = existing[0];
@@ -1082,28 +1216,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            WHERE id = $10
            RETURNING *`,
           [
-            body.symbol ? body.symbol.toUpperCase().trim() : curr.symbol,
-            body.name ?? curr.name,
-            body.category ?? curr.category,
-            body.price !== undefined ? body.price : curr.price,
-            body.decimals !== undefined ? body.decimals : curr.decimals,
-            body.spread !== undefined ? body.spread : curr.spread,
-            body.direction ?? curr.direction,
-            body.volatility !== undefined ? body.volatility : curr.volatility,
-            body.active !== undefined ? body.active : curr.active,
+            body.symbol ? sanitizeText(body.symbol).toUpperCase() : curr.symbol,
+            body.name !== undefined ? sanitizeText(body.name) : curr.name,
+            body.category !== undefined ? sanitizeText(body.category) : curr.category,
+            body.price !== undefined ? Number(body.price) : curr.price,
+            body.decimals !== undefined ? Number(body.decimals) : curr.decimals,
+            body.spread !== undefined ? Number(body.spread) : curr.spread,
+            body.direction !== undefined ? sanitizeText(body.direction) : curr.direction,
+            body.volatility !== undefined ? Number(body.volatility) : curr.volatility,
+            body.active !== undefined ? Boolean(body.active) : curr.active,
             body.id,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, currency: updated[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, currency: updated[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating currency";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -1118,77 +1247,84 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (!id) {
-          return new Response(
-            JSON.stringify({ success: false, message: "ID mata uang diperlukan" }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "ID mata uang diperlukan" }, 400);
         }
 
         await query("DELETE FROM currencies WHERE id = $1", [id]);
-        return new Response(
-          JSON.stringify({ success: true, message: "Mata uang berhasil dihapus" }),
-          { headers: { "Content-Type": "application/json" } },
-        );
+        return jsonResponse({ success: true, message: "Mata uang berhasil dihapus" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting currency";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/referrals
+  // ==========================================
+  // /api/referrals (Scoping & RBAC)
+  // ==========================================
   if (url.pathname === "/api/referrals") {
     if (request.method === "GET") {
+      const authResult = await requireAuth(request);
+      if ("errorResponse" in authResult) {
+        return authResult.errorResponse;
+      }
+
       try {
-        const rows = await query("SELECT * FROM referrals ORDER BY id DESC");
-        return new Response(JSON.stringify({ success: true, referrals: rows }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        const user = authResult.user;
+        let rows = [];
+        if (user.role === "admin") {
+          rows = await query("SELECT * FROM referrals ORDER BY id DESC");
+        } else {
+          rows = await query("SELECT * FROM referrals WHERE LOWER(email) = $1 ORDER BY id DESC", [
+            user.email.toLowerCase(),
+          ]);
+        }
+        return jsonResponse({ success: true, referrals: rows });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching referrals";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
     if (request.method === "POST") {
+      const authResult = await requireAuth(request);
+      if ("errorResponse" in authResult) {
+        return authResult.errorResponse;
+      }
+
       try {
+        const user = authResult.user;
         const body = (await request.json()) as {
-          userName: string;
-          email: string;
           code: string;
           referredBy?: string;
           commission?: number;
         };
 
+        const cleanCode = sanitizeText(body.code).toUpperCase();
         const insert = await query(
           `INSERT INTO referrals (user_name, email, code, referred_by, commission, invitees_count)
            VALUES ($1, $2, $3, $4, $5, 0)
            RETURNING *`,
           [
-            body.userName,
-            body.email.toLowerCase().trim(),
-            body.code.toUpperCase().trim(),
-            body.referredBy || null,
-            body.commission ?? 0,
+            user.name,
+            user.email.toLowerCase(),
+            cleanCode,
+            body.referredBy ? sanitizeText(body.referredBy) : null,
+            user.role === "admin" ? (body.commission ?? 0) : 0,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, referral: insert[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, referral: insert[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error creating referral";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
+    }
+
+    // Mutations require Admin Role
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
     }
 
     if (request.method === "PUT" || request.method === "PATCH") {
@@ -1215,10 +1351,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const existing = await query<DbRef>("SELECT * FROM referrals WHERE id = $1", [body.id]);
         if (existing.length === 0) {
-          return new Response(
-            JSON.stringify({ success: false, message: "Referral tidak ditemukan" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "Referral tidak ditemukan" }, 404);
         }
 
         const curr = existing[0];
@@ -1228,25 +1361,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            WHERE id = $7
            RETURNING *`,
           [
-            body.userName ?? curr.user_name,
-            body.email ? body.email.toLowerCase().trim() : curr.email,
-            body.code ? body.code.toUpperCase().trim() : curr.code,
-            body.referredBy !== undefined ? body.referredBy : curr.referred_by,
-            body.commission !== undefined ? body.commission : curr.commission,
-            body.inviteesCount !== undefined ? body.inviteesCount : curr.invitees_count,
+            body.userName ? sanitizeText(body.userName) : curr.user_name,
+            body.email ? sanitizeText(body.email).toLowerCase() : curr.email,
+            body.code ? sanitizeText(body.code).toUpperCase() : curr.code,
+            body.referredBy !== undefined ? sanitizeText(body.referredBy) : curr.referred_by,
+            body.commission !== undefined ? Number(body.commission) : curr.commission,
+            body.inviteesCount !== undefined ? Number(body.inviteesCount) : curr.invitees_count,
             body.id,
           ],
         );
 
-        return new Response(JSON.stringify({ success: true, referral: updated[0] }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, referral: updated[0] });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating referral";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
 
@@ -1261,28 +1389,21 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (!id) {
-          return new Response(
-            JSON.stringify({ success: false, message: "ID referral diperlukan" }),
-            { status: 400, headers: { "Content-Type": "application/json" } },
-          );
+          return jsonResponse({ success: false, message: "ID referral diperlukan" }, 400);
         }
 
         await query("DELETE FROM referrals WHERE id = $1", [id]);
-        return new Response(
-          JSON.stringify({ success: true, message: "Referral berhasil dihapus" }),
-          { headers: { "Content-Type": "application/json" } },
-        );
+        return jsonResponse({ success: true, message: "Referral berhasil dihapus" });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error deleting referral";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  // /api/settings
+  // ==========================================
+  // /api/settings (GET is Public; MUTATIONS ARE ADMIN ONLY)
+  // ==========================================
   if (url.pathname === "/api/settings") {
     if (request.method === "GET") {
       try {
@@ -1291,16 +1412,17 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         for (const row of rows) {
           settingsMap[row.key] = row.value;
         }
-        return new Response(JSON.stringify({ success: true, settings: settingsMap }), {
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: true, settings: settingsMap });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching settings";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
+    }
+
+    // Changing system settings requires Admin Role
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
     }
 
     if (request.method === "POST" || request.method === "PUT") {
@@ -1308,16 +1430,17 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const body = (await request.json()) as Record<string, string>;
         for (const [key, value] of Object.entries(body)) {
           if (typeof key === "string" && typeof value === "string") {
-            const existing = await query("SELECT key FROM settings WHERE key = $1", [key]);
+            const cleanKey = sanitizeText(key);
+            const existing = await query("SELECT key FROM settings WHERE key = $1", [cleanKey]);
             if (existing.length > 0) {
               await query(
                 "UPDATE settings SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2",
-                [value, key],
+                [value, cleanKey],
               );
             } else {
               await query(
                 "INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP)",
-                [key, value],
+                [cleanKey, value],
               );
             }
           }
@@ -1329,28 +1452,17 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           settingsMap[row.key] = row.value;
         }
 
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: "Pengaturan berhasil disimpan",
-            settings: settingsMap,
-          }),
-          {
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return jsonResponse({
+          success: true,
+          message: "Pengaturan berhasil disimpan dengan aman",
+          settings: settingsMap,
+        });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error saving settings";
-        return new Response(JSON.stringify({ success: false, message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ success: false, message }, 500);
       }
     }
   }
 
-  return new Response(JSON.stringify({ error: "Endpoint not found" }), {
-    status: 404,
-    headers: { "Content-Type": "application/json" },
-  });
+  return jsonResponse({ error: "Endpoint not found" }, 404);
 }

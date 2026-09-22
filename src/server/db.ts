@@ -29,11 +29,12 @@ export type DbTransaction = {
   user_id: number;
   user_name: string;
   account_number: string;
-  type: "Top Up" | "Withdraw";
+  type: "Top Up" | "Withdraw" | "Profit";
   channel: string;
   destination: string;
   amount: number;
   status: "Menunggu" | "Berhasil" | "Ditolak";
+  proof_image?: string | null;
   created_at: string;
 };
 
@@ -184,7 +185,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       phone VARCHAR(50),
       role VARCHAR(50) NOT NULL DEFAULT 'user',
       account_number VARCHAR(50) NOT NULL,
-      balance NUMERIC(15, 2) NOT NULL DEFAULT 10000.00,
+      balance NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
       profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
       account_type VARCHAR(50) NOT NULL DEFAULT 'Standard Live',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -204,6 +205,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       destination VARCHAR(100) NOT NULL,
       amount NUMERIC(15, 2) NOT NULL,
       status VARCHAR(50) NOT NULL DEFAULT 'Menunggu',
+      proof_image TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -318,9 +320,9 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       if (Array.isArray(saved.transactions) && saved.transactions.length > 0) {
         for (const t of saved.transactions) {
           await pool.query(
-            `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
+            `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status, proof_image, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, proof_image = COALESCE(EXCLUDED.proof_image, transactions.proof_image)`,
             [
               t.id,
               t.user_id,
@@ -331,6 +333,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
               t.destination,
               t.amount,
               t.status,
+              t.proof_image || null,
               t.created_at || new Date().toISOString(),
             ],
           );
@@ -429,10 +432,35 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
 
   // Migrate any previous mifx.com accounts to gotrade.com
   try {
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS proof_image TEXT`);
     await pool.query(`UPDATE users SET email = 'user@gotrade.com' WHERE email = 'user@mifx.com'`);
     await pool.query(`UPDATE users SET email = 'admin@gotrade.com' WHERE email = 'admin@mifx.com'`);
-  } catch {
-    // Ignore if already migrated
+    // Fix existing registered accounts that were mistakenly initialized with 10000 balance
+    await pool.query(
+      `UPDATE users SET balance = 0.00 WHERE role = 'user' AND email != 'user@gotrade.com' AND balance = 10000.00`,
+    );
+    // Reset seed user if corrupted with 510000
+    await pool.query(
+      `UPDATE users SET balance = 10000.00 WHERE email = 'user@gotrade.com' AND balance = 510000.00`,
+    );
+    // Fix any testing or live accounts that got inflated because of IDR top up without conversion to USD
+    const inflatedRes = await pool.query<{
+      id: number;
+      email: string;
+      balance: number;
+      profit: number;
+    }>(`SELECT id, email, balance, profit FROM users WHERE role = 'user' AND balance >= 50000.00`);
+    for (const u of inflatedRes.rows) {
+      const currentTotal = Number(u.balance);
+      const currentProfit = Number(u.profit) || 0;
+      const depositPart = currentTotal - currentProfit;
+      const normalizedDeposit =
+        depositPart >= 50000 ? Math.round((depositPart / 16000) * 100) / 100 : depositPart;
+      const newBalance = normalizedDeposit + currentProfit;
+      await pool.query(`UPDATE users SET balance = $1 WHERE id = $2`, [newBalance, u.id]);
+    }
+  } catch (err) {
+    console.warn("[PostgreSQL] Migration note:", err);
   }
 
   // Seed default accounts if not existing

@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { AppLogo } from "@/components/AppLogo";
 
 export const Route = createFileRoute("/register")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    ref: typeof search["ref"] === "string" ? (search["ref"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Buka Akun Gotrade — Daftar Sekarang" },
@@ -34,10 +37,10 @@ const passwordRules = [
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [referralCode, setReferralCode] = useState(search.ref || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -78,7 +81,6 @@ function RegisterPage() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          phone: phone.trim() ? `+62 ${phone.trim()}` : "",
           password,
         }),
       });
@@ -154,26 +156,6 @@ function RegisterPage() {
               placeholder="Masukkan email Anda"
               className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
             />
-          </Field>
-
-          {/* Nomor Handphone */}
-          <Field label="Nomor Handphone">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="flex h-12 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 text-sm font-medium text-foreground"
-              >
-                +62
-                <ChevronDownIcon />
-              </button>
-              <Input
-                inputMode="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="8xx-xxxx-xxxx"
-                className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
-              />
-            </div>
           </Field>
 
           {/* Kode Referral */}
@@ -305,20 +287,6 @@ function PasswordInput({
         {show ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
       </button>
     </div>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4 text-muted-foreground" fill="none">
-      <path
-        d="M4 6l4 4 4-4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

@@ -37,7 +37,7 @@ function formatRupiah(value: number) {
 }
 
 function WithdrawPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [destination, setDestination] = useState("");
@@ -46,7 +46,7 @@ function WithdrawPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const availableBalanceRupiah = (user?.balance ?? 10000) * 16000;
+  const availableBalanceRupiah = (user?.balance ?? 0) * 16000;
   const numericAmount = Number(amount.replace(/\D/g, ""));
 
   const validate = () => {
@@ -69,9 +69,12 @@ function WithdrawPage() {
 
     setIsSubmitting(true);
     try {
-      await fetch("/api/transactions", {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/transactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        credentials: "include",
         body: JSON.stringify({
           userId: user?.id,
           userName: accountName.trim() || user?.name || "Trader",
@@ -82,12 +85,17 @@ function WithdrawPage() {
           amount: numericAmount,
         }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "Gagal mengajukan penarikan");
+        return;
+      }
       toast.success("Permintaan penarikan berhasil dikirim!");
+      setSubmitted(true);
     } catch {
-      // Continue
+      toast.error("Terjadi kesalahan jaringan saat mengajukan penarikan.");
     } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
     }
   };
 
@@ -258,7 +266,7 @@ function WithdrawPage() {
           </div>
 
           {/* Ringkasan */}
-          {numericAmount >= 50000 && numericAmount <= AVAILABLE_BALANCE && (
+          {numericAmount >= 50000 && numericAmount <= availableBalanceRupiah && (
             <div className="rounded-lg bg-muted p-3 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Jumlah Penarikan</span>
@@ -268,9 +276,22 @@ function WithdrawPage() {
                 <span className="text-muted-foreground">Biaya Admin</span>
                 <span className="font-semibold text-primary">Gratis</span>
               </div>
-              <div className="mt-2 flex justify-between border-t pt-2">
-                <span className="font-medium text-foreground">Dana Diterima</span>
-                <span className="font-bold text-foreground">{formatRupiah(numericAmount)}</span>
+              <div className="mt-2 flex items-center justify-between border-t pt-2">
+                <div>
+                  <span className="font-medium text-foreground">Dana Diterima</span>
+                  <p className="text-[10px] text-muted-foreground">Kurs 1 USD = Rp 16.000</p>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-foreground">{formatRupiah(numericAmount)}</span>
+                  <p className="text-[10px] text-muted-foreground">
+                    setara $
+                    {(numericAmount / 16000).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    USD
+                  </p>
+                </div>
               </div>
             </div>
           )}

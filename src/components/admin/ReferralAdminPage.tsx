@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Gift, Pencil, Plus, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
+import { secureFetch } from "@/lib/api-client";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +143,7 @@ export function ReferralAdminPage() {
 
   const fetchReferrals = async () => {
     try {
-      const res = await fetch("/api/referrals");
+      const res = await secureFetch("/api/referrals");
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.referrals)) {
         type ApiRef = {
@@ -210,7 +211,7 @@ export function ReferralAdminPage() {
     setLoading(true);
     try {
       if (editingId === null) {
-        const res = await fetch("/api/referrals", {
+        const res = await secureFetch("/api/referrals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -230,7 +231,7 @@ export function ReferralAdminPage() {
           toast.error(data.message || "Gagal membuat referral");
         }
       } else {
-        const res = await fetch("/api/referrals", {
+        const res = await secureFetch("/api/referrals", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -263,7 +264,7 @@ export function ReferralAdminPage() {
     if (!deletingId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/referrals?id=${deletingId}`, {
+      const res = await secureFetch(`/api/referrals?id=${deletingId}`, {
         method: "DELETE",
       });
       const data = await res.json();

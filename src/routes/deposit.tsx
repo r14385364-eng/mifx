@@ -5,12 +5,18 @@ import {
   ChevronDown,
   Copy,
   Download,
+  Eye,
+  FileCheck2,
+  Image as ImageIcon,
   Info,
   QrCode,
   ShieldCheck,
+  Trash2,
+  UploadCloud,
+  X,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -55,12 +61,67 @@ function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
-    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
+function processImageFile(file: File): Promise<{ base64: string; sizeFormatted: string }> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File harus berupa format gambar (JPG, PNG, WEBP, JPEG)"));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      reject(new Error("Ukuran file maksimal 10MB"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Gagal memproses gambar"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.82);
+
+        const approxBytes = Math.round((compressedBase64.length * 3) / 4);
+        const sizeFormatted =
+          approxBytes > 1024 * 1024
+            ? `${(approxBytes / (1024 * 1024)).toFixed(1)} MB`
+            : `${Math.round(approxBytes / 1024)} KB`;
+
+        resolve({ base64: compressedBase64, sizeFormatted });
+      };
+      img.onerror = () => reject(new Error("Gagal membaca file gambar"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function DepositPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [source, setSource] = useState("");
@@ -68,6 +129,15 @@ function DepositPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Bukti Transfer state
+  const [proofImage, setProofImage] = useState<string>("");
+  const [proofFileName, setProofFileName] = useState<string>("");
+  const [proofFileSize, setProofFileSize] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [showProofPreview, setShowProofPreview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic QRIS from Admin Settings
   const [qrisImage, setQrisImage] = useState<string>("");
@@ -93,6 +163,41 @@ function DepositPage() {
     void loadQrisSettings();
   }, []);
 
+  const handleFileSelect = async (file: File) => {
+    setIsProcessingImage(true);
+    try {
+      const { base64, sizeFormatted } = await processImageFile(file);
+      setProofImage(base64);
+      setProofFileName(file.name);
+      setProofFileSize(sizeFormatted);
+      toast.success("Bukti transfer berhasil dimuat!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal memproses file";
+      toast.error(msg);
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      void handleFileSelect(file);
+    }
+  };
+
+  const removeProofImage = () => {
+    setProofImage("");
+    setProofFileName("");
+    setProofFileSize("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.info("Bukti transfer dihapus");
+  };
+
   const numericAmount = Number(amount.replace(/\D/g, ""));
   const sourceLabel = paymentSources.find((p) => p.id === source)?.label ?? "-";
 
@@ -115,9 +220,12 @@ function DepositPage() {
 
     setIsSubmitting(true);
     try {
-      await fetch("/api/transactions", {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/transactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        credentials: "include",
         body: JSON.stringify({
           userId: user?.id,
           userName: accountName.trim() || user?.name || "Trader",
@@ -126,14 +234,20 @@ function DepositPage() {
           channel: sourceLabel,
           destination: accountNumber ? `•••• ${accountNumber.slice(-4)}` : "•••• 8421",
           amount: numericAmount,
+          proofImage: proofImage || undefined,
         }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "Gagal mengajukan deposit");
+        return;
+      }
       toast.success("Deposit berhasil diajukan!");
+      setSubmitted(true);
     } catch {
-      // Continue anyway
+      toast.error("Terjadi kesalahan jaringan saat mengajukan deposit.");
     } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
     }
   };
 
@@ -191,6 +305,25 @@ function DepositPage() {
             dari {sourceLabel} a.n. {accountName} sedang kami verifikasi. Saldo akan masuk ke akun
             Anda setelah pembayaran terkonfirmasi.
           </p>
+
+          {proofImage && (
+            <div className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-xs">
+              <img
+                src={proofImage}
+                alt="Bukti Transfer"
+                className="h-12 w-12 rounded-lg border object-cover"
+              />
+              <div className="min-w-0 flex-1 text-xs">
+                <p className="flex items-center gap-1 font-semibold text-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Bukti transfer terlampir
+                </p>
+                <p className="truncate text-muted-foreground">{proofFileName || "Resi Transfer"}</p>
+                <p className="text-[10px] text-muted-foreground">Ukuran: {proofFileSize}</p>
+              </div>
+            </div>
+          )}
+
           <Link
             to="/beranda"
             className="mt-2 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground"
@@ -411,6 +544,123 @@ function DepositPage() {
             )}
           </div>
 
+          {/* Upload Bukti Transfer */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <UploadCloud className="h-4 w-4 text-primary" />
+                Bukti Transfer / Pembayaran
+              </label>
+              <span className="text-[11px] text-muted-foreground">Disarankan</span>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFileSelect(file);
+              }}
+            />
+
+            {!proofImage ? (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`group cursor-pointer rounded-xl border-2 border-dashed p-4 text-center transition-all ${
+                  isDragging
+                    ? "border-primary bg-primary/10 shadow-xs"
+                    : "border-border bg-background hover:border-primary/60 hover:bg-muted/50"
+                }`}
+              >
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
+                  <UploadCloud className="h-5 w-5" />
+                </div>
+                <p className="mt-2.5 text-xs font-semibold text-foreground">
+                  {isProcessingImage
+                    ? "Sedang memproses gambar..."
+                    : "Tarik & lepas bukti transfer ke sini"}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  atau{" "}
+                  <span className="font-semibold text-primary underline underline-offset-2">
+                    pilih file gambar
+                  </span>{" "}
+                  dari perangkat
+                </p>
+                <div className="mt-2.5 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-medium">PNG, JPG, WEBP</span>
+                  <span>Maks. 10MB</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border bg-muted/30 p-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div
+                    onClick={() => setShowProofPreview(true)}
+                    className="group relative h-14 w-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border bg-background"
+                  >
+                    <img
+                      src={proofImage}
+                      alt="Pratinjau Bukti Transfer"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Eye className="h-4 w-4 text-white" />
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <FileCheck2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span className="truncate">{proofFileName || "bukti-transfer.jpg"}</span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Ukuran: {proofFileSize} • Siap dikirim
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowProofPreview(true)}
+                        className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        <Eye className="h-3 w-3" />
+                        Lihat Bukti
+                      </button>
+                      <span className="text-muted-foreground/40">•</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[11px] font-medium text-foreground hover:text-primary"
+                      >
+                        Ganti
+                      </button>
+                      <span className="text-muted-foreground/40">•</span>
+                      <button
+                        type="button"
+                        onClick={removeProofImage}
+                        className="flex items-center gap-0.5 text-[11px] font-medium text-destructive hover:underline"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Ringkasan */}
           {numericAmount >= 10000 && (
             <div className="rounded-lg bg-muted p-3 text-xs">
@@ -422,9 +672,24 @@ function DepositPage() {
                 <span className="text-muted-foreground">Biaya Admin</span>
                 <span className="font-semibold text-primary">Gratis</span>
               </div>
-              <div className="mt-2 flex justify-between border-t pt-2">
-                <span className="font-medium text-foreground">Total Diterima</span>
-                <span className="font-bold text-foreground">{formatRupiah(numericAmount)}</span>
+              <div className="mt-2 flex items-center justify-between border-t pt-2">
+                <div>
+                  <span className="font-medium text-foreground">Saldo Masuk ke Akun</span>
+                  <p className="text-[10px] text-muted-foreground">Kurs 1 USD = Rp 16.000</p>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-foreground">
+                    $
+                    {(numericAmount / 16000).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    USD
+                  </span>
+                  <p className="text-[10px] text-muted-foreground">
+                    ({formatRupiah(numericAmount)})
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -437,6 +702,56 @@ function DepositPage() {
           </button>
         </form>
       </main>
+
+      {/* Modal Pratinjau Bukti Transfer Penuh */}
+      {showProofPreview && proofImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 animate-in fade-in"
+          onClick={() => setShowProofPreview(false)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-md overflow-hidden rounded-2xl bg-card p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Pratinjau Bukti Transfer</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProofPreview(false)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-3 flex max-h-[60vh] items-center justify-center overflow-hidden rounded-xl border bg-black/5 dark:bg-black/40">
+              <img
+                src={proofImage}
+                alt="Bukti Transfer Penuh"
+                className="max-h-[60vh] w-full object-contain"
+              />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <span className="truncate">{proofFileName}</span>
+              <span>{proofFileSize}</span>
+            </div>
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowProofPreview(false)}
+                className="w-full rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground"
+              >
+                Tutup Pratinjau
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav active="Beranda" />
     </div>

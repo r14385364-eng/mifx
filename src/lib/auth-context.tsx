@@ -62,23 +62,65 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
-// In-memory session state (no localStorage)
+// Persistent and in-memory session state fallback
 let memoryToken: string | null = null;
 let memoryUser: AuthUser | null = null;
+
+function getInitialToken(): string | null {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      return localStorage.getItem("gotrade_token") || memoryToken;
+    }
+  } catch {
+    // storage not available
+  }
+  return memoryToken;
+}
+
+function getInitialUser(): AuthUser | null {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      const raw = localStorage.getItem("gotrade_user");
+      if (raw) return JSON.parse(raw) as AuthUser;
+    }
+  } catch {
+    // storage not available
+  }
+  return memoryUser;
+}
+
+function persistAuth(token: string | null, user: AuthUser | null) {
+  memoryToken = token;
+  memoryUser = user;
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      if (token && user) {
+        localStorage.setItem("gotrade_token", token);
+        localStorage.setItem("gotrade_user", JSON.stringify(user));
+      } else {
+        localStorage.removeItem("gotrade_token");
+        localStorage.removeItem("gotrade_user");
+      }
+    }
+  } catch {
+    // storage not available
+  }
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(memoryUser);
-  const [token, setToken] = useState<string | null>(memoryToken);
+  const [user, setUser] = useState<AuthUser | null>(() => getInitialUser());
+  const [token, setToken] = useState<string | null>(() => getInitialToken());
   const [isLoading, setIsLoading] = useState(true);
   const [demoAccounts] = useState<DemoAccount[]>(DEFAULT_DEMO_ACCOUNTS);
 
   const fetchProfile = useCallback(async (authToken?: string | null) => {
+    const activeToken = authToken ?? getInitialToken();
     try {
       const headers: Record<string, string> = {};
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+      if (activeToken) {
+        headers["Authorization"] = `Bearer ${activeToken}`;
       }
       const res = await fetch("/api/auth/me", {
         headers,
@@ -87,34 +129,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.user) {
-          memoryUser = data.user;
+          persistAuth(activeToken, data.user);
           setUser(data.user);
-          if (authToken) {
-            memoryToken = authToken;
-            setToken(authToken);
+          if (activeToken) {
+            setToken(activeToken);
           }
-        } else {
-          memoryToken = null;
-          memoryUser = null;
-          setToken(null);
-          setUser(null);
+          return;
         }
-      } else {
-        memoryToken = null;
-        memoryUser = null;
-        setToken(null);
-        setUser(null);
       }
-    } catch (err) {
-      console.error("[Auth] Failed to fetch profile:", err);
+      // If 401 or invalid session
+      persistAuth(null, null);
+      setToken(null);
+      setUser(null);
+    } catch {
+      // Graceful fallback during server booting, network disconnect, or unauthenticated initial state.
+      // Avoids noisy console.error that flags normal unauthenticated states as fatal app errors.
+      const stored = getInitialUser();
+      if (activeToken && stored) {
+        setUser(stored);
+        setToken(activeToken);
+      } else {
+        setUser(null);
+        setToken(null);
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void fetchProfile(token);
-  }, [fetchProfile, token]);
+    const initialToken = getInitialToken();
+    void fetchProfile(initialToken);
+  }, [fetchProfile]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -127,8 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        memoryToken = data.token;
-        memoryUser = data.user;
+        persistAuth(data.token, data.user);
         setToken(data.token);
         setUser(data.user);
         setIsLoading(false);
@@ -149,23 +194,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    const activeToken = token ?? getInitialToken();
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : {},
         credentials: "include",
       });
-    } catch (e) {
-      // ignore logout error
+    } catch {
+      // ignore logout network error
+    } finally {
+      persistAuth(null, null);
+      setToken(null);
+      setUser(null);
     }
-    memoryToken = null;
-    memoryUser = null;
-    setToken(null);
-    setUser(null);
   };
 
   const refreshProfile = async () => {
-    await fetchProfile(token);
+    const activeToken = token ?? getInitialToken();
+    await fetchProfile(activeToken);
   };
 
   return (

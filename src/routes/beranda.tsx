@@ -100,7 +100,7 @@ function Logo() {
 
 function AccountCard() {
   const { user } = useAuth();
-  const rawBalance = user?.balance != null ? user.balance : 10000;
+  const rawBalance = user?.balance != null ? user.balance : 0;
   const formattedBalance = `$${rawBalance.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

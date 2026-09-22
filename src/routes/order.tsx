@@ -62,7 +62,10 @@ const quickMenus = [
 
 function OrderPage() {
   const { user } = useAuth();
-  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const balance =
+    user?.balance != null
+      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "$0.00";
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">

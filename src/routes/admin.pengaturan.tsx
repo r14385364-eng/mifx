@@ -8,14 +8,12 @@ export const Route = createFileRoute("/admin/pengaturan")({
       { title: "Pengaturan — Gotrade Admin" },
       {
         name: "description",
-        content:
-          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi Gotrade.",
+        content: "Kelola konfigurasi platform dan upload gambar QRIS deposit Gotrade.",
       },
       { property: "og:title", content: "Pengaturan — Gotrade Admin" },
       {
         property: "og:description",
-        content:
-          "Kelola konfigurasi platform, upload gambar QRIS deposit, dan batas transaksi Gotrade.",
+        content: "Kelola konfigurasi platform dan upload gambar QRIS deposit Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

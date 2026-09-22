@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy, Gift, Share2, UserPlus, Users, Wallet } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/referral")({
   head: () => ({
@@ -64,7 +66,14 @@ function formatDate(iso: string) {
 }
 
 function ReferralPage() {
+  const { user } = useAuth();
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+
+  const activeReferralCode = user?.accountNumber ? `REF-${user.accountNumber}` : "GOTRADE-VIP";
+  const activeReferralLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/register?ref=${activeReferralCode}`
+      : `https://gotrade.app/register?ref=${activeReferralCode}`;
 
   const totalCommission = invitedFriends.reduce((sum, f) => sum + f.commission, 0);
   const activeFriends = invitedFriends.filter((f) => f.status === "Aktif").length;
@@ -73,6 +82,7 @@ function ReferralPage() {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(key);
+      toast.success(key === "code" ? "Kode referral disalin!" : "Tautan referral disalin!");
       setTimeout(() => setCopied(null), 2000);
     } catch {
       setCopied(null);
@@ -113,8 +123,12 @@ function ReferralPage() {
                 Kode referral kamu
               </p>
               <div className="mt-1 flex items-center justify-between gap-3">
-                <span className="text-xl font-extrabold tracking-wider">{referralCode}</span>
-                <Button size="sm" variant="secondary" onClick={() => copy(referralCode, "code")}>
+                <span className="text-xl font-extrabold tracking-wider">{activeReferralCode}</span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => copy(activeReferralCode, "code")}
+                >
                   {copied === "code" ? <Check className="size-4" /> : <Copy className="size-4" />}
                   {copied === "code" ? "Tersalin" : "Salin"}
                 </Button>
@@ -122,14 +136,14 @@ function ReferralPage() {
             </div>
 
             <div className="flex gap-2">
-              <Button className="flex-1" onClick={() => copy(referralLink, "link")}>
+              <Button className="flex-1" onClick={() => copy(activeReferralLink, "link")}>
                 {copied === "link" ? <Check className="size-4" /> : <Copy className="size-4" />}
                 Salin tautan
               </Button>
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => copy(referralLink, "link")}
+                onClick={() => copy(activeReferralLink, "link")}
               >
                 <Share2 className="size-4" />
                 Bagikan

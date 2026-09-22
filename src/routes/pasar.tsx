@@ -517,7 +517,10 @@ function PasarPage() {
   const [showSearch, setShowSearch] = useState(false);
 
   const { user } = useAuth();
-  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const balance =
+    user?.balance != null
+      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "$0.00";
   const quotes = useQuotes();
 
   // Reset pagination when switching tabs or search query

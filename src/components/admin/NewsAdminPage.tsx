@@ -1,6 +1,7 @@
 import { ImagePlus, Newspaper, Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { secureFetch } from "@/lib/api-client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export function NewsAdminPage() {
 
   const fetchNews = async () => {
     try {
-      const res = await fetch("/api/news");
+      const res = await secureFetch("/api/news");
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.news) && data.news.length > 0) {
         type DbNewsItem = {
@@ -201,7 +202,7 @@ export function NewsAdminPage() {
         };
         setArticles((current) => [newArt, ...current]);
 
-        fetch("/api/news", {
+        secureFetch("/api/news", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -232,7 +233,7 @@ export function NewsAdminPage() {
           ),
         );
 
-        fetch("/api/news", {
+        secureFetch("/api/news", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -261,7 +262,7 @@ export function NewsAdminPage() {
     setArticles((current) => current.filter((article) => article.id !== targetId));
 
     try {
-      await fetch(`/api/news?id=${targetId}`, { method: "DELETE" });
+      await secureFetch(`/api/news?id=${targetId}`, { method: "DELETE" });
       toast.success("Berita berhasil dihapus");
     } catch {
       toast.success("Berita dihapus dari tampilan");

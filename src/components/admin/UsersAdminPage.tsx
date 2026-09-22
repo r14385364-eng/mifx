@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Plus, Search, Trash2, UserCheck, Users, Wallet, UserX } from "lucide-react";
 import { toast } from "sonner";
+import { secureFetch } from "@/lib/api-client";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -85,12 +86,21 @@ const initialUsers: ManagedUser[] = [
   },
 ];
 
-function formatRupiah(value: number) {
+function formatUSD(val: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(val);
+}
+
+function formatRupiah(valUSD: number) {
+  const rupiah = valUSD * 16000;
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(rupiah);
 }
 
 function formatDate(iso: string) {
@@ -130,7 +140,7 @@ const emptyForm: UserFormState = {
   email: "",
   password: "user123",
   phone: "0812-3456-7890",
-  balance: 10000,
+  balance: 0,
   accountType: "MT5",
   role: "user",
   status: "aktif",
@@ -151,7 +161,7 @@ export function UsersAdminPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/users");
+      const res = await secureFetch("/api/users");
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.users)) {
         type ApiUser = {
@@ -172,7 +182,7 @@ export function UsersAdminPage() {
           phone: u.phone || "0812-xxxx-xxxx",
           registeredAt: u.created_at ? u.created_at.split("T")[0] : "2026-03-01",
           status: "aktif",
-          balance: Number(u.balance) || 10000,
+          balance: u.balance !== undefined && u.balance !== null ? Number(u.balance) : 0,
           accountType: u.account_type || "MT5",
           role: u.role === "admin" ? "admin" : "user",
         }));
@@ -219,7 +229,7 @@ export function UsersAdminPage() {
     try {
       if (editingId === null) {
         // Create user
-        const res = await fetch("/api/users", {
+        const res = await secureFetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -242,7 +252,7 @@ export function UsersAdminPage() {
         }
       } else {
         // Edit user
-        const res = await fetch("/api/users", {
+        const res = await secureFetch("/api/users", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -275,7 +285,7 @@ export function UsersAdminPage() {
     if (!deletingId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/users?id=${deletingId}`, {
+      const res = await secureFetch(`/api/users?id=${deletingId}`, {
         method: "DELETE",
       });
       const data = await res.json();
@@ -345,8 +355,10 @@ export function UsersAdminPage() {
             <Wallet className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatRupiah(totalBalance)}</p>
-            <p className="text-xs text-muted-foreground">Akumulasi saldo seluruh user</p>
+            <p className="text-2xl font-bold">{formatUSD(totalBalance)}</p>
+            <p className="text-xs text-muted-foreground">
+              ≈ {formatRupiah(totalBalance)} (Kurs 1 USD = Rp 16.000)
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -445,7 +457,10 @@ export function UsersAdminPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-sm font-semibold tabular-nums">
-                      {formatRupiah(user.balance)}
+                      <div>{formatUSD(user.balance)}</div>
+                      <div className="text-[11px] font-normal text-muted-foreground">
+                        ≈ {formatRupiah(user.balance)}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -504,9 +519,12 @@ export function UsersAdminPage() {
               </div>
 
               <div className="rounded-lg border bg-primary/5 p-4 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Saldo Akun</p>
+                <p className="text-xs font-medium text-muted-foreground">Saldo Akun (Trading)</p>
                 <p className="mt-1 text-2xl font-extrabold tabular-nums text-primary">
-                  {formatRupiah(selectedUser.balance)}
+                  {formatUSD(selectedUser.balance)}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground font-medium">
+                  ≈ {formatRupiah(selectedUser.balance)}
                 </p>
               </div>
 

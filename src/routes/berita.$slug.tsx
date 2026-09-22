@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Share2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { getArticleBySlug, newsArticles } from "@/lib/news-data";
 
@@ -38,7 +39,7 @@ function BeritaDetailPage() {
   const related = newsArticles.filter((a) => a.slug !== article.slug).slice(0, 3);
 
   const share = async () => {
-    const url = window.location.href;
+    const url = typeof window !== "undefined" ? window.location.href : "";
     if (navigator.share) {
       try {
         await navigator.share({ title: article.title, text: article.excerpt, url });
@@ -48,8 +49,10 @@ function BeritaDetailPage() {
       }
     }
     try {
-      await navigator.clipboard.writeText(url);
-      alert("Tautan berita disalin ke clipboard.");
+      if (url) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Tautan berita disalin ke clipboard.");
+      }
     } catch {
       /* clipboard tidak tersedia */
     }
