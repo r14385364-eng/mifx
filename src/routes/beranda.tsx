@@ -3,7 +3,7 @@ import {
   ArrowDownToLine,
   Bell,
   ChevronDown,
-  Gift,
+  History,
   Users,
   Info,
   LineChart,
@@ -50,7 +50,7 @@ const shortcuts: ShortcutItem[] = [
   { label: "Trending", icon: LineChart },
   { label: "Referral", icon: Users, to: "/referral" },
   { label: "Berita", icon: Newspaper, to: "/berita" },
-  { label: "Rewards", icon: Gift },
+  { label: "Riwayat", icon: History, to: "/riwayat" },
 ];
 
 const promos = [
@@ -100,20 +100,54 @@ function Logo() {
 
 function AccountCard() {
   const { user } = useAuth();
-  const balance = user?.balance != null ? `$${user.balance.toLocaleString()}` : "$10,000.00";
+  const rawBalance = user?.balance != null ? user.balance : 10000;
+  const formattedBalance = `$${rawBalance.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
   return (
-    <section className="rounded-xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-2xl font-bold leading-tight text-foreground">{balance}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Balance</p>
+    <section className="rounded-xl border bg-card p-4 shadow-sm space-y-3">
+      {/* Top Row: Balance & Equity */}
+      <div className="flex items-start justify-between">
+        <div className="grid grid-cols-2 gap-4 flex-1">
+          <div>
+            <p className="text-base font-bold text-foreground">{formattedBalance}</p>
+            <p className="text-xs text-muted-foreground">Balance</p>
+          </div>
+          <div>
+            <p className="text-base font-bold text-foreground">{formattedBalance}</p>
+            <p className="text-xs text-muted-foreground">Equity</p>
+          </div>
         </div>
-        {user?.role && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-            {user.role === "admin" ? "Admin" : "Live"}
-          </span>
-        )}
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0 ml-2">
+          {user?.role === "admin" ? "Admin" : "Live"}
+        </span>
+      </div>
+
+      {/* Bottom Row: Free Margin, Margin, Margin Level */}
+      <div className="grid grid-cols-3 gap-2 border-t pt-2.5 text-xs">
+        <div>
+          <p className="font-bold text-foreground">{formattedBalance}</p>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+            <span>Free Margin</span>
+            <Info className="h-3 w-3 text-muted-foreground" />
+          </div>
+        </div>
+        <div>
+          <p className="font-bold text-foreground">$0.00</p>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+            <span>Margin</span>
+            <Info className="h-3 w-3 text-muted-foreground" />
+          </div>
+        </div>
+        <div>
+          <p className="font-bold text-foreground">0.00%</p>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+            <span>Margin Level</span>
+            <Info className="h-3 w-3 text-muted-foreground" />
+          </div>
+        </div>
       </div>
     </section>
   );

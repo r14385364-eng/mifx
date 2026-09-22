@@ -74,7 +74,7 @@ const timeframeConfig: Record<
 
 function Chart({ candles, decimals }: { candles: Candle[]; decimals: number }) {
   const width = 360;
-  const height = 300;
+  const height = 440;
   const padRight = 46;
   const plotWidth = width - padRight;
 
@@ -91,12 +91,12 @@ function Chart({ candles, decimals }: { candles: Candle[]; decimals: number }) {
   const step = plotWidth / Math.max(candles.length, 1);
   const bodyWidth = Math.max(step * 0.6, 1.5);
   const last = candles[candles.length - 1]!;
-  const gridValues = Array.from({ length: 6 }, (_, i) => min + ((max - min) / 5) * i);
+  const gridValues = Array.from({ length: 8 }, (_, i) => min + ((max - min) / 7) * i);
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="h-[300px] w-full"
+      className="h-[440px] w-full"
       role="img"
       aria-label="Grafik harga simulasi"
     >
@@ -283,24 +283,6 @@ function TradePage() {
           </div>
         )}
       </main>
-
-      <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
-        <div className="flex gap-1">
-          {timeframes.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setTimeframe(item)}
-              className={`rounded-md border px-2 py-1 text-[11px] font-medium ${
-                timeframe === item ? "border-primary text-primary" : "text-muted-foreground"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        <span className="text-[10px] text-muted-foreground">Timeframe: {timeframe}</span>
-      </div>
 
       <BottomNav active="Trade" />
     </div>

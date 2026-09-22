@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowDownToLine, Bell, ChevronRight, Users, Wallet } from "lucide-react";
+import { ArrowDownToLine, Bell, ChevronRight, History, Wallet } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { useAuth } from "@/lib/auth-context";
@@ -11,13 +11,13 @@ export const Route = createFileRoute("/order")({
       {
         name: "description",
         content:
-          "Akses menu Top up, Withdraw, dan Referral akun Gotrade Anda secara cepat dan aman.",
+          "Akses menu Top up, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
       },
       { property: "og:title", content: "Menu Transaksi — Gotrade" },
       {
         property: "og:description",
         content:
-          "Akses menu Top up, Withdraw, dan Referral akun Gotrade Anda secara cepat dan aman.",
+          "Akses menu Top up, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -48,14 +48,14 @@ const quickMenus = [
       "Tarik saldo trading atau keuntungan Anda langsung ke rekening bank atau e-wallet dengan aman.",
   },
   {
-    title: "Referral",
-    to: "/referral",
-    icon: Users,
-    iconColor: "text-amber-600 bg-amber-500/10",
-    buttonColor: "bg-amber-600 text-white",
-    buttonText: "Buka Menu Referral",
+    title: "Riwayat",
+    to: "/riwayat",
+    icon: History,
+    iconColor: "text-purple-600 bg-purple-500/10",
+    buttonColor: "bg-purple-600 text-white",
+    buttonText: "Buka Riwayat Transaksi",
     description:
-      "Ajak teman dan rekan Anda trading di MIFX dan kumpulkan komisi serta reward tambahan setiap transaksi.",
+      "Lihat catatan lengkap riwayat transaksi trading, deposit, dan withdraw akun Anda.",
   },
 ];
 
@@ -97,11 +97,11 @@ function OrderPage() {
           <span>Withdraw</span>
         </Link>
         <Link
-          to="/referral"
-          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-amber-600 active:bg-muted"
+          to="/riwayat"
+          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-purple-600 active:bg-muted"
         >
-          <Users className="h-4 w-4 text-amber-500" />
-          <span>Referral</span>
+          <History className="h-4 w-4 text-purple-600" />
+          <span>Riwayat</span>
         </Link>
       </nav>
 

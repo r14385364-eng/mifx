@@ -13,7 +13,8 @@ export type ShortcutItem = {
     | "/order"
     | "/trade"
     | "/profil"
-    | "/beranda";
+    | "/beranda"
+    | "/riwayat";
 };
 
 /**
