@@ -52,8 +52,8 @@ const quickMenus = [
     title: "Riwayat",
     to: "/riwayat",
     icon: History,
-    iconColor: "text-purple-600 bg-purple-500/10",
-    buttonColor: "bg-purple-600 text-white",
+    iconColor: "text-primary bg-primary/10",
+    buttonColor: "bg-primary text-primary-foreground",
     buttonText: "Buka Riwayat Transaksi",
     description:
       "Lihat catatan lengkap riwayat transaksi trading, deposit, dan withdraw akun Anda.",
@@ -104,9 +104,9 @@ function OrderPage() {
         </Link>
         <Link
           to="/riwayat"
-          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-purple-600 active:bg-muted"
+          className="flex items-center justify-center gap-1.5 py-3 font-semibold text-foreground transition-colors hover:bg-muted/60 hover:text-primary active:bg-muted"
         >
-          <History className="h-4 w-4 text-purple-600" />
+          <History className="h-4 w-4 text-primary" />
           <span>Riwayat</span>
         </Link>
       </nav>

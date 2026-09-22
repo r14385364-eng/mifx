@@ -1,14 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  Eye,
-  EyeOff,
-  HelpCircle,
-  ShieldCheck,
-  UserCheck,
-  CheckCircle2,
-  ArrowRight,
-} from "lucide-react";
+import { Eye, EyeOff, HelpCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -37,13 +29,12 @@ export const Route = createFileRoute("/login")({
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, demoAccounts, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedDemo, setSelectedDemo] = useState<string | null>(null);
 
   const handleLogin = async (e?: React.FormEvent, customEmail?: string, customPass?: string) => {
     if (e) e.preventDefault();
@@ -77,14 +68,6 @@ export function LoginPage() {
     }
   };
 
-  const selectAndFillDemo = (demo: (typeof demoAccounts)[0]) => {
-    setSelectedDemo(demo.role);
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setErrorMessage("");
-    void handleLogin(undefined, demo.email, demo.password);
-  };
-
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col px-6 pb-8 pt-6">
@@ -98,77 +81,8 @@ export function LoginPage() {
         </button>
 
         {/* Logo */}
-        <div className="mt-6 flex items-center justify-center">
+        <div className="my-8 flex items-center justify-center">
           <AppLogo size="lg" />
-        </div>
-
-        {/* 1-Click Accounts Section */}
-        <div className="mt-6 rounded-xl border border-border bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between pb-2.5 border-b border-border">
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Pilih Akun
-              </span>
-            </div>
-            <span className="text-[11px] text-muted-foreground font-medium">1-Click Login</span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-2.5">
-            {demoAccounts.map((demo) => {
-              const isSelected = selectedDemo === demo.role;
-              return (
-                <button
-                  key={demo.role}
-                  type="button"
-                  onClick={() => selectAndFillDemo(demo)}
-                  disabled={isLoading}
-                  className={`group relative flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
-                    isSelected
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                      : "border-border/80 bg-background hover:border-primary/50 hover:bg-muted/40"
-                  }`}
-                >
-                  <div className="flex w-full items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {demo.role === "admin" ? (
-                        <ShieldCheck className="h-4 w-4 text-purple-600" />
-                      ) : (
-                        <UserCheck className="h-4 w-4 text-emerald-600" />
-                      )}
-                      <span className="text-sm font-bold text-foreground">{demo.title}</span>
-                    </div>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${demo.badgeColor}`}
-                    >
-                      {demo.badge}
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">
-                    {demo.description}
-                  </p>
-
-                  <div className="mt-2 flex w-full items-center justify-between border-t border-border/40 pt-2 text-[11px] font-mono">
-                    <span className="text-muted-foreground">{demo.email}</span>
-                    <span className="flex items-center gap-1 font-semibold text-primary group-hover:underline">
-                      Masuk{" "}
-                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-[1px] flex-1 bg-border" />
-          <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">
-            atau login manual
-          </span>
-          <div className="h-[1px] flex-1 bg-border" />
         </div>
 
         {/* Error Alert */}
