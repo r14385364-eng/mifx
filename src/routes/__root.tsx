@@ -83,13 +83,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Gotrade: trading saham, forex, dan aset global legal dan aman di platform teregulasi.",
+          "Trading saham, forex, dan aset global legal dan aman bersama Gotrade.",
       },
       { name: "author", content: "Gotrade" },
       { property: "og:title", content: "Gotrade — Aplikasi Trading Online Resmi" },
       {
         property: "og:description",
-        content: "Trading saham, forex, dan aset global legal dan aman di platform Gotrade.",
+        content: "Trading saham, forex, dan aset global legal dan aman bersama Gotrade.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
