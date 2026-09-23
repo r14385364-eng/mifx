@@ -2,6 +2,7 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  Bell,
   CircleDollarSign,
   Coins,
   Gift,
@@ -46,6 +47,7 @@ const navigation = [
 ];
 
 const contentNavigation = [
+  { label: "Notifikasi", to: "/admin/notifikasi" as const, icon: Bell },
   { label: "Berita", to: "/admin/berita" as const, icon: Newspaper },
   { label: "Mata Uang", to: "/admin/mata-uang" as const, icon: CircleDollarSign },
   { label: "Sinyal", to: "/admin/sinyal" as const, icon: TrendingUp },
@@ -59,6 +61,7 @@ const userNavigation = [
 
 const systemNavigation = [
   { label: "Pengaturan", to: "/admin/pengaturan" as const, icon: Settings },
+  { label: "Audit Log & RBAC", to: "/admin/audit-logs" as const, icon: ShieldCheck },
 ];
 
 export function AdminLayout({

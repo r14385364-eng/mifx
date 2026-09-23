@@ -1,45 +1,6 @@
 {
   "users": [
     {
-      "name": "Trader Gotrade",
-      "email": "user@gotrade.com",
-      "password": "user123",
-      "phone": "+62 812-3456-7890",
-      "role": "user",
-      "account_number": "88910243",
-      "balance": 11500,
-      "account_type": "Standard Live",
-      "created_at": "2026-09-21T19:04:48.345Z",
-      "id": 5,
-      "profit": 0
-    },
-    {
-      "name": "User Uji Baru",
-      "email": "test_saldo_nol@example.com",
-      "password": "Password123!",
-      "phone": "08123456789",
-      "role": "user",
-      "account_number": "37131044",
-      "balance": 0,
-      "account_type": "Standard Live",
-      "created_at": "2026-09-22T05:08:35.738Z",
-      "id": 1,
-      "profit": 0
-    },
-    {
-      "name": "Trader Penguji",
-      "email": "newtrader_1790049239218@example.com",
-      "password": "Password123!",
-      "phone": "+62 81234567890",
-      "role": "user",
-      "account_number": "13899039",
-      "balance": 0,
-      "account_type": "Standard Live",
-      "created_at": "2026-09-22T03:53:59.394Z",
-      "id": 2,
-      "profit": 0
-    },
-    {
       "name": "Admin (Configured)",
       "email": "admin@mixf.com",
       "password": "password123",
@@ -49,20 +10,7 @@
       "balance": 999999,
       "account_type": "Admin Master",
       "created_at": "2026-09-21T19:04:48.345Z",
-      "id": 3,
-      "profit": 0
-    },
-    {
-      "name": "Administrator Gotrade",
-      "email": "admin@gotrade.com",
-      "password": "admin123",
-      "phone": "+62 811-9876-5432",
-      "role": "admin",
-      "account_number": "10000001",
-      "balance": 999999,
-      "account_type": "Admin Master",
-      "created_at": "2026-09-21T19:04:48.345Z",
-      "id": 4,
+      "id": 5,
       "profit": 0
     },
     {
@@ -75,24 +23,89 @@
       "balance": 0,
       "account_type": "Standard Live",
       "created_at": "2026-09-22T05:36:00.879Z",
+      "id": 1,
+      "profit": 0
+    },
+    {
+      "name": "Trader Gotrade",
+      "email": "user@gotrade.com",
+      "password": "user123",
+      "phone": "+62 812-3456-7890",
+      "role": "user",
+      "account_number": "88910243",
+      "balance": 11500,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-21T19:04:48.345Z",
+      "id": 2,
+      "profit": 0
+    },
+    {
+      "name": "User Uji Baru",
+      "email": "test_saldo_nol@example.com",
+      "password": "Password123!",
+      "phone": "08123456789",
+      "role": "user",
+      "account_number": "37131044",
+      "balance": 0,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-22T05:08:35.738Z",
+      "id": 3,
+      "profit": 0
+    },
+    {
+      "name": "Trader Penguji",
+      "email": "newtrader_1790049239218@example.com",
+      "password": "Password123!",
+      "phone": "+62 81234567890",
+      "role": "user",
+      "account_number": "13899039",
+      "balance": 0,
+      "account_type": "Standard Live",
+      "created_at": "2026-09-22T03:53:59.394Z",
+      "id": 4,
+      "profit": 0
+    },
+    {
+      "name": "Administrator Gotrade",
+      "email": "admin@gotrade.com",
+      "password": "scrypt:48dad9fad1f49d855e48fa401fa37c87:74e30f7e70f379a00941402ea65adf8685c1975bbb3bcc62ab7a1ef4c597b70d53f430aca5feaae50e5584c53577a6643552dff5d863b1d49c5b38b43c108f02",
+      "phone": "+62 811-9876-5432",
+      "role": "admin",
+      "account_number": "10000001",
+      "balance": 999999,
+      "account_type": "Admin Master",
+      "created_at": "2026-09-21T19:04:48.345Z",
       "id": 6,
       "profit": 0
+    },
+    {
+      "name": "Test Trader",
+      "email": "trader_1790126020593@test.com",
+      "password": "scrypt:6ab3ad57dfa714d19715580dce2cf623:c6b7a9d65743abfd2d8e034b2d0365d01c97c233156cb12fa6bb76870573cde5c6fe9eee38010dc2383c5e04d1bdc113e93018fa80f9a3f774e2918256ceb530",
+      "phone": "",
+      "role": "user",
+      "account_number": "68001247",
+      "balance": 0,
+      "account_type": "Standard Live",
+      "id": 13,
+      "profit": 0,
+      "created_at": "2026-09-23T01:09:13.577Z"
+    },
+    {
+      "name": "Budi Trader",
+      "email": "trader_1790126077290@gotrade-test.com",
+      "password": "scrypt:2c5cc70c15d1a2c9ce2f67dca95fed2e:b8706feb965cda6456681b2fd9a6b6e9cb6f0eedba9708478cc1991fd90b194ad39fe5735052c38f0b2ba1cc22c8871060dc579a856d8f7895a29736918b6f98",
+      "phone": "+6281234567890",
+      "role": "user",
+      "account_number": "32578432",
+      "balance": 1250,
+      "account_type": "Standard Live",
+      "id": 14,
+      "profit": 250,
+      "created_at": "2026-09-23T01:09:13.577Z"
     }
   ],
   "transactions": [
-    {
-      "id": "PRF-914284",
-      "user_id": 5,
-      "user_name": "Trader Gotrade",
-      "account_number": "88910243",
-      "type": "Profit",
-      "channel": "Admin Profit Grant",
-      "destination": "Gotrade Wallet",
-      "amount": 500,
-      "status": "Berhasil",
-      "proof_image": null,
-      "created_at": "2026-09-22T05:28:17.835Z"
-    },
     {
       "id": "TU-908833",
       "user_id": 5,
@@ -102,6 +115,19 @@
       "channel": "Bank BCA",
       "destination": "Gotrade BCA",
       "amount": 16000000,
+      "status": "Berhasil",
+      "proof_image": null,
+      "created_at": "2026-09-22T05:28:17.835Z"
+    },
+    {
+      "id": "PRF-914284",
+      "user_id": 5,
+      "user_name": "Trader Gotrade",
+      "account_number": "88910243",
+      "type": "Profit",
+      "channel": "Admin Profit Grant",
+      "destination": "Gotrade Wallet",
+      "amount": 500,
       "status": "Berhasil",
       "proof_image": null,
       "created_at": "2026-09-22T05:28:17.835Z"
@@ -118,15 +144,49 @@
       "status": "Menunggu",
       "proof_image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       "created_at": "2026-09-22T05:33:42.502Z"
+    },
+    {
+      "id": "TU-077397",
+      "user_id": 14,
+      "user_name": "Budi Trader",
+      "account_number": "32578432",
+      "type": "Top Up",
+      "channel": "BCA Virtual Account",
+      "destination": "Gotrade PT Valuta",
+      "amount": 16000000,
+      "status": "Berhasil",
+      "proof_image": null,
+      "created_at": "2026-09-23T01:09:13.582Z"
+    },
+    {
+      "id": "PRF-077449",
+      "user_id": 14,
+      "user_name": "Budi Trader",
+      "account_number": "32578432",
+      "type": "Profit",
+      "channel": "Admin Profit Grant",
+      "destination": "Gotrade Wallet",
+      "amount": 250,
+      "status": "Berhasil",
+      "proof_image": null,
+      "created_at": "2026-09-23T01:09:13.582Z"
+    },
+    {
+      "id": "WD-077467",
+      "user_id": 14,
+      "user_name": "Budi Trader",
+      "account_number": "32578432",
+      "type": "Withdraw",
+      "channel": "Bank Mandiri",
+      "destination": "1234567890 (Budi Trader)",
+      "amount": 1600000,
+      "status": "Menunggu",
+      "proof_image": null,
+      "created_at": "2026-09-23T01:09:13.582Z"
     }
   ],
   "signals": [],
   "settings": [
-    {
-      "key": "min_deposit",
-      "value": "15000",
-      "updated_at": "2026-09-21T19:04:48.610Z"
-    },
     {
       "key": "qris_payload",
       "value": "00020101021226590014ID.LINKAJA.WWW01189360091100223030310215GOTRADEINDONESIA5204581253033605802ID5914GOTRADE INDONESIA6007JAKARTA61051234062070703A016304",
@@ -138,11 +198,70 @@
       "updated_at": "2026-09-21T19:04:48.368Z"
     },
     {
+      "key": "min_deposit",
+      "value": "15000",
+      "updated_at": "2026-09-21T19:04:48.610Z"
+    },
+    {
       "key": "qris_merchant_name",
       "value": "Gotrade Indonesia Official",
       "updated_at": "2026-09-21T19:04:48.616Z"
     }
   ],
   "news": [],
-  "savedAt": "2026-09-22T05:53:12.535Z"
+  "notifications": [
+    {
+      "title": "Bonus Deposit 20% Minggu Ini untuk Semua Trader",
+      "message": "Tingkatkan ketahanan modal trading Anda! Dapatkan bonus deposit instan sebesar 20% untuk setiap top up minimal $1,000 USD via QRIS maupun Transfer Bank. Promo terbatas minggu ini.",
+      "type": "promo",
+      "target": "all",
+      "is_pinned": false,
+      "badge": "Hot Promo",
+      "author": "Marketing Gotrade",
+      "action_url": "/deposit",
+      "id": 3,
+      "created_at": "2026-09-23T01:09:13.606Z",
+      "updated_at": "2026-09-23T01:09:13.606Z"
+    },
+    {
+      "title": "Selamat Datang di Platform Gotrade!",
+      "message": "Nikmati pengalaman trading forex dan komoditas dengan spread terendah, eksekusi pasar ultra cepat tanpa requote, dan leverage fleksibel hingga 1:500. Silakan jelajahi instrumen pasar favorit Anda.",
+      "type": "info",
+      "target": "all",
+      "is_pinned": true,
+      "badge": "Pengumuman",
+      "author": "Administrator",
+      "action_url": "/trade",
+      "id": 1,
+      "created_at": "2026-09-23T01:09:13.606Z",
+      "updated_at": "2026-09-23T01:09:13.606Z"
+    },
+    {
+      "title": "Pembaruan Keamanan RBAC & HMAC-SHA256 Aktif",
+      "message": "Gotrade telah memperketat standar keamanan akun dengan enkripsi password Salted Scrypt, token sesi HMAC-SHA256 kebal pemalsuan, dan proteksi brute-force otomatis demi menjaga keamanan aset Anda.",
+      "type": "system",
+      "target": "all",
+      "is_pinned": true,
+      "badge": "Keamanan",
+      "author": "Security Team",
+      "action_url": "/beranda",
+      "id": 2,
+      "created_at": "2026-09-23T01:09:13.606Z",
+      "updated_at": "2026-09-23T01:09:13.606Z"
+    },
+    {
+      "title": "Pemberitahuan Likuiditas Pasar Menjelang Rilis Data US",
+      "message": "Harap perhatikan volatilitas tinggi dan pelebaran spread selama rilis berita ekonomi High Impact Amerika Serikat. Pastikan kecukupan margin akun Anda.",
+      "type": "alert",
+      "target": "all",
+      "is_pinned": false,
+      "badge": "Peringatan",
+      "author": "Risk Management",
+      "action_url": "/pasar",
+      "id": 4,
+      "created_at": "2026-09-23T01:09:13.606Z",
+      "updated_at": "2026-09-23T01:09:13.606Z"
+    }
+  ],
+  "savedAt": "2026-09-23T01:14:37.486Z"
 }

@@ -73,6 +73,32 @@ export type DbNews = {
   created_at: string;
 };
 
+export type DbAuditLog = {
+  id: number;
+  user_id: number | null;
+  user_email: string | null;
+  user_role: string | null;
+  action: string;
+  details: string;
+  ip_address: string;
+  status: string;
+  created_at: string;
+};
+
+export type DbNotification = {
+  id: number;
+  title: string;
+  message: string;
+  type: "info" | "promo" | "alert" | "system" | "trading" | string;
+  target: string;
+  is_pinned: boolean;
+  badge: string | null;
+  author: string;
+  action_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 let poolInstance: pg.Pool | null = null;
 let isInMemory = false;
 let initPromise: Promise<void> | null = null;
@@ -100,6 +126,10 @@ async function persistMemoryDb(pool: pg.Pool) {
     const settings = (await pool.query("SELECT * FROM settings")).rows;
     const newsRes = await pool.query("SELECT * FROM news").catch(() => ({ rows: [] }));
     const news = newsRes.rows;
+    const notificationsRes = await pool
+      .query("SELECT * FROM notifications")
+      .catch(() => ({ rows: [] }));
+    const notifications = notificationsRes.rows;
 
     const dataToSave = {
       users,
@@ -107,6 +137,7 @@ async function persistMemoryDb(pool: pg.Pool) {
       signals,
       settings,
       news,
+      notifications,
       savedAt: new Date().toISOString(),
     };
 
@@ -122,6 +153,7 @@ function loadPersistedData(): {
   signals?: DbSignal[];
   settings?: DbSetting[];
   news?: DbNews[];
+  notifications?: DbNotification[];
 } | null {
   try {
     if (fs.existsSync(STORE_FILE)) {
@@ -286,6 +318,38 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     );
   `);
 
+  // Create audit_logs table for RBAC & Security Audit Trail
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INT,
+      user_email VARCHAR(255),
+      user_role VARCHAR(50),
+      action VARCHAR(100) NOT NULL,
+      details TEXT,
+      ip_address VARCHAR(100),
+      status VARCHAR(20) DEFAULT 'SUCCESS',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create notifications table for broadcast & system announcements
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'info',
+      target VARCHAR(50) NOT NULL DEFAULT 'all',
+      is_pinned BOOLEAN NOT NULL DEFAULT false,
+      badge VARCHAR(50),
+      author VARCHAR(100) DEFAULT 'Administrator',
+      action_url VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   if (isInMemory) {
     const saved = loadPersistedData();
     if (saved) {
@@ -413,7 +477,110 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
           );
         }
       }
+
+      if (Array.isArray(saved.notifications) && saved.notifications.length > 0) {
+        for (const notif of saved.notifications) {
+          await pool.query(
+            `INSERT INTO notifications (id, title, message, type, target, is_pinned, badge, author, action_url, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             ON CONFLICT (id) DO UPDATE SET
+               title = EXCLUDED.title,
+               message = EXCLUDED.message,
+               type = EXCLUDED.type,
+               target = EXCLUDED.target,
+               is_pinned = EXCLUDED.is_pinned,
+               badge = EXCLUDED.badge,
+               author = EXCLUDED.author,
+               action_url = EXCLUDED.action_url,
+               updated_at = EXCLUDED.updated_at`,
+            [
+              notif.id,
+              notif.title,
+              notif.message,
+              notif.type,
+              notif.target,
+              notif.is_pinned,
+              notif.badge,
+              notif.author || "Administrator",
+              notif.action_url,
+              notif.created_at || new Date().toISOString(),
+              notif.updated_at || new Date().toISOString(),
+            ],
+          );
+        }
+      }
     }
+  }
+
+  // Seed default notifications if table is empty
+  const notifCount = await pool.query<{ count: string }>(
+    "SELECT COUNT(*) as count FROM notifications",
+  );
+  if (parseInt(notifCount.rows[0]?.count || "0", 10) === 0) {
+    const defaultNotifs = [
+      {
+        title: "Selamat Datang di Platform Gotrade!",
+        message:
+          "Nikmati pengalaman trading forex dan komoditas dengan spread terendah, eksekusi pasar ultra cepat tanpa requote, dan leverage fleksibel hingga 1:500. Silakan jelajahi instrumen pasar favorit Anda.",
+        type: "info",
+        target: "all",
+        is_pinned: true,
+        badge: "Pengumuman",
+        author: "Administrator",
+        action_url: "/trade",
+      },
+      {
+        title: "Pembaruan Keamanan RBAC & HMAC-SHA256 Aktif",
+        message:
+          "Gotrade telah memperketat standar keamanan akun dengan enkripsi password Salted Scrypt, token sesi HMAC-SHA256 kebal pemalsuan, dan proteksi brute-force otomatis demi menjaga keamanan aset Anda.",
+        type: "system",
+        target: "all",
+        is_pinned: true,
+        badge: "Keamanan",
+        author: "Security Team",
+        action_url: "/beranda",
+      },
+      {
+        title: "Bonus Deposit 20% Minggu Ini untuk Semua Trader",
+        message:
+          "Tingkatkan ketahanan modal trading Anda! Dapatkan bonus deposit instan sebesar 20% untuk setiap top up minimal $1,000 USD via QRIS maupun Transfer Bank. Promo terbatas minggu ini.",
+        type: "promo",
+        target: "all",
+        is_pinned: false,
+        badge: "Hot Promo",
+        author: "Marketing Gotrade",
+        action_url: "/deposit",
+      },
+      {
+        title: "Pemberitahuan Likuiditas Pasar Menjelang Rilis Data US",
+        message:
+          "Harap perhatikan volatilitas tinggi dan pelebaran spread selama rilis berita ekonomi High Impact Amerika Serikat. Pastikan kecukupan margin akun Anda.",
+        type: "alert",
+        target: "all",
+        is_pinned: false,
+        badge: "Peringatan",
+        author: "Risk Management",
+        action_url: "/pasar",
+      },
+    ];
+
+    for (const dn of defaultNotifs) {
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, target, is_pinned, badge, author, action_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          dn.title,
+          dn.message,
+          dn.type,
+          dn.target,
+          dn.is_pinned,
+          dn.badge,
+          dn.author,
+          dn.action_url,
+        ],
+      );
+    }
+    console.log("[PostgreSQL] Seeded 4 default broadcast notifications");
   }
 
   // Seed default QRIS settings if not present
@@ -483,10 +650,16 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     console.log("[PostgreSQL] Seeded Trader account: user@gotrade.com / user123");
   }
 
-  // Seed standard admin account
-  const defaultAdminCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, [
-    "admin@gotrade.com",
-  ]);
+  // Seed or update admin account from environment (.env)
+  const rawAdminEmail = process.env.ADMIN_EMAIL?.replace(/^["']|["']$/g, "").trim();
+  const rawAdminPassword = process.env.ADMIN_PASSWORD?.replace(/^["']|["']$/g, "").trim();
+  const envAdminEmail = rawAdminEmail || "admin@gotrade.com";
+  const envAdminPassword = rawAdminPassword || "password123";
+
+  // Always ensure standard admin account admin@gotrade.com exists and has current env password
+  const defaultAdminCheck = await pool.query(
+    `SELECT id FROM users WHERE LOWER(email) = 'admin@gotrade.com'`,
+  );
   if (defaultAdminCheck.rows.length === 0) {
     await pool.query(
       `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
@@ -494,7 +667,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       [
         "Administrator Gotrade",
         "admin@gotrade.com",
-        "admin123",
+        envAdminPassword,
         "+62 811-9876-5432",
         "admin",
         "10000001",
@@ -502,24 +675,26 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
         "Admin Master",
       ],
     );
-    console.log("[PostgreSQL] Seeded Administrator account: admin@gotrade.com / admin123");
+    console.log(
+      `[PostgreSQL] Seeded Administrator account: admin@gotrade.com / ${envAdminPassword}`,
+    );
+  } else {
+    // Sync password with .env config
+    await pool.query(
+      `UPDATE users SET password = $1, role = 'admin' WHERE LOWER(email) = 'admin@gotrade.com'`,
+      [envAdminPassword],
+    );
+    console.log(`[PostgreSQL] Synchronized Administrator password for admin@gotrade.com`);
   }
 
-  // Default signals omitted to start with clean state
-
-  // Seed or update custom admin account from environment (.env)
-  const envAdminEmail = process.env.ADMIN_EMAIL?.replace(/^["']|["']$/g, "").trim();
-  const envAdminPassword =
-    process.env.ADMIN_PASSWORD?.replace(/^["']|["']$/g, "").trim() || "password123";
-
+  // If a distinct ADMIN_EMAIL is configured in .env, seed/update it as well
   if (
-    envAdminEmail &&
-    envAdminEmail.length > 0 &&
-    envAdminEmail !== "admin@gotrade.com" &&
-    envAdminEmail !== "admin@mifx.com"
+    rawAdminEmail &&
+    rawAdminEmail.toLowerCase() !== "admin@gotrade.com" &&
+    rawAdminEmail.toLowerCase() !== "admin@mifx.com"
   ) {
-    const envAdminCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, [
-      envAdminEmail,
+    const envAdminCheck = await pool.query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, [
+      rawAdminEmail,
     ]);
     if (envAdminCheck.rows.length === 0) {
       await pool.query(
@@ -527,7 +702,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           "Admin (Configured)",
-          envAdminEmail,
+          rawAdminEmail,
           envAdminPassword,
           "+62 811-0000-1111",
           "admin",
@@ -536,13 +711,13 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
           "Admin Master",
         ],
       );
-      console.log(`[PostgreSQL] Seeded Configured Admin from .env: ${envAdminEmail}`);
+      console.log(`[PostgreSQL] Seeded Configured Admin from .env: ${rawAdminEmail}`);
     } else {
-      await pool.query(`UPDATE users SET password = $1, role = 'admin' WHERE email = $2`, [
-        envAdminPassword,
-        envAdminEmail,
-      ]);
-      console.log(`[PostgreSQL] Updated Configured Admin from .env: ${envAdminEmail}`);
+      await pool.query(
+        `UPDATE users SET password = $1, role = 'admin' WHERE LOWER(email) = LOWER($2)`,
+        [envAdminPassword, rawAdminEmail],
+      );
+      console.log(`[PostgreSQL] Updated Configured Admin from .env: ${rawAdminEmail}`);
     }
   }
 
@@ -562,6 +737,16 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     const maxNewsId = Number(maxNews.rows[0]?.max || 0);
     if (maxNewsId > 0) {
       await pool.query(`SELECT setval('news_id_seq', $1, true)`, [maxNewsId]);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const maxNotif = await pool.query<{ max: number }>("SELECT MAX(id) as max FROM notifications");
+    const maxNotifId = Number(maxNotif.rows[0]?.max || 0);
+    if (maxNotifId > 0) {
+      await pool.query(`SELECT setval('notifications_id_seq', $1, true)`, [maxNotifId]);
     }
   } catch {
     // ignore

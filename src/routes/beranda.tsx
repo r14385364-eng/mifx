@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   ArrowDownToLine,
   Bell,
@@ -19,6 +20,8 @@ import { usePopularInstruments } from "@/lib/popular-market";
 import { defaultSignals, useHomeSignals, type TradingSignal } from "@/lib/signals-data";
 import { useAuth } from "@/lib/auth-context";
 import { AppLogo } from "@/components/AppLogo";
+import { NotificationModal } from "@/components/NotificationModal";
+import { useNotifications } from "@/lib/notifications";
 
 export const Route = createFileRoute("/beranda")({
   head: () => ({
@@ -425,6 +428,8 @@ function NewsSection() {
 
 function BerandaPage() {
   const { user, isAdmin, isAuthenticated } = useAuth();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-muted/40">
@@ -451,10 +456,16 @@ function BerandaPage() {
           <button
             type="button"
             aria-label="Notifikasi"
-            className="relative rounded-full p-1.5 hover:bg-muted"
+            onClick={() => setIsNotifOpen(true)}
+            className="relative rounded-full p-1.5 hover:bg-muted transition-colors cursor-pointer"
           >
             <Bell className="h-5 w-5 text-foreground" />
-            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" />
+            {unreadCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -471,6 +482,9 @@ function BerandaPage() {
       </main>
 
       <BottomNav active="Beranda" />
+
+      {/* User Notification Sheet/Modal */}
+      <NotificationModal isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
     </div>
   );
 }

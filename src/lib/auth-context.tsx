@@ -53,7 +53,7 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
     role: "admin",
     title: "Akun Administrator",
     email: "admin@gotrade.com",
-    password: "admin123",
+    password: "password123",
     name: "Administrator Gotrade",
     accountNumber: "10000001",
     description: "Akses penuh Dashboard Admin, Kelola Pengguna, Sinyal & Berita",

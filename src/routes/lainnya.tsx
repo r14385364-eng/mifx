@@ -28,6 +28,8 @@ import { toast } from "sonner";
 import { BottomNav } from "@/components/BottomNav";
 import { AppLogo } from "@/components/AppLogo";
 import { useAuth } from "@/lib/auth-context";
+import { NotificationModal } from "@/components/NotificationModal";
+import { useNotifications } from "@/lib/notifications";
 
 export const Route = createFileRoute("/lainnya")({
   head: () => ({
@@ -68,6 +70,8 @@ export function LainnyaPage() {
 
   // Modals state
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const { unreadCount } = useNotifications();
   const [customBalanceInput, setCustomBalanceInput] = useState<string>("");
   const [issueSubject, setIssueSubject] = useState<string>("");
   const [issueDetail, setIssueDetail] = useState<string>("");
@@ -340,6 +344,21 @@ export function LainnyaPage() {
             >
               <Landmark className="h-5 w-5 text-gray-700" />
               <span className="flex-1 text-sm font-medium text-gray-900">Informasi Bank</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsNotifOpen(true)}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
+            >
+              <Bell className="h-5 w-5 text-gray-700" />
+              <span className="flex-1 text-sm font-medium text-gray-900">
+                Pusat Notifikasi & Siaran
+              </span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                  {unreadCount} baru
+                </span>
+              )}
             </button>
             <Link
               to="/admin/pengaturan"
@@ -959,6 +978,9 @@ export function LainnyaPage() {
 
       {/* Sticky Bottom Navigation */}
       <BottomNav active="Lainnya" />
+
+      {/* User Notifications Modal */}
+      <NotificationModal isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
     </div>
   );
 }
