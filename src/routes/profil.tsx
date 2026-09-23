@@ -15,9 +15,12 @@ import {
   Wallet,
   LogIn,
 } from "lucide-react";
+import { useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { NotificationModal } from "@/components/NotificationModal";
 import { useAuth } from "@/lib/auth-context";
+import { useNotifications } from "@/lib/notifications";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profil")({
@@ -86,6 +89,9 @@ function ProfilePage() {
     void navigate({ to: "/login" });
   };
 
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
+
   const displayName = user?.name || "Pengguna Gotrade";
   const displayEmail = user?.email || "Belum masuk akun";
   const displayPhone = user?.phone || "+62 821-1178-1198";
@@ -105,9 +111,15 @@ function ProfilePage() {
         <button
           type="button"
           aria-label="Notifikasi"
-          className="relative rounded-full p-1 hover:bg-muted"
+          onClick={() => setIsNotifOpen(true)}
+          className="relative rounded-full p-1.5 hover:bg-muted transition-colors cursor-pointer"
         >
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-xs">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </header>
 
@@ -227,6 +239,7 @@ function ProfilePage() {
       </main>
 
       <BottomNav active="Lainnya" />
+      <NotificationModal isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
     </div>
   );
 }

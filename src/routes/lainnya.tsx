@@ -141,11 +141,16 @@ export function LainnyaPage() {
         {/* Right: Notifications Bell */}
         <button
           type="button"
-          onClick={() => setActiveModal("notifications")}
-          className="relative flex h-8 w-8 items-center justify-center rounded-full text-gray-800 transition-colors hover:bg-gray-100"
+          onClick={() => setIsNotifOpen(true)}
+          className="relative flex h-8 w-8 items-center justify-center rounded-full text-gray-800 transition-colors hover:bg-gray-100 cursor-pointer"
           title="Notifikasi"
         >
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-xs">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </header>
 
@@ -597,53 +602,6 @@ export function LainnyaPage() {
                 Kirim Laporan
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 4: Notifications */}
-      {activeModal === "notifications" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-[#00a651]" />
-                <h3 className="text-base font-bold text-gray-900">Notifikasi Terbaru</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-3 flex max-h-60 flex-col gap-2.5 overflow-y-auto pr-1">
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs font-bold text-gray-900">Sinyal Trading Baru Alert</p>
-                <p className="mt-0.5 text-xs text-gray-600">
-                  XAUUSD BUY Limit di area 2650.50 (TP1: 2670.00)
-                </p>
-                <span className="mt-1 block text-[10px] text-gray-400">10 menit yang lalu</span>
-              </div>
-
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs font-bold text-gray-900">Bonus Akun Demo Aktif</p>
-                <p className="mt-0.5 text-xs text-gray-600">
-                  Balance simulasi Anda sebesar $10,000 telah siap digunakan.
-                </p>
-                <span className="mt-1 block text-[10px] text-gray-400">1 jam yang lalu</span>
-              </div>
-
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                <p className="text-xs font-bold text-gray-900">Fitur MIRA Assistant Online</p>
-                <p className="mt-0.5 text-xs text-gray-600">
-                  Butuh bantuan? Hubungi tim MIRA via WhatsApp 24/7.
-                </p>
-                <span className="mt-1 block text-[10px] text-gray-400">Kemarin</span>
-              </div>
-            </div>
           </div>
         </div>
       )}

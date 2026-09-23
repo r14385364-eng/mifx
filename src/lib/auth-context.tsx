@@ -16,7 +16,6 @@ export type DemoAccount = {
   role: "user" | "admin";
   title: string;
   email: string;
-  password: string;
   name: string;
   accountNumber: string;
   description: string;
@@ -32,7 +31,6 @@ interface AuthContextType {
   isAdmin: boolean;
   demoAccounts: DemoAccount[];
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  loginAsDemo: (role: "user" | "admin") => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -42,7 +40,6 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
     role: "user",
     title: "Akun Trader",
     email: "user@gotrade.com",
-    password: "user123",
     name: "Trader Gotrade",
     accountNumber: "88910243",
     description: "Akses menu Trading, Pasar, Portfolio, Deposit & Penarikan Dana",
@@ -53,7 +50,6 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
     role: "admin",
     title: "Akun Administrator",
     email: "admin@gotrade.com",
-    password: "password123",
     name: "Administrator Gotrade",
     accountNumber: "10000001",
     description: "Akses penuh Dashboard Admin, Kelola Pengguna, Sinyal & Berita",
@@ -187,12 +183,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginAsDemo = async (role: "user" | "admin") => {
-    const demo = demoAccounts.find((d) => d.role === role);
-    if (!demo) return { success: false, message: "Akun tidak ditemukan." };
-    return await login(demo.email, demo.password);
-  };
-
   const logout = async () => {
     const activeToken = token ?? getInitialToken();
     try {
@@ -225,7 +215,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.role === "admin",
         demoAccounts,
         login,
-        loginAsDemo,
         logout,
         refreshProfile,
       }}

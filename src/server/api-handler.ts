@@ -211,7 +211,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         role: "user",
         title: "Akun Trader",
         email: "user@gotrade.com",
-        password: "user123",
         name: "Trader Gotrade",
         accountNumber: "88910243",
         description: "Akses menu Trading, Pasar, Portfolio, Deposit & Penarikan Dana",
@@ -222,7 +221,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         role: "admin",
         title: "Akun Administrator",
         email: envAdminEmail,
-        password: envAdminPassword,
         name: rawAdminEmail ? "Administrator (.env)" : "Administrator Gotrade",
         accountNumber: "10000001",
         description: "Akses penuh Dashboard Admin, Kelola Pengguna, Sinyal & Berita",
@@ -240,7 +238,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         role: "admin",
         title: "Akun Admin Cadangan",
         email: "admin@gotrade.com",
-        password: envAdminPassword,
         name: "Administrator Gotrade (Default)",
         accountNumber: "10000002",
         description: "Akun admin default cadangan",
@@ -1465,11 +1462,16 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const actionUrl = body.action_url ? sanitizeText(body.action_url).trim() : null;
         const author = adminCheck.user.name || "Administrator";
 
+        const nextIdRows = await query<{ next_id: number }>(
+          "SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM notifications",
+        );
+        const nextId = Number(nextIdRows[0]?.next_id) || 1;
+
         const inserted = await query<DbNotification>(
-          `INSERT INTO notifications (title, message, type, target, is_pinned, badge, author, action_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO notifications (id, title, message, type, target, is_pinned, badge, author, action_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING *`,
-          [title, message, type, target, isPinned, badge, author, actionUrl],
+          [nextId, title, message, type, target, isPinned, badge, author, actionUrl],
         );
 
         void logSecurityEvent({

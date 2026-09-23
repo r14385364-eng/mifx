@@ -11,80 +11,160 @@ export interface AppNotification {
   author: string;
   action_url: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 const READ_STORAGE_KEY = "gotrade_read_notifications";
+const SYNC_STORAGE_KEY = "gotrade_notif_sync";
 
-export function useNotifications() {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [readIds, setReadIds] = useState<number[]>(() => {
-    try {
+function getStoredReadIds(): number[] {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
       const saved = localStorage.getItem(READ_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      return saved ? (JSON.parse(saved) as number[]) : [];
     }
-  });
-  const [loading, setLoading] = useState(false);
+  } catch {
+    // ignore storage errors
+  }
+  return [];
+}
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
+function saveStoredReadIds(ids: number[]) {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(ids));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Global in-memory cache and subscribers to ensure instant synchronization
+let globalNotifications: AppNotification[] = [];
+let globalReadIds: number[] = getStoredReadIds();
+let isFetching = false;
+const listeners = new Set<() => void>();
+
+function notifyAllListeners() {
+  for (const listener of listeners) {
     try {
-      const res = await fetch("/api/notifications");
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setNotifications(data.notifications || []);
-      }
+      listener();
     } catch {
       // ignore
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }
+}
+
+export async function syncNotifications() {
+  if (isFetching) return;
+  isFetching = true;
+  try {
+    const res = await fetch("/api/notifications");
+    const data = await res.json();
+    if (res.ok && data.success && Array.isArray(data.notifications)) {
+      globalNotifications = data.notifications;
+      notifyAllListeners();
+    }
+  } catch {
+    // ignore network failures
+  } finally {
+    isFetching = false;
+  }
+}
+
+export function broadcastNotificationUpdate() {
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gotrade_notifications_updated"));
+      if (window.localStorage) {
+        localStorage.setItem(SYNC_STORAGE_KEY, String(Date.now()));
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// Setup background poller and cross-tab/window event listeners
+if (typeof window !== "undefined") {
+  // Initial sync immediately
+  void syncNotifications();
+
+  // Background polling every 3.5 seconds
+  setInterval(() => {
+    void syncNotifications();
+  }, 3500);
+
+  // Focus & visibility change detection
+  window.addEventListener("focus", () => void syncNotifications());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void syncNotifications();
+    }
+  });
+
+  // Cross-component & cross-tab sync
+  window.addEventListener("gotrade_notifications_updated", () => {
+    void syncNotifications();
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === SYNC_STORAGE_KEY) {
+      void syncNotifications();
+    } else if (e.key === READ_STORAGE_KEY) {
+      globalReadIds = getStoredReadIds();
+      notifyAllListeners();
+    }
+  });
+}
+
+export function useNotifications() {
+  const [data, setData] = useState(() => ({
+    notifications: globalNotifications,
+    readIds: globalReadIds,
+    loading: isFetching,
+  }));
 
   useEffect(() => {
-    void fetchNotifications();
-  }, [fetchNotifications]);
+    const onChange = () => {
+      setData({
+        notifications: globalNotifications,
+        readIds: globalReadIds,
+        loading: isFetching,
+      });
+    };
+    listeners.add(onChange);
+    void syncNotifications();
+    return () => {
+      listeners.delete(onChange);
+    };
+  }, []);
 
   const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !readIds.includes(n.id)).length;
-  }, [notifications, readIds]);
+    return data.notifications.filter((n) => !data.readIds.includes(n.id)).length;
+  }, [data.notifications, data.readIds]);
 
   const markAsRead = useCallback((id: number) => {
-    setReadIds((prev) => {
-      if (!prev.includes(id)) {
-        const updated = [...prev, id];
-        try {
-          localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-        return updated;
-      }
-      return prev;
-    });
+    if (!globalReadIds.includes(id)) {
+      globalReadIds = [...globalReadIds, id];
+      saveStoredReadIds(globalReadIds);
+      notifyAllListeners();
+    }
   }, []);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((currentNotifs) => {
-      const allIds = currentNotifs.map((n) => n.id);
-      setReadIds(allIds);
-      try {
-        localStorage.setItem(READ_STORAGE_KEY, JSON.stringify(allIds));
-      } catch {
-        // ignore
-      }
-      return currentNotifs;
-    });
+    globalReadIds = globalNotifications.map((n) => n.id);
+    saveStoredReadIds(globalReadIds);
+    notifyAllListeners();
   }, []);
 
   return {
-    notifications,
+    notifications: data.notifications,
     unreadCount,
-    loading,
-    readIds,
+    loading: data.loading,
+    readIds: data.readIds,
     markAsRead,
     markAllAsRead,
-    refetch: fetchNotifications,
+    refetch: syncNotifications,
   };
 }

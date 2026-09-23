@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { secureFetch } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
+import { broadcastNotificationUpdate } from "@/lib/notifications";
 
 import { AdminLayout } from "./AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -213,6 +214,7 @@ export function NotificationsAdminPage() {
           });
           setIsDialogOpen(false);
           void loadNotifications();
+          broadcastNotificationUpdate();
         } else {
           toast.error(data.message || "Gagal menyiarkan notifikasi");
         }
@@ -238,6 +240,7 @@ export function NotificationsAdminPage() {
       if (res.ok && data.success) {
         toast.success(!notif.is_pinned ? "Notifikasi Disematkan!" : "Sematkan Notifikasi Dicabut");
         void loadNotifications();
+        broadcastNotificationUpdate();
       } else {
         toast.error(data.message || "Gagal mengubah status sematan.");
       }
@@ -265,6 +268,7 @@ export function NotificationsAdminPage() {
         setDeleteDialogOpen(false);
         setDeletingId(null);
         void loadNotifications();
+        broadcastNotificationUpdate();
       } else {
         toast.error(data.message || "Gagal menghapus notifikasi");
       }

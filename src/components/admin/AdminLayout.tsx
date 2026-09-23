@@ -74,7 +74,7 @@ export function AdminLayout({
   children: ReactNode;
 }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { user, isLoading, isAuthenticated, isAdmin, loginAsDemo, logout } = useAuth();
+  const { user, isLoading, isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleAdminLogout = async () => {
@@ -133,14 +133,13 @@ export function AdminLayout({
           <div className="flex flex-col gap-2.5">
             <Button
               onClick={async () => {
-                const res = await loginAsDemo("admin");
-                if (res.success) {
-                  toast.success("Berhasil masuk sebagai Admin", {
-                    description: "Hak akses administrator telah diverifikasi.",
-                  });
-                } else {
-                  void navigate({ to: "/login" });
+                if (user) {
+                  await logout();
                 }
+                toast.info("Silakan masuk dengan akun Administrator", {
+                  description: "Masukkan email dan kata sandi admin Anda.",
+                });
+                void navigate({ to: "/login" });
               }}
               className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
             >

@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowDownToLine, Bell, ChevronRight, History, Wallet } from "lucide-react";
+import { useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AppLogo } from "@/components/AppLogo";
+import { NotificationModal } from "@/components/NotificationModal";
 import { useAuth } from "@/lib/auth-context";
+import { useNotifications } from "@/lib/notifications";
 
 export const Route = createFileRoute("/order")({
   head: () => ({
@@ -62,6 +65,9 @@ const quickMenus = [
 
 function OrderPage() {
   const { user } = useAuth();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
+
   const balance =
     user?.balance != null
       ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -80,9 +86,15 @@ function OrderPage() {
         <button
           type="button"
           aria-label="Notifikasi"
-          className="relative rounded-full p-1 hover:bg-muted"
+          onClick={() => setIsNotifOpen(true)}
+          className="relative rounded-full p-1.5 hover:bg-muted transition-colors cursor-pointer"
         >
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-xs">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </header>
 
@@ -166,6 +178,7 @@ function OrderPage() {
       </main>
 
       <BottomNav active="Order" />
+      <NotificationModal isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
     </div>
   );
 }

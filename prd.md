@@ -348,3 +348,70 @@ Pengujian komprehensif dieksekusi secara otomatis dan mencakup seluruh alur bisn
 ## 8. Kesimpulan & Status Kesiapan Rilis
 
 Seluruh fitur, antarmuka pengguna, sistem keamanan RBAC, dan modul administratif telah diuji secara menyeluruh. Aplikasi Gotrade siap digunakan dalam lingkungan produksi dengan standar keamanan, integritas data, dan keandalan tinggi.
+
+---
+
+## 9. Laporan Penanganan Insiden Keamanan & Audit Penutupan Celah (RBAC Bypass Fix)
+
+### A. Latar Belakang & Identifikasi Kerentanan (Root Cause Analysis)
+- **Gejala yang Ditemukan**: Pengguna tamu yang sama sekali belum login atau pengguna akun trader biasa membuka halaman panel `/admin/*`, disajikan layar blokir `403 Forbidden • RBAC Protected`. Namun saat menekan tombol **"Masuk Sebagai Administrator"**, aplikasi langsung memberikan akses penuh ke dashboard admin tanpa meminta kata sandi.
+- **Penyebab Utama (Root Cause)**:
+  1. Pada komponen `AdminLayout.tsx`, tombol `"Masuk Sebagai Administrator"` sebelumnya memanggil fungsi bawaan demo `loginAsDemo("admin")`.
+  2. Fungsi tersebut secara otomatis mengautentikasi akun admin menggunakan kredensial demo (`admin@gotrade.com`) langsung ke server dan memperbarui state sesi di peramban tanpa tantangan kata sandi fisik dari pengguna.
+  3. Endpoint publik `/api/auth/demo-accounts` dan konstanta state klien membocorkan kata sandi teks polos administrator.
+
+### B. Implementasi Solusi & Remediasi Keamanan
+1. **Pencabutan Bypass & Mewajibkan Form Login Otentik**:
+   - Menghapus pemanggilan `loginAsDemo("admin")` dari seluruh halaman dan tata letak `AdminLayout.tsx`.
+   - Tombol **"Masuk Sebagai Administrator"** kini menghapus sesi lama pengguna reguler (`logout()`), menampilkan pemberitahuan pengalihan, dan mengarahkan pengguna secara sah ke halaman `/login`.
+   - Pengguna diwajibkan mengetikkan email dan kata sandi administrator yang sah secara manual.
+2. **Penghapusan Backdoor `loginAsDemo` dari Core Client State**:
+   - Menghapus method `loginAsDemo` dan tipe antarmukanya dari `src/lib/auth-context.tsx`.
+   - Menghapus atribut `password` dari struktur `DEFAULT_DEMO_ACCOUNTS` di sisi klien.
+3. **Pembersihan Kebocoran Kredensial Server**:
+   - Memperbarui endpoint `GET /api/auth/demo-accounts` di `src/server/api-handler.ts` agar tidak lagi menyertakan properti `password` dalam respons JSON ke publik.
+4. **Pencegahan Tabrakan Kunci Sequence Notifikasi**:
+   - Memastikan pembuatan notifikasi baru (`POST /api/admin/notifications`) selalu mengkalkulasikan ID unik berikutnya dengan `SELECT COALESCE(MAX(id), 0) + 1` guna mencegah pelanggaran konstrain unik primary key.
+
+### C. Hasil Pengujian Keamanan & Regresi (Security Regression Test)
+Pengujian regresi keamanan otomatis dijalankan melalui skrip pengujian khusus `scripts/test-security-bypass.ts` dan suite menyeluruh `scripts/test-all-features.ts`:
+- `GET /api/auth/demo-accounts` tidak membocorkan kata sandi teks polos: **PASSED**
+- Permintaan tidak terotentikasi ke `/api/users`, `/api/admin/notifications`, `/api/admin/audit-logs` diblokir `401 Unauthorized`: **PASSED**
+- Token Bearer palsu/acak ditolak seketika dengan `401 Unauthorized`: **PASSED**
+- Token akun trader reguler diblokir saat mengakses endpoint admin dengan `403 Forbidden`: **PASSED**
+- Percobaan login admin dengan kata sandi salah gagal dan tidak mengeluarkan token sesi: **PASSED**
+- Seluruh 37 skenario pengujian fungsional aplikasi: **37 PASSED, 0 FAILED**.
+
+---
+
+## 10. Peningkatan Sistem Real-Time Notifikasi & Optimasi Responsivitas Mobile
+
+### A. Sinkronisasi Real-Time Notifikasi & Indikator Badge Pengguna
+- **Masalah Sebelumnya**:
+  1. Ketika admin membuat atau menyiarkan notifikasi baru di `/admin/notifikasi`, pengguna yang sedang aktif di website tidak menerima pembaruan otomatis karena data hanya diambil satu kali saat inisialisasi awal (*one-time fetch on mount*).
+  2. Ikon lonceng (*Bell*) di beberapa halaman pengguna (`/order`, `/profil`, dan header `/lainnya`) tidak memiliki indikator badge unread atau bahkan tidak memicu modal notifikasi asli.
+- **Penyelesaian & Implementasi**:
+  1. **Mekanisme Real-Time Polling & Event-Driven Broadcast**:
+     - Membangun *shared singleton reactive listener* pada `src/lib/notifications.ts` dengan *background poller* interval 3,5 detik.
+     - Mengintegrasikan *window focus* dan *document visibility change* sehingga peramban langsung menyinkronkan data notifikasi saat pengguna membuka atau berpindah kembali ke tab aplikasi.
+     - Menyematkan `broadcastNotificationUpdate()` pada setiap aksi CRUD admin (`POST`, `PUT`, `DELETE` di `NotificationsAdminPage.tsx`) melalui `CustomEvent` dan `localStorage` cross-tab synchronization.
+  2. **Badge Penanda Angka Merah Universal**:
+     - Seluruh ikon lonceng pada halaman **Beranda** (`/beranda`), **Order** (`/order`), **Profil** (`/profil`), dan **Lainnya** (`/lainnya`) kini menampilkan badge merah dinamis dengan jumlah pesan belum dibaca (`unreadCount`).
+     - Badge otomatis berkurang atau hilang secara instan saat notifikasi ditandai telah dibaca.
+
+### B. Desain Responsif & UX Komponen Modal Pop-up di Perangkat Mobile
+- **Masalah Sebelumnya**:
+  1. Modal dialog Radix pada layar ponsel sempit (360px – 390px) menempel ketat ke tepi layar peramban tanpa margin pengaman yang seimbang.
+  2. Tombol tutup dialog (*Close X*) bentrok secara horizontal dengan tombol aksi (*Tandai Dibaca*), menyebabkan elemen bertumpuk dan sulit disentuh pada perangkat layar sentuh.
+  3. Teks panjang dan filter kategori dapat meluap (*overflow*) secara horizontal di layar kecil.
+- **Penyelesaian & Implementasi**:
+  1. **Viewport-Adaptive Container**:
+     - Menyesuaikan kontainer modal menjadi `w-[94vw] max-w-md` dengan `rounded-2xl` dan `max-h-[88dvh]`, memberikan margin proporsional pada semua ukuran layar mobile (iPhone SE, standar Android, tablet, hingga desktop).
+  2. **Pemisahan Jalur Header & Clearance Tombol Tutup**:
+     - Memberikan ruang `pr-12` pada `DialogHeader` sehingga tombol `X` Radix berdiri bebas tanpa menabrak judul atau tombol aksi.
+     - Memindahkan tombol **"Tandai Dibaca"** ke bilah sub-header berdampingan dengan scroll filter kategori (*Semua, Promo, Info, Peringatan, Sistem*).
+  3. **Mobile-Friendly Cards & Typography**:
+     - Penataan kartu notifikasi dengan pemisahan visual yang tegas antara status belum dibaca (*soft primary highlight + pulsating dot*) dan telah dibaca.
+     - Menambahkan aturan pemenggalan kata `break-words whitespace-pre-line` dan touch target responsif untuk kenyamanan sentuhan jari di layar sentuh ponsel.
+
+
