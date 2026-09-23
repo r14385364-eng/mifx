@@ -10,13 +10,6 @@ export const Route = createFileRoute("/admin/mata-uang")({
         name: "description",
         content: "Kelola instrumen pasar dan pengaturan pergerakan harga simulasi Gotrade.",
       },
-      { property: "og:title", content: "Mata Uang — Gotrade Admin" },
-      {
-        property: "og:description",
-        content: "Kelola instrumen pasar dan pengaturan pergerakan harga simulasi Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CurrencyAdminPage,

@@ -428,6 +428,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           user: {
             id: authenticatedUser.id,
             name: authenticatedUser.name,
+            username:
+              authenticatedUser.username ||
+              authenticatedUser.name.toLowerCase().replace(/\s+/g, "_"),
             email: authenticatedUser.email,
             phone: authenticatedUser.phone,
             role: authenticatedUser.role,
@@ -457,11 +460,13 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     try {
       const body = (await request.json()) as {
         name?: string;
+        username?: string;
         email?: string;
         password?: string;
         phone?: string;
+        referralCode?: string;
       };
-      const { name, email, password, phone } = body;
+      const { name, username, email, password, phone, referralCode } = body;
 
       if (!name || !email || !password) {
         return jsonResponse(
@@ -471,11 +476,21 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
 
       const cleanName = sanitizeText(name);
+      const rawUsername = username
+        ? sanitizeText(username).trim()
+        : cleanName.toLowerCase().replace(/\s+/g, "_");
+      const cleanUsername =
+        rawUsername.replace(/[^a-zA-Z0-9_.-]/g, "") || cleanName.toLowerCase().replace(/\s+/g, "_");
       const cleanEmail = sanitizeText(email).toLowerCase();
       const cleanPhone = sanitizeText(phone);
+      const cleanReferralCode = referralCode ? sanitizeText(referralCode).trim() : "";
 
       if (cleanEmail.length < 5 || !cleanEmail.includes("@")) {
         return jsonResponse({ success: false, message: "Format email tidak valid." }, 400);
+      }
+
+      if (cleanUsername.length < 3) {
+        return jsonResponse({ success: false, message: "Username minimal 3 karakter." }, 400);
       }
 
       if (String(password).length < 6) {
@@ -495,27 +510,65 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         );
       }
 
+      const existingUsername = await query<DbUser>(
+        "SELECT id FROM users WHERE LOWER(username) = $1",
+        [cleanUsername.toLowerCase()],
+      );
+      if (existingUsername.length > 0) {
+        return jsonResponse(
+          { success: false, message: "Username sudah digunakan. Silakan pilih username lain." },
+          400,
+        );
+      }
+
       // Hash password with salted scrypt
       const hashedPassword = hashPassword(String(password).trim());
       const randomAcc = Math.floor(10000000 + Math.random() * 90000000).toString();
 
       // Enforce default role 'user' for public registration (prevent privilege escalation)
       const insertRes = await query<DbUser>(
-        `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
-         VALUES ($1, $2, $3, $4, 'user', $5, 0.00, 'Standard Live')
+        `INSERT INTO users (name, username, email, password, phone, role, account_number, balance, account_type, referred_by)
+         VALUES ($1, $2, $3, $4, $5, 'user', $6, 0.00, 'Standard Live', $7)
          RETURNING *`,
-        [cleanName, cleanEmail, hashedPassword, cleanPhone, randomAcc],
+        [
+          cleanName,
+          cleanUsername,
+          cleanEmail,
+          hashedPassword,
+          cleanPhone,
+          randomAcc,
+          cleanReferralCode || null,
+        ],
       );
 
       const newUser = insertRes[0];
       const token = generateToken(newUser.id, "user");
+
+      // Automatically register user's referral code as their username
+      try {
+        await query(
+          `INSERT INTO referrals (user_id, user_name, email, code, referred_by, commission, invitees_count)
+           VALUES ($1, $2, $3, $4, $5, 0.00, 0)`,
+          [newUser.id, newUser.name, newUser.email, cleanUsername, cleanReferralCode || null],
+        );
+
+        if (cleanReferralCode) {
+          // Increment invite count for referrer (code or username)
+          await query(
+            `UPDATE referrals SET invitees_count = invitees_count + 1 WHERE LOWER(code) = LOWER($1) OR LOWER(user_name) = LOWER($1)`,
+            [cleanReferralCode],
+          );
+        }
+      } catch (refErr) {
+        console.warn("[Register] Auto referral record notice:", refErr);
+      }
 
       void logSecurityEvent({
         userId: newUser.id,
         userEmail: newUser.email,
         userRole: "user",
         action: "AUTH_REGISTER_SUCCESS",
-        details: `Registrasi akun trader baru (${cleanEmail})`,
+        details: `Registrasi akun trader baru (${cleanEmail}, @${cleanUsername}, RefCode: ${cleanUsername}${cleanReferralCode ? `, ReferredBy: ${cleanReferralCode}` : ""})`,
         ipAddress: clientIp,
         status: "SUCCESS",
       });
@@ -528,12 +581,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           user: {
             id: newUser.id,
             name: newUser.name,
+            username: newUser.username || cleanUsername,
             email: newUser.email,
             phone: newUser.phone,
             role: newUser.role,
             accountNumber: newUser.account_number,
             balance: Number(newUser.balance),
             accountType: newUser.account_type,
+            referredBy: newUser.referred_by || cleanReferralCode || undefined,
             createdAt: newUser.created_at,
           },
         },
@@ -561,6 +616,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       user: {
         id: user.id,
         name: user.name,
+        username: user.username || user.name.toLowerCase().replace(/\s+/g, "_"),
         email: user.email,
         phone: user.phone,
         role: user.role,
@@ -631,7 +687,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (request.method === "GET") {
       try {
         const users = await query<DbUser>(
-          "SELECT id, name, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, account_type, created_at FROM users ORDER BY id ASC",
+          "SELECT id, name, COALESCE(username, '') as username, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, account_type, created_at FROM users ORDER BY id ASC",
         );
         return jsonResponse({ success: true, users });
       } catch (err: unknown) {
@@ -1771,14 +1827,38 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       try {
         const user = authResult.user;
         let rows = [];
+        let invitees: { id: number; name: string; created_at: string; account_type: string }[] = [];
+
         if (user.role === "admin") {
           rows = await query("SELECT * FROM referrals ORDER BY id DESC");
         } else {
-          rows = await query("SELECT * FROM referrals WHERE LOWER(email) = $1 ORDER BY id DESC", [
-            user.email.toLowerCase(),
-          ]);
+          const userCode = user.username || user.name.toLowerCase().replace(/\s+/g, "_");
+          let existing = await query(
+            "SELECT * FROM referrals WHERE LOWER(code) = LOWER($1) OR LOWER(email) = LOWER($2) ORDER BY id DESC",
+            [userCode, user.email],
+          );
+
+          if (existing.length === 0) {
+            existing = await query(
+              "INSERT INTO referrals (user_id, user_name, email, code, commission, invitees_count) VALUES ($1, $2, $3, $4, 0.00, 0) RETURNING *",
+              [user.id, user.name, user.email, userCode],
+            );
+          }
+
+          rows = existing;
+
+          // Fetch actual users registered with this user's referral code / username
+          invitees = await query<{
+            id: number;
+            name: string;
+            created_at: string;
+            account_type: string;
+          }>(
+            "SELECT id, name, created_at, account_type FROM users WHERE LOWER(referred_by) = LOWER($1) OR LOWER(referred_by) = LOWER($2) ORDER BY id DESC",
+            [userCode, user.email],
+          );
         }
-        return jsonResponse({ success: true, referrals: rows });
+        return jsonResponse({ success: true, referrals: rows, invitees });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching referrals";
         return jsonResponse({ success: false, message }, 500);
@@ -1960,6 +2040,369 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const message = err instanceof Error ? err.message : "Error saving settings";
         return jsonResponse({ success: false, message }, 500);
       }
+    }
+  }
+
+  // ==========================================
+  // /api/rewards (Public / User / Admin endpoints)
+  // ==========================================
+  if (url.pathname === "/api/rewards") {
+    if (request.method === "GET") {
+      try {
+        const user = await getAuthenticatedUser(request);
+
+        let rewardsQuery = "SELECT * FROM rewards WHERE active = true ORDER BY points_required ASC";
+        if (user && user.role === "admin") {
+          rewardsQuery = "SELECT * FROM rewards ORDER BY points_required ASC";
+        }
+
+        const rewards = await query<DbReward>(rewardsQuery);
+
+        let userPoints = 0;
+        let availablePoints = 0;
+        let totalSpent = 0;
+        let myRedemptions: DbRewardRedemption[] = [];
+
+        if (user) {
+          const balanceInIdr = Number(user.balance || 0) * 16000;
+          userPoints = Math.floor(balanceInIdr / 1000000);
+
+          const redemptions = await query<DbRewardRedemption>(
+            "SELECT * FROM reward_redemptions WHERE user_id = $1 ORDER BY id DESC",
+            [user.id],
+          );
+          myRedemptions = redemptions;
+
+          totalSpent = redemptions
+            .filter((r) => r.status !== "REJECTED")
+            .reduce((sum, r) => sum + Number(r.points_spent || 0), 0);
+
+          availablePoints = Math.max(0, userPoints - totalSpent);
+        }
+
+        return jsonResponse({
+          success: true,
+          rewards,
+          userPoints,
+          availablePoints,
+          totalSpent,
+          conversionRate: "1 Poin = Rp 1.000.000 Saldo Akun (Kurs $1 = Rp 16.000)",
+          myRedemptions,
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching rewards";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+  }
+
+  // User Redeem Reward
+  if (url.pathname === "/api/rewards/redeem" && request.method === "POST") {
+    const authResult = await requireAuth(request);
+    if ("errorResponse" in authResult) {
+      return authResult.errorResponse;
+    }
+
+    try {
+      const user = authResult.user;
+      const body = (await request.json()) as {
+        rewardId: number;
+        shippingAddress?: string;
+        notes?: string;
+      };
+
+      if (!body.rewardId) {
+        return jsonResponse({ success: false, message: "ID Hadiah harus ditentukan." }, 400);
+      }
+
+      const rewardRes = await query<DbReward>(
+        "SELECT * FROM rewards WHERE id = $1 AND active = true",
+        [body.rewardId],
+      );
+      if (rewardRes.length === 0) {
+        return jsonResponse(
+          { success: false, message: "Hadiah tidak ditemukan atau sudah tidak aktif." },
+          404,
+        );
+      }
+
+      const reward = rewardRes[0];
+      if (reward.stock <= 0) {
+        return jsonResponse({ success: false, message: "Stok hadiah ini sedang habis." }, 400);
+      }
+
+      const balanceInIdr = Number(user.balance || 0) * 16000;
+      const totalPoints = Math.floor(balanceInIdr / 1000000);
+
+      const pastRedemptions = await query<DbRewardRedemption>(
+        "SELECT points_spent FROM reward_redemptions WHERE user_id = $1 AND status != 'REJECTED'",
+        [user.id],
+      );
+      const spentPoints = pastRedemptions.reduce((sum, r) => sum + Number(r.points_spent || 0), 0);
+      const availablePoints = Math.max(0, totalPoints - spentPoints);
+
+      if (availablePoints < reward.points_required) {
+        return jsonResponse(
+          {
+            success: false,
+            message: `Poin tidak mencukupi! Anda memiliki ${availablePoints} Poin, sedangkan hadiah ini membutuhkan ${reward.points_required} Poin. (1 Poin = Rp 1.000.000 saldo akun).`,
+          },
+          400,
+        );
+      }
+
+      // Decrement stock
+      await query(
+        "UPDATE rewards SET stock = stock - 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+        [reward.id],
+      );
+
+      const cleanAddress = body.shippingAddress ? sanitizeText(body.shippingAddress) : null;
+      const cleanNotes = body.notes ? sanitizeText(body.notes) : null;
+
+      const maxRedIdRes = await query<{ max: number }>(
+        "SELECT MAX(id) as max FROM reward_redemptions",
+      );
+      const nextRedId = (Number(maxRedIdRes[0]?.max) || 0) + 1;
+
+      const inserted = await query<DbRewardRedemption>(
+        `INSERT INTO reward_redemptions (id, user_id, user_name, user_email, reward_id, reward_title, points_spent, status, shipping_address, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING', $8, $9)
+         RETURNING *`,
+        [
+          nextRedId,
+          user.id,
+          user.name,
+          user.email,
+          reward.id,
+          reward.title,
+          reward.points_required,
+          cleanAddress,
+          cleanNotes,
+        ],
+      );
+
+      void logSecurityEvent({
+        userId: user.id,
+        userEmail: user.email,
+        userRole: user.role,
+        action: "REWARD_REDEEM_SUCCESS",
+        details: `Klaim hadiah "${reward.title}" seharga ${reward.points_required} Poin.`,
+        ipAddress: clientIp,
+        status: "SUCCESS",
+      });
+
+      return jsonResponse({
+        success: true,
+        message: `Klaim hadiah "${reward.title}" berhasil diajukan! Tim kami akan segera memproses pengiriman.`,
+        redemption: inserted[0],
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error redeeming reward";
+      return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // Admin Rewards Management (CRUD + Redemptions)
+  if (url.pathname === "/api/admin/rewards") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    if (request.method === "GET") {
+      try {
+        const rewards = await query<DbReward>("SELECT * FROM rewards ORDER BY id DESC");
+        const redemptions = await query<DbRewardRedemption>(
+          "SELECT * FROM reward_redemptions ORDER BY id DESC",
+        );
+        return jsonResponse({ success: true, rewards, redemptions });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching admin rewards";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    if (request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          title: string;
+          category?: string;
+          pointsRequired?: number;
+          stock?: number;
+          imageUrl?: string;
+          description?: string;
+          active?: boolean;
+        };
+
+        if (!body.title) {
+          return jsonResponse({ success: false, message: "Judul hadiah wajib diisi." }, 400);
+        }
+
+        const cleanTitle = sanitizeText(body.title);
+        const cleanCategory = body.category ? sanitizeText(body.category) : "Gadget";
+        const points =
+          body.pointsRequired !== undefined ? Math.max(1, Number(body.pointsRequired)) : 1;
+        const stock = body.stock !== undefined ? Math.max(0, Number(body.stock)) : 10;
+        const cleanImg = body.imageUrl ? sanitizeText(body.imageUrl) : "";
+        const cleanDesc = body.description ? sanitizeText(body.description) : "";
+        const active = body.active !== undefined ? Boolean(body.active) : true;
+
+        const maxIdRes = await query<{ max: number }>("SELECT MAX(id) as max FROM rewards");
+        const nextId = (Number(maxIdRes[0]?.max) || 0) + 1;
+
+        const inserted = await query<DbReward>(
+          `INSERT INTO rewards (id, title, category, points_required, stock, image_url, description, active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING *`,
+          [nextId, cleanTitle, cleanCategory, points, stock, cleanImg, cleanDesc, active],
+        );
+
+        return jsonResponse({
+          success: true,
+          message: "Hadiah reward baru berhasil ditambahkan!",
+          reward: inserted[0],
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error creating reward";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    if (request.method === "PUT" || request.method === "PATCH") {
+      try {
+        const body = (await request.json()) as {
+          id: number;
+          title?: string;
+          category?: string;
+          pointsRequired?: number;
+          stock?: number;
+          imageUrl?: string;
+          description?: string;
+          active?: boolean;
+        };
+
+        if (!body.id) {
+          return jsonResponse({ success: false, message: "ID hadiah wajib ditentukan." }, 400);
+        }
+
+        const existing = await query<DbReward>("SELECT * FROM rewards WHERE id = $1", [body.id]);
+        if (existing.length === 0) {
+          return jsonResponse({ success: false, message: "Hadiah tidak ditemukan." }, 404);
+        }
+
+        const curr = existing[0];
+        const updated = await query<DbReward>(
+          `UPDATE rewards
+           SET title = $1, category = $2, points_required = $3, stock = $4, image_url = $5, description = $6, active = $7, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $8
+           RETURNING *`,
+          [
+            body.title ? sanitizeText(body.title) : curr.title,
+            body.category ? sanitizeText(body.category) : curr.category,
+            body.pointsRequired !== undefined
+              ? Math.max(1, Number(body.pointsRequired))
+              : curr.points_required,
+            body.stock !== undefined ? Math.max(0, Number(body.stock)) : curr.stock,
+            body.imageUrl !== undefined ? sanitizeText(body.imageUrl) : curr.image_url,
+            body.description !== undefined ? sanitizeText(body.description) : curr.description,
+            body.active !== undefined ? Boolean(body.active) : curr.active,
+            curr.id,
+          ],
+        );
+
+        return jsonResponse({
+          success: true,
+          message: "Hadiah reward berhasil diperbarui!",
+          reward: updated[0],
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error updating reward";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    if (request.method === "DELETE") {
+      try {
+        const urlObj = new URL(request.url);
+        const idParam = urlObj.searchParams.get("id");
+        let id = idParam ? parseInt(idParam, 10) : null;
+        if (!id) {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          id = body.id || null;
+        }
+
+        if (!id) {
+          return jsonResponse({ success: false, message: "ID hadiah diperlukan." }, 400);
+        }
+
+        await query("DELETE FROM rewards WHERE id = $1", [id]);
+        return jsonResponse({ success: true, message: "Hadiah reward berhasil dihapus!" });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error deleting reward";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+  }
+
+  // Admin Update Redemption Status (Process, Complete, Reject)
+  if (
+    url.pathname === "/api/admin/rewards/redemptions" &&
+    (request.method === "PUT" || request.method === "PATCH")
+  ) {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    try {
+      const body = (await request.json()) as {
+        id: number;
+        status: "PENDING" | "PROCESSED" | "COMPLETED" | "REJECTED";
+        notes?: string;
+      };
+
+      if (!body.id || !body.status) {
+        return jsonResponse({ success: false, message: "ID dan status klaim diperlukan." }, 400);
+      }
+
+      const existing = await query<DbRewardRedemption>(
+        "SELECT * FROM reward_redemptions WHERE id = $1",
+        [body.id],
+      );
+      if (existing.length === 0) {
+        return jsonResponse({ success: false, message: "Data klaim reward tidak ditemukan." }, 404);
+      }
+
+      const curr = existing[0];
+      const prevStatus = curr.status;
+
+      // If rejected, restore stock
+      if (body.status === "REJECTED" && prevStatus !== "REJECTED") {
+        await query("UPDATE rewards SET stock = stock + 1 WHERE id = $1", [curr.reward_id]);
+      } else if (prevStatus === "REJECTED" && body.status !== "REJECTED") {
+        // If un-rejecting, re-decrement stock
+        await query("UPDATE rewards SET stock = GREATEST(0, stock - 1) WHERE id = $1", [
+          curr.reward_id,
+        ]);
+      }
+
+      const updated = await query<DbRewardRedemption>(
+        `UPDATE reward_redemptions
+         SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING *`,
+        [body.status, body.notes ? sanitizeText(body.notes) : curr.notes, curr.id],
+      );
+
+      return jsonResponse({
+        success: true,
+        message: `Status klaim berhasil diubah menjadi ${body.status}!`,
+        redemption: updated[0],
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error updating redemption status";
+      return jsonResponse({ success: false, message }, 500);
     }
   }
 

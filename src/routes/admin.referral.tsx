@@ -11,14 +11,6 @@ export const Route = createFileRoute("/admin/referral")({
         content:
           "Pantau kode referral setiap pengguna Gotrade dan jumlah orang yang berhasil mereka ajak.",
       },
-      { property: "og:title", content: "Manajemen Referral — Gotrade Admin" },
-      {
-        property: "og:description",
-        content:
-          "Pantau kode referral setiap pengguna Gotrade dan jumlah orang yang berhasil mereka ajak.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReferralAdminPage,

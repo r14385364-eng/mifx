@@ -26,14 +26,6 @@ export const Route = createFileRoute("/riwayat")({
         content:
           "Lihat catatan lengkap riwayat transaksi trading, deposit, dan withdraw di Gotrade.",
       },
-      { property: "og:title", content: "Riwayat Transaksi — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Lihat catatan lengkap riwayat transaksi trading, deposit, dan withdraw di Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: RiwayatPage,

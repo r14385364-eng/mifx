@@ -31,14 +31,6 @@ export const Route = createFileRoute("/deposit")({
         content:
           "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
       },
-      { property: "og:title", content: "Deposit — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: DepositPage,

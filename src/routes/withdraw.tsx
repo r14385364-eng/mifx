@@ -15,14 +15,6 @@ export const Route = createFileRoute("/withdraw")({
         content:
           "Tarik dana dari akun trading Gotrade Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
       },
-      { property: "og:title", content: "Withdraw — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Tarik dana dari akun trading Gotrade Anda ke rekening bank atau e-wallet dengan cepat dan aman.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: WithdrawPage,

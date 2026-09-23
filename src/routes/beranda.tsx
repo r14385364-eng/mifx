@@ -32,14 +32,6 @@ export const Route = createFileRoute("/beranda")({
         content:
           "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda Gotrade.",
       },
-      { property: "og:title", content: "Beranda — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Pantau pasar, sinyal trading, berita terkini, dan event ekonomi penting di beranda Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: BerandaPage,

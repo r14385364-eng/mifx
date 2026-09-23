@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
+  Trophy,
   Users,
   Database,
   Server,
@@ -57,6 +58,7 @@ const userNavigation = [
   { label: "Manajemen User", to: "/admin/users" as const, icon: Users },
   { label: "Kelola Profit", to: "/admin/profit" as const, icon: Coins },
   { label: "Referral", to: "/admin/referral" as const, icon: Gift },
+  { label: "Gotrade Rewards", to: "/admin/rewards" as const, icon: Trophy },
 ];
 
 const systemNavigation = [

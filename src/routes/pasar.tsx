@@ -17,13 +17,6 @@ export const Route = createFileRoute("/pasar")({
         content:
           "Lihat harga bid dan ask untuk pasangan forex, komoditi, dan indeks di halaman Pasar Gotrade.",
       },
-      { property: "og:title", content: "Pasar — Gotrade" },
-      {
-        property: "og:description",
-        content: "Harga bid dan ask untuk forex, komoditi, dan indeks di Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PasarPage,

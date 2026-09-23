@@ -15,14 +15,6 @@ export const Route = createFileRoute("/")({
         content:
           "Trading saham, forex, dan aset global legal dan aman di platform Gotrade. Asah skill trading dan bertransaksi lebih percaya diri bersama Gotrade.",
       },
-      { property: "og:title", content: "Gotrade — Aplikasi Trading Online Resmi" },
-      {
-        property: "og:description",
-        content:
-          "Trading saham, forex, dan aset global legal dan aman di platform Gotrade. Asah skill trading dan bertransaksi lebih percaya diri.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,

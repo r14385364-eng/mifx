@@ -39,13 +39,6 @@ export const Route = createFileRoute("/lainnya")({
         name: "description",
         content: "Menu program, profil akun, dan ringkasan Gotrade.",
       },
-      { property: "og:title", content: "Lainnya — Gotrade" },
-      {
-        property: "og:description",
-        content: "Menu program, profil akun, dan ringkasan Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LainnyaPage,
@@ -304,14 +297,17 @@ export function LainnyaPage() {
         <div>
           <p className="mb-1.5 px-1 text-xs font-bold text-gray-700">Program</p>
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xs divide-y divide-gray-100">
-            <button
-              type="button"
-              onClick={() => setActiveModal("rewards")}
+            <Link
+              to="/rewards"
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
             >
-              <Gift className="h-5 w-5 text-gray-700" />
+              <Gift className="h-5 w-5 text-[#00a651]" />
               <span className="flex-1 text-sm font-medium text-gray-900">Gotrade Rewards</span>
-            </button>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                1 Poin / 1 Juta
+              </span>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </Link>
             <Link
               to="/referral"
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
@@ -626,50 +622,6 @@ export function LainnyaPage() {
         </div>
       )}
 
-      {/* Modal 6: Gotrade Rewards */}
-      {activeModal === "rewards" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2">
-                <Gift className="h-5 w-5 text-[#00a651]" />
-                <h3 className="text-base font-bold text-gray-900">Gotrade Rewards</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-col items-center gap-3 text-center">
-              <div className="w-full rounded-2xl border border-[#00a651]/20 bg-[#e6f7ef] p-4">
-                <p className="text-xs text-gray-600">Total Poin Rewards Anda</p>
-                <p className="text-2xl font-black text-[#00a651]">1,250 PTS</p>
-              </div>
-
-              <p className="text-xs text-gray-500">
-                Kumpulkan poin dari setiap transaksi lot trading Anda dan tukarkan dengan hadiah
-                menarik serta merchandise eksklusif.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  toast.success("Poin Rewards diklaim!");
-                  setActiveModal(null);
-                }}
-                className="w-full rounded-lg bg-[#00a651] py-2.5 text-xs font-semibold text-white hover:bg-[#008f45]"
-              >
-                Klaim Poin Harian (+50 PTS)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal 7: Buka Akun Live */}
       {activeModal === "bukaLive" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
@@ -708,7 +660,10 @@ export function LainnyaPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-bold text-gray-900">Akun Saya</h3>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#00a651]" />
+                <h3 className="text-base font-bold text-gray-900">Akun Saya</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
@@ -718,31 +673,62 @@ export function LainnyaPage() {
               </button>
             </div>
 
-            <div className="mt-4 flex flex-col gap-2.5">
-              <div className="rounded-xl border border-[#00a651] bg-[#e6f7ef]/40 p-3">
+            <div className="mt-4 flex flex-col gap-3">
+              {/* Single Live Account Card */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/40 p-4 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <span className="rounded bg-[#00a651] px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                    Demo
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-xs">
+                      <span className="size-1.5 rounded-full bg-white animate-pulse" />
+                      Live
+                    </span>
+                    <span className="text-xs font-semibold text-emerald-800">
+                      {user?.accountType || "Standard MT5"}
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-gray-900">
+                    #{user?.accountNumber || "88910243"}
                   </span>
-                  <span className="text-xs font-bold text-gray-900">1006568912</span>
                 </div>
-                <div className="mt-2 flex justify-between text-xs">
-                  <span className="text-gray-500">Saldo Simulasi:</span>
-                  <span className="font-bold text-gray-900">{formattedBalance}</span>
+
+                <div className="mt-3.5 space-y-1">
+                  <p className="text-[11px] font-medium text-gray-500">Saldo Riil Akun</p>
+                  <p className="tabular-nums text-2xl font-black tracking-tight text-gray-900">
+                    {formattedBalance}
+                  </p>
+                  <p className="text-xs font-semibold text-emerald-700">
+                    ≈ Rp {(Number(user?.balance ?? 0) * 16000).toLocaleString("id-ID")}
+                  </p>
+                </div>
+
+                <div className="mt-3.5 grid grid-cols-2 gap-2 border-t border-emerald-500/20 pt-3 text-[11px]">
+                  <div>
+                    <span className="text-gray-500">Nama Pemilik:</span>
+                    <p className="font-semibold text-gray-900 truncate">{displayName}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Status Akun:</span>
+                    <p className="font-semibold text-emerald-700">Aktif & Terverifikasi</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 p-3">
-                <div className="flex items-center justify-between">
-                  <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                    Live
-                  </span>
-                  <span className="text-xs font-bold text-gray-900">88910243</span>
-                </div>
-                <div className="mt-2 flex justify-between text-xs">
-                  <span className="text-gray-500">Saldo Riil:</span>
-                  <span className="font-bold text-gray-900">$0.00</span>
-                </div>
+              {/* Quick Action Navigation */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Link
+                  to="/deposit"
+                  onClick={() => setActiveModal(null)}
+                  className="flex items-center justify-center rounded-xl bg-[#00a651] py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#008f45]"
+                >
+                  Deposit Dana
+                </Link>
+                <Link
+                  to="/withdraw"
+                  onClick={() => setActiveModal(null)}
+                  className="flex items-center justify-center rounded-xl border border-gray-200 bg-white py-2.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Tarik Dana
+                </Link>
               </div>
             </div>
           </div>

@@ -14,13 +14,6 @@ export const Route = createFileRoute("/berita/")({
         content:
           "Berita pasar terbaru, analisis teknikal, dan artikel spesial untuk membantu Anda mengambil keputusan trading di Gotrade.",
       },
-      { property: "og:title", content: "Berita — Gotrade" },
-      {
-        property: "og:description",
-        content: "Berita pasar terbaru dan analisis teknikal di Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: BeritaPage,

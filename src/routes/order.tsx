@@ -17,14 +17,6 @@ export const Route = createFileRoute("/order")({
         content:
           "Akses menu Top up, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
       },
-      { property: "og:title", content: "Menu Transaksi — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Akses menu Top up, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OrderPage,
@@ -70,7 +62,7 @@ function OrderPage() {
 
   const balance =
     user?.balance != null
-      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "$0.00";
 
   return (

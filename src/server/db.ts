@@ -13,6 +13,7 @@ import pg from "pg";
 export type DbUser = {
   id: number;
   name: string;
+  username?: string;
   email: string;
   password: string;
   phone: string;
@@ -21,6 +22,7 @@ export type DbUser = {
   balance: number;
   profit: number;
   account_type: string;
+  referred_by?: string;
   created_at: string;
 };
 
@@ -99,6 +101,34 @@ export type DbNotification = {
   updated_at: string;
 };
 
+export type DbReward = {
+  id: number;
+  title: string;
+  category: string;
+  points_required: number;
+  stock: number;
+  image_url: string;
+  description: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DbRewardRedemption = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  reward_id: number;
+  reward_title: string;
+  points_spent: number;
+  status: "PENDING" | "PROCESSED" | "COMPLETED" | "REJECTED";
+  shipping_address?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 let poolInstance: pg.Pool | null = null;
 let isInMemory = false;
 let initPromise: Promise<void> | null = null;
@@ -116,35 +146,50 @@ function ensureDataDirExists() {
   }
 }
 
+let persistTimer: NodeJS.Timeout | null = null;
+
 async function persistMemoryDb(pool: pg.Pool) {
   if (!isInMemory) return;
-  try {
-    ensureDataDirExists();
-    const users = (await pool.query("SELECT * FROM users")).rows;
-    const transactions = (await pool.query("SELECT * FROM transactions")).rows;
-    const signals = (await pool.query("SELECT * FROM signals")).rows;
-    const settings = (await pool.query("SELECT * FROM settings")).rows;
-    const newsRes = await pool.query("SELECT * FROM news").catch(() => ({ rows: [] }));
-    const news = newsRes.rows;
-    const notificationsRes = await pool
-      .query("SELECT * FROM notifications")
-      .catch(() => ({ rows: [] }));
-    const notifications = notificationsRes.rows;
-
-    const dataToSave = {
-      users,
-      transactions,
-      signals,
-      settings,
-      news,
-      notifications,
-      savedAt: new Date().toISOString(),
-    };
-
-    fs.writeFileSync(STORE_FILE, JSON.stringify(dataToSave, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[PostgreSQL] Error persisting in-memory database to disk:", err);
+  if (persistTimer) {
+    clearTimeout(persistTimer);
   }
+  persistTimer = setTimeout(async () => {
+    try {
+      ensureDataDirExists();
+      const users = (await pool.query("SELECT * FROM users")).rows;
+      const transactions = (await pool.query("SELECT * FROM transactions")).rows;
+      const signals = (await pool.query("SELECT * FROM signals")).rows;
+      const settings = (await pool.query("SELECT * FROM settings")).rows;
+      const newsRes = await pool.query("SELECT * FROM news").catch(() => ({ rows: [] }));
+      const news = newsRes.rows;
+      const notificationsRes = await pool
+        .query("SELECT * FROM notifications")
+        .catch(() => ({ rows: [] }));
+      const notifications = notificationsRes.rows;
+      const rewardsRes = await pool.query("SELECT * FROM rewards").catch(() => ({ rows: [] }));
+      const rewards = rewardsRes.rows;
+      const redemptionsRes = await pool
+        .query("SELECT * FROM reward_redemptions")
+        .catch(() => ({ rows: [] }));
+      const reward_redemptions = redemptionsRes.rows;
+
+      const dataToSave = {
+        users,
+        transactions,
+        signals,
+        settings,
+        news,
+        notifications,
+        rewards,
+        reward_redemptions,
+        savedAt: new Date().toISOString(),
+      };
+
+      await fs.promises.writeFile(STORE_FILE, JSON.stringify(dataToSave, null, 2), "utf-8");
+    } catch (err) {
+      console.error("[PostgreSQL] Error persisting in-memory database to disk:", err);
+    }
+  }, 500);
 }
 
 function loadPersistedData(): {
@@ -154,6 +199,8 @@ function loadPersistedData(): {
   settings?: DbSetting[];
   news?: DbNews[];
   notifications?: DbNotification[];
+  rewards?: DbReward[];
+  reward_redemptions?: DbRewardRedemption[];
 } | null {
   try {
     if (fs.existsSync(STORE_FILE)) {
@@ -212,6 +259,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
+      username VARCHAR(100),
       email VARCHAR(255) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
       phone VARCHAR(50),
@@ -222,6 +270,8 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       account_type VARCHAR(50) NOT NULL DEFAULT 'Standard Live',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
   `);
 
@@ -345,6 +395,40 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       badge VARCHAR(50),
       author VARCHAR(100) DEFAULT 'Administrator',
       action_url VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create rewards table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rewards (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      category VARCHAR(100) NOT NULL DEFAULT 'Gadget',
+      points_required INT NOT NULL DEFAULT 10,
+      stock INT NOT NULL DEFAULT 10,
+      image_url TEXT,
+      description TEXT,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create reward_redemptions table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reward_redemptions (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL,
+      user_name VARCHAR(255) NOT NULL,
+      user_email VARCHAR(255) NOT NULL,
+      reward_id INT NOT NULL,
+      reward_title VARCHAR(255) NOT NULL,
+      points_spent INT NOT NULL,
+      status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+      shipping_address TEXT,
+      notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -509,6 +593,63 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
           );
         }
       }
+
+      if (Array.isArray(saved.rewards) && saved.rewards.length > 0) {
+        for (const r of saved.rewards) {
+          await pool.query(
+            `INSERT INTO rewards (id, title, category, points_required, stock, image_url, description, active, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (id) DO UPDATE SET
+               title = EXCLUDED.title,
+               category = EXCLUDED.category,
+               points_required = EXCLUDED.points_required,
+               stock = EXCLUDED.stock,
+               image_url = EXCLUDED.image_url,
+               description = EXCLUDED.description,
+               active = EXCLUDED.active,
+               updated_at = EXCLUDED.updated_at`,
+            [
+              r.id,
+              r.title,
+              r.category,
+              r.points_required,
+              r.stock,
+              r.image_url,
+              r.description,
+              r.active ?? true,
+              r.created_at || new Date().toISOString(),
+              r.updated_at || new Date().toISOString(),
+            ],
+          );
+        }
+      }
+
+      if (Array.isArray(saved.reward_redemptions) && saved.reward_redemptions.length > 0) {
+        for (const red of saved.reward_redemptions) {
+          await pool.query(
+            `INSERT INTO reward_redemptions (id, user_id, user_name, user_email, reward_id, reward_title, points_spent, status, shipping_address, notes, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             ON CONFLICT (id) DO UPDATE SET
+               status = EXCLUDED.status,
+               notes = EXCLUDED.notes,
+               updated_at = EXCLUDED.updated_at`,
+            [
+              red.id,
+              red.user_id,
+              red.user_name,
+              red.user_email,
+              red.reward_id,
+              red.reward_title,
+              red.points_spent,
+              red.status,
+              red.shipping_address,
+              red.notes,
+              red.created_at || new Date().toISOString(),
+              red.updated_at || new Date().toISOString(),
+            ],
+          );
+        }
+      }
     }
   }
 
@@ -583,6 +724,107 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     console.log("[PostgreSQL] Seeded 4 default broadcast notifications");
   }
 
+  // Seed default Rewards catalog if empty
+  const rewardCount = await pool.query<{ count: string }>("SELECT COUNT(*) as count FROM rewards");
+  if (parseInt(rewardCount.rows[0]?.count || "0", 10) === 0) {
+    const defaultRewards = [
+      {
+        title: "iPhone 16 Pro Max 256GB Desert Titanium",
+        category: "Gadget",
+        points_required: 25,
+        stock: 5,
+        image_url:
+          "https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Smartphone flagship Apple terbaru dengan chip A18 Pro, kamera 48MP Fusion, titanium grade 5, dan daya tahan baterai terpanjang.",
+        active: true,
+      },
+      {
+        title: 'Apple MacBook Air 13" M3 Chip 512GB',
+        category: "Gadget",
+        points_required: 20,
+        stock: 5,
+        image_url:
+          "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Laptop ultra tipis dan kencang bertenaga Apple Silicon M3, layar Liquid Retina 13.6 inci, 16GB Unified Memory.",
+        active: true,
+      },
+      {
+        title: "Logam Mulia Emas Antam 10 Gram CertiCard",
+        category: "Logam Mulia",
+        points_required: 15,
+        stock: 12,
+        image_url:
+          "https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Emas batangan murni 24 Karat (99.99%) cetakan PT Antam Tbk dengan kemasan CertiCard pengaman resmi.",
+        active: true,
+      },
+      {
+        title: "Apple Watch Series 10 GPS 46mm Jet Black",
+        category: "Gadget",
+        points_required: 8,
+        stock: 10,
+        image_url:
+          "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Jam pintar layar OLED wide-angle tercanggih, sensor detak jantung ECG, pelacak kebugaran dan aktivitas trading harian.",
+        active: true,
+      },
+      {
+        title: "Saldo E-Wallet Rp 5.000.000 (GoPay/OVO/DANA)",
+        category: "E-Wallet",
+        points_required: 5,
+        stock: 50,
+        image_url:
+          "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Top-up saldo digital instan Rp 5.000.000 langsung ke akun GoPay, OVO, DANA, atau ShopeePay yang Anda daftarkan.",
+        active: true,
+      },
+      {
+        title: "Saldo E-Wallet Rp 2.000.000 (GoPay/OVO/DANA)",
+        category: "E-Wallet",
+        points_required: 2,
+        stock: 100,
+        image_url:
+          "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Top-up saldo digital instan Rp 2.000.000 langsung ke nomor e-wallet pilihan Anda tanpa potongan.",
+        active: true,
+      },
+      {
+        title: "Gotrade VIP Windbreaker Jacket & Polo Shirt",
+        category: "Merchandise",
+        points_required: 1,
+        stock: 150,
+        image_url:
+          "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80",
+        description:
+          "Merchandise eksklusif Gotrade VIP berupa Jaket Windbreaker tahan air & Polo Shirt bordir premium edisi terbatas.",
+        active: true,
+      },
+    ];
+
+    for (const rew of defaultRewards) {
+      await pool.query(
+        `INSERT INTO rewards (title, category, points_required, stock, image_url, description, active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          rew.title,
+          rew.category,
+          rew.points_required,
+          rew.stock,
+          rew.image_url,
+          rew.description,
+          rew.active,
+        ],
+      );
+    }
+    console.log("[PostgreSQL] Seeded 7 default Gotrade Rewards catalog items");
+  }
+
   // Seed default QRIS settings if not present
   const qrisCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, ["qris_image"]);
   if (qrisCheck.rows.length === 0) {
@@ -634,10 +876,11 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
   const userCheck = await pool.query(`SELECT id FROM users WHERE email = $1`, ["user@gotrade.com"]);
   if (userCheck.rows.length === 0) {
     await pool.query(
-      `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO users (name, username, email, password, phone, role, account_number, balance, account_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         "Trader Gotrade",
+        "trader_gotrade",
         "user@gotrade.com",
         "user123",
         "+62 812-3456-7890",
@@ -648,6 +891,10 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       ],
     );
     console.log("[PostgreSQL] Seeded Trader account: user@gotrade.com / user123");
+  } else {
+    await pool.query(
+      `UPDATE users SET username = 'trader_gotrade' WHERE email = 'user@gotrade.com' AND (username IS NULL OR username = '')`,
+    );
   }
 
   // Seed or update admin account from environment (.env)
@@ -662,10 +909,11 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
   );
   if (defaultAdminCheck.rows.length === 0) {
     await pool.query(
-      `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO users (name, username, email, password, phone, role, account_number, balance, account_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         "Administrator Gotrade",
+        "admin_gotrade",
         "admin@gotrade.com",
         envAdminPassword,
         "+62 811-9876-5432",
@@ -684,7 +932,34 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       `UPDATE users SET password = $1, role = 'admin' WHERE LOWER(email) = 'admin@gotrade.com'`,
       [envAdminPassword],
     );
+    await pool.query(
+      `UPDATE users SET username = 'admin_gotrade' WHERE LOWER(email) = 'admin@gotrade.com' AND (username IS NULL OR username = '')`,
+    );
     console.log(`[PostgreSQL] Synchronized Administrator password for admin@gotrade.com`);
+  }
+
+  // Sync referrals table with existing users to ensure everyone has a referral code matching their username
+  try {
+    const existingUsers = await pool.query<{
+      id: number;
+      name: string;
+      username: string;
+      email: string;
+    }>("SELECT id, name, username, email FROM users WHERE username IS NOT NULL AND username != ''");
+    for (const u of existingUsers.rows) {
+      const code = u.username;
+      const refCheck = await pool.query("SELECT id FROM referrals WHERE LOWER(code) = LOWER($1)", [
+        code,
+      ]);
+      if (refCheck.rows.length === 0) {
+        await pool.query(
+          "INSERT INTO referrals (user_id, user_name, email, code, commission, invitees_count) VALUES ($1, $2, $3, $4, 0.00, 0)",
+          [u.id, u.name, u.email, code],
+        );
+      }
+    }
+  } catch (err) {
+    console.warn("[PostgreSQL] Sync referrals table note:", err);
   }
 
   // If a distinct ADMIN_EMAIL is configured in .env, seed/update it as well
@@ -747,6 +1022,28 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     const maxNotifId = Number(maxNotif.rows[0]?.max || 0);
     if (maxNotifId > 0) {
       await pool.query(`SELECT setval('notifications_id_seq', $1, true)`, [maxNotifId]);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const maxReward = await pool.query<{ max: number }>("SELECT MAX(id) as max FROM rewards");
+    const maxRewardId = Number(maxReward.rows[0]?.max || 0);
+    if (maxRewardId > 0) {
+      await pool.query(`SELECT setval('rewards_id_seq', $1, true)`, [maxRewardId]);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const maxRed = await pool.query<{ max: number }>(
+      "SELECT MAX(id) as max FROM reward_redemptions",
+    );
+    const maxRedId = Number(maxRed.rows[0]?.max || 0);
+    if (maxRedId > 0) {
+      await pool.query(`SELECT setval('reward_redemptions_id_seq', $1, true)`, [maxRedId]);
     }
   } catch {
     // ignore

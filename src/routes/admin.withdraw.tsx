@@ -7,13 +7,6 @@ export const Route = createFileRoute("/admin/withdraw")({
     meta: [
       { title: "Withdraw — Gotrade Admin" },
       { name: "description", content: "Kelola dan tinjau permintaan withdraw pengguna Gotrade." },
-      { property: "og:title", content: "Withdraw — Gotrade Admin" },
-      {
-        property: "og:description",
-        content: "Kelola dan tinjau permintaan withdraw pengguna Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: WithdrawAdminPage,

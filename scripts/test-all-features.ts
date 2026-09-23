@@ -328,12 +328,13 @@ async function runAllTests() {
   let userToken = "";
   let regularUserId = 0;
 
-  await test("POST /api/auth/register registers regular trader", async () => {
+  await test("POST /api/auth/register registers regular trader with username", async () => {
     const res = await fetch(`${baseUrl}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: "Budi Trader",
+        username: "budi_trader88",
         email: randomEmail,
         password: "TraderPassword123!",
         phone: "+6281234567890",
@@ -342,6 +343,9 @@ async function runAllTests() {
     if (!res.ok) throw new Error(`Status ${res.status}: ${await res.text()}`);
     const data = await res.json();
     if (!data.success || data.user.role !== "user") throw new Error("User role not 'user'");
+    if (data.user.username !== "budi_trader88") {
+      throw new Error(`Expected username budi_trader88 but got ${data.user.username}`);
+    }
     userToken = data.token;
     regularUserId = data.user.id;
   });

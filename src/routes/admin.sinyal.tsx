@@ -10,13 +10,6 @@ export const Route = createFileRoute("/admin/sinyal")({
         name: "description",
         content: "Kelola sinyal trading yang tampil di beranda aplikasi Gotrade.",
       },
-      { property: "og:title", content: "Admin Sinyal — Gotrade" },
-      {
-        property: "og:description",
-        content: "Kelola sinyal trading yang tampil di beranda aplikasi Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SignalAdminPage,

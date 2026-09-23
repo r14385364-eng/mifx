@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy, Gift, Share2, UserPlus, Users, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth-context";
+import { secureFetch } from "@/lib/api-client";
 
 export const Route = createFileRoute("/referral")({
   head: () => ({
@@ -18,21 +19,10 @@ export const Route = createFileRoute("/referral")({
         content:
           "Bagikan kode referral Gotrade kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
       },
-      { property: "og:title", content: "Referral — Gotrade" },
-      {
-        property: "og:description",
-        content:
-          "Bagikan kode referral Gotrade kamu, ajak teman trading, dan kumpulkan komisi dari setiap undangan yang berhasil.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReferralPage,
 });
-
-const referralCode = "GOTRADE-AND12";
-const referralLink = "https://gotrade.app/r/GOTRADE-AND12";
 
 type InvitedFriend = {
   name: string;
@@ -40,8 +30,6 @@ type InvitedFriend = {
   status: string;
   commission: number;
 };
-
-const invitedFriends: InvitedFriend[] = [];
 
 const steps = [
   { title: "Bagikan kode", desc: "Kirim kode atau tautan referral ke teman kamu." },
@@ -68,15 +56,56 @@ function formatDate(iso: string) {
 function ReferralPage() {
   const { user } = useAuth();
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [liveFriends, setLiveFriends] = useState<InvitedFriend[]>([]);
+  const [liveCommission, setLiveCommission] = useState<number>(0);
+  const [liveInviteeCount, setLiveInviteeCount] = useState<number>(0);
 
-  const activeReferralCode = user?.accountNumber ? `REF-${user.accountNumber}` : "GOTRADE-VIP";
+  const activeReferralCode = user?.username || "trader_gotrade";
   const activeReferralLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/register?ref=${activeReferralCode}`
       : `https://gotrade.app/register?ref=${activeReferralCode}`;
 
-  const totalCommission = invitedFriends.reduce((sum, f) => sum + f.commission, 0);
-  const activeFriends = invitedFriends.filter((f) => f.status === "Aktif").length;
+  useEffect(() => {
+    let mounted = true;
+    async function loadReferralData() {
+      try {
+        const res = await secureFetch("/api/referrals");
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted && data.success) {
+            if (Array.isArray(data.referrals) && data.referrals.length > 0) {
+              const myRef = data.referrals[0];
+              setLiveCommission(Number(myRef.commission) || 0);
+              setLiveInviteeCount(Number(myRef.invitees_count) || 0);
+            }
+            if (Array.isArray(data.invitees)) {
+              setLiveFriends(
+                data.invitees.map(
+                  (inv: { name: string; created_at: string; account_type: string }) => ({
+                    name: inv.name,
+                    joinedAt: inv.created_at || new Date().toISOString(),
+                    status: "Aktif",
+                    commission: 50000,
+                  }),
+                ),
+              );
+            }
+          }
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+    void loadReferralData();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  const totalFriendsCount = liveFriends.length || liveInviteeCount;
+  const totalCommission = liveCommission || liveFriends.length * 50000;
+  const activeFriends = liveFriends.filter((f) => f.status === "Aktif").length || liveInviteeCount;
 
   const copy = async (value: string, key: "code" | "link") => {
     try {
@@ -120,7 +149,7 @@ function ReferralPage() {
 
             <div className="rounded-xl border border-dashed border-primary/40 bg-background p-4">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                Kode referral kamu
+                Kode referral kamu (Username)
               </p>
               <div className="mt-1 flex items-center justify-between gap-3">
                 <span className="text-xl font-extrabold tracking-wider">{activeReferralCode}</span>
@@ -157,7 +186,7 @@ function ReferralPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <UserPlus className="mx-auto size-4 text-muted-foreground" />
-              <p className="mt-2 text-lg font-extrabold">{invitedFriends.length}</p>
+              <p className="mt-2 text-lg font-extrabold">{totalFriendsCount}</p>
               <p className="text-[11px] text-muted-foreground">Total diajak</p>
             </CardContent>
           </Card>
@@ -204,8 +233,8 @@ function ReferralPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Teman yang kamu ajak</CardTitle>
           </CardHeader>
-          <CardContent className={invitedFriends.length > 0 ? "divide-y p-0" : "p-6 text-center"}>
-            {invitedFriends.length === 0 ? (
+          <CardContent className={liveFriends.length > 0 ? "divide-y p-0" : "p-6 text-center"}>
+            {liveFriends.length === 0 ? (
               <div className="py-4">
                 <Users className="mx-auto size-8 text-muted-foreground/60" />
                 <p className="mt-2 text-sm font-semibold text-foreground">
@@ -216,7 +245,7 @@ function ReferralPage() {
                 </p>
               </div>
             ) : (
-              invitedFriends.map((friend) => (
+              liveFriends.map((friend) => (
                 <div key={friend.name} className="flex items-center gap-3 px-5 py-3">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
                     {friend.name

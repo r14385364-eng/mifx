@@ -15,13 +15,6 @@ export const Route = createFileRoute("/login")({
         content:
           "Masuk ke Akun Gotrade Anda dengan email dan password atau pilih akun user dan admin.",
       },
-      { property: "og:title", content: "Masuk ke Akun Gotrade" },
-      {
-        property: "og:description",
-        content: "Masuk ke Akun Gotrade Anda dengan email dan password.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LoginPage,

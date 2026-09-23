@@ -3,11 +3,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 export type AuthUser = {
   id: number;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   role: "user" | "admin";
   accountNumber: string;
   balance: number;
+  profit?: number;
   accountType: string;
   createdAt?: string;
 };

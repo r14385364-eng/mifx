@@ -8,138 +8,194 @@
 
 **Gotrade** adalah platform aplikasi trading online modern, aman, dan legal yang menyediakan layanan perdagangan aset keuangan global seperti **Forex, Komoditas (Gold/Silver), Indeks Saham Global, dan Kripto**.
 
-Aplikasi ini dirancang dengan antarmuka yang sangat responsif, intuitif, serta dilengkapi dengan sistem akun dwifungsi (yaitu **Trader User** dan **Super Administrator**). Gotrade mengintegrasikan sistem perdagangan simulasi kuotasi harga waktu-nyata (*real-time price simulation*), manajemen sinyal trading analitis, berita finansial terkini, infrastruktur transaksi deposit (QRIS & Transfer Bank) serta penarikan dana (*withdrawal*), pusat notifikasi siaran pesan (*broadcast notifications*), yang diproteksi secara menyeluruh oleh arsitektur **Role-Based Access Control (RBAC)** dan standar keamanan berlapis.
+Aplikasi ini dirancang dengan antarmuka yang sangat responsif, intuitif, serta dilengkapi dengan sistem akun dwifungsi (**Trader User** dan **Super Administrator**). Gotrade mengintegrasikan:
+
+- Sistem perdagangan simulasi kuotasi harga waktu-nyata (_real-time price simulation_).
+- Manajemen sinyal trading analitis & berita pasar finansial terkini.
+- Modul transaksi deposit (QRIS Dinamis & Transfer Bank dengan pratinjau bukti transfer) dan penarikan dana (_withdrawal_).
+- Program loyalitas **Gotrade Rewards** berbasis saldo aktif akun.
+- Program referral multi-tier dengan pelacakan komisi dan kode unik.
+- Pusat notifikasi siaran pesan (_broadcast notifications_) dengan sinkronisasi waktu-nyata dan penanda unread badge universal.
+- Proteksi keamanan menyeluruh berstandar **Role-Based Access Control (RBAC)**, hashing password salted scrypt, proteksi brute-force, penghapusan tag Open Graph/Twitter Card untuk privasi tautan sharing, dan jejak audit (_audit logs_).
 
 ---
 
 ## 2. Tech Stack & Architecture
 
 ### Front-End Framework
+
 - **React 19** & **TypeScript 5.8**
 - **TanStack Start & TanStack Router** (`@tanstack/react-router`) untuk routing SPA yang mulus, modal state handling, dan nested layout rendering.
-- **Tailwind CSS v4** dengan varian tema dark/light otomatis, animasi `tw-animate-css`, dan komponen berbasis `@radix-ui` (Shadcn/UI paradigm).
-- **Brand Identity & Assets**: Standardisasi logo resmi menggunakan `/logo.jpg` via komponen terpadu `AppLogo` di seluruh layout pengguna, modal, dan sidebar admin.
-- **Recharts** untuk visualisasi grafik pergerakan harga instrumen finansial.
+- **Tailwind CSS v4** dengan varian tema otomatis, animasi `tw-animate-css`, dan komponen berbasis `@radix-ui` (Shadcn/UI paradigm).
+- **Brand Identity & Assets**: Standardisasi logo resmi menggunakan `/logo.jpg` via komponen terpadu `AppLogo` di seluruh layout pengguna, modal dialog, dan sidebar admin.
+- **Recharts** untuk visualisasi grafik pergerakan harga instrumen finansial real-time.
 - **Lucide React Icons** untuk konsistensi simbol visual.
 - **Secure API Client (`secureFetch`)**: Klien fetch terstandarisasi di `/src/lib/api-client.ts` yang otomatis menginjeksi token `Bearer`, menangani `credentials: "include"`, serta mendeteksi respons `401 Unauthorized`, `403 Forbidden`, dan `429 Rate Limit` dengan notifikasi toast informatif.
 
 ### Back-End & API Layer
+
 - **Express.js API Server** (`/src/server/app.ts` & `/src/server/api-handler.ts`).
 - **Role-Based Access Control (RBAC)**: Middleware `requireAdmin` dan `requireAuth` membatasi eksekusi endpoint administratif hanya untuk akun dengan peran `admin`.
 - **RESTful Endpoints** terproteksi menggunakan token sesi berbasis `Authorization: Bearer <token>` dan HttpOnly session cookies.
-- **Security Headers & Defense-in-Depth**: Perlindungan terhadap sniffing (`X-Content-Type-Options: nosniff`), proteksi framing (`X-Frame-Options: SAMEORIGIN`), isolasi origin (`Referrer-Policy: strict-origin-when-cross-origin`), sanitasi payload, serta pembatasan laju permintaan (*Rate Limiting*).
+- **Security Headers & Defense-in-Depth**: Perlindungan terhadap sniffing (`X-Content-Type-Options: nosniff`), proteksi framing (`X-Frame-Options: SAMEORIGIN`), isolasi origin (`Referrer-Policy: strict-origin-when-cross-origin`), sanitasi payload, serta pembatasan laju permintaan (_Rate Limiting_).
 - **Audit Logs Table**: Pencatatan riwayat setiap aksi administratif dan kejadian keamanan sistem ke tabel `audit_logs`.
-- **Database Engine**: Driver `pg` (PostgreSQL) dengan sistem **Seamless Fallback** ke **In-Memory PostgreSQL Engine (`pg-mem`)** dan disk store JSON (`/.data/db_store.json`) untuk menjamin ketersediaan server 100% tanpa hambatan konektivitas lokal/remote.
+- **Database Engine**: Driver `pg` (PostgreSQL) dengan sistem **Seamless Fallback** ke **In-Memory PostgreSQL Engine (`pg-mem`)** dan disk snapshot store (`/.data/db_store.json`) untuk menjamin ketersediaan server 100% tanpa hambatan konektivitas.
 
 ---
 
 ## 3. Database Schema & Architecture
 
-Infrastruktur database mengelola 8 entitas tabel utama:
+Infrastruktur database mengelola 10 entitas tabel utama:
 
 ### 1. `users` (Manajemen Pengguna)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | SERIAL PRIMARY KEY | ID Unik Pengguna |
-| `name` | VARCHAR(255) | Nama Lengkap Pengguna |
-| `email` | VARCHAR(255) UNIQUE | Email Akun (Lowercased) |
-| `password` | VARCHAR(255) | Kredensial Password (Salted Scrypt Hash) |
-| `phone` | VARCHAR(50) | Nomor Telepon |
-| `role` | VARCHAR(50) | Peran (`user` atau `admin`) |
-| `account_number` | VARCHAR(50) | Nomor Akun Trading (8 digit) |
-| `balance` | NUMERIC(15,2) | Saldo Akun (USD) |
-| `profit` | NUMERIC(15,2) | Akumulasi Saldo Profit Pengguna |
-| `account_type` | VARCHAR(50) | Jenis Akun (Standard Live / Demo) |
-| `created_at` | TIMESTAMP | Tanggal Pendaftaran |
+
+| Kolom            | Tipe Data           | Keterangan                               |
+| :--------------- | :------------------ | :--------------------------------------- |
+| `id`             | SERIAL PRIMARY KEY  | ID Unik Pengguna                         |
+| `name`           | VARCHAR(255)        | Nama Lengkap Pengguna                    |
+| `username`       | VARCHAR(100) UNIQUE | Username Unik Pengguna                   |
+| `email`          | VARCHAR(255) UNIQUE | Email Akun (Lowercased)                  |
+| `password`       | VARCHAR(255)        | Kredensial Password (Salted Scrypt Hash) |
+| `phone`          | VARCHAR(50)         | Nomor Telepon                            |
+| `role`           | VARCHAR(50)         | Peran (`user` atau `admin`)              |
+| `account_number` | VARCHAR(50)         | Nomor Akun Trading (8 digit)             |
+| `balance`        | NUMERIC(15,2)       | Saldo Akun Utama (USD)                   |
+| `profit`         | NUMERIC(15,2)       | Akumulasi Saldo Profit Pengguna (USD)    |
+| `account_type`   | VARCHAR(50)         | Jenis Akun (Standard Live / Demo)        |
+| `referred_by`    | VARCHAR(100)        | Kode Referral Pengajak (Opsional)        |
+| `created_at`     | TIMESTAMP           | Tanggal Pendaftaran                      |
 
 ### 2. `notifications` (Notifikasi & Pengumuman Broadcast)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | SERIAL PRIMARY KEY | ID Notifikasi |
-| `title` | VARCHAR(255) | Judul Notifikasi |
-| `message` | TEXT | Isi Pesan Notifikasi |
-| `type` | VARCHAR(50) | Kategori (`info`, `promo`, `alert`, `system`, `trading`) |
-| `target` | VARCHAR(50) | Target Penerima (`all`, `trader`) |
-| `is_pinned` | BOOLEAN | Penanda Sematan Prioritas (Pinned) |
-| `badge` | VARCHAR(50) | Label Badge Kustom (cth: "Penting", "Hot Promo") |
-| `author` | VARCHAR(100) | Penulis / Administrator Pengirim |
-| `action_url` | VARCHAR(255) | Tautan Navigasi Aksi (cth: `/trade`, `/deposit`) |
-| `created_at` | TIMESTAMP | Waktu Penyiaran |
-| `updated_at` | TIMESTAMP | Waktu Terakhir Diperbarui |
+
+| Kolom        | Tipe Data          | Keterangan                                               |
+| :----------- | :----------------- | :------------------------------------------------------- |
+| `id`         | SERIAL PRIMARY KEY | ID Notifikasi                                            |
+| `title`      | VARCHAR(255)       | Judul Notifikasi                                         |
+| `message`    | TEXT               | Isi Pesan Notifikasi                                     |
+| `type`       | VARCHAR(50)        | Kategori (`info`, `promo`, `alert`, `system`, `trading`) |
+| `target`     | VARCHAR(50)        | Target Penerima (`all`, `trader`)                        |
+| `is_pinned`  | BOOLEAN            | Penanda Sematan Prioritas (Pinned)                       |
+| `badge`      | VARCHAR(50)        | Label Badge Kustom (cth: "Penting", "Hot Promo")         |
+| `author`     | VARCHAR(100)       | Penulis / Administrator Pengirim                         |
+| `action_url` | VARCHAR(255)       | Tautan Navigasi Aksi (cth: `/trade`, `/deposit`)         |
+| `created_at` | TIMESTAMP          | Waktu Penyiaran                                          |
+| `updated_at` | TIMESTAMP          | Waktu Terakhir Diperbarui                                |
 
 ### 3. `audit_logs` (Keamanan & Jejak Audit Admin)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | SERIAL PRIMARY KEY | ID Log |
-| `user_id` | INT | ID Pengguna Pelaksana Aksi |
-| `user_email` | VARCHAR(255) | Email Pengguna |
-| `user_role` | VARCHAR(50) | Peran Akun (`admin`, `user`) |
-| `action` | VARCHAR(100) | Kode Aksi Keamanan (cth: `ADMIN_CREATE_NOTIFICATION`) |
-| `details` | TEXT | Deskripsi Rinci Aktivitas |
-| `ip_address` | VARCHAR(100) | Alamat IP Klien |
-| `status` | VARCHAR(50) | Status (`SUCCESS`, `BLOCKED`, `WARNING`) |
-| `created_at` | TIMESTAMP | Waktu Kejadian |
+
+| Kolom        | Tipe Data          | Keterangan                                            |
+| :----------- | :----------------- | :---------------------------------------------------- |
+| `id`         | SERIAL PRIMARY KEY | ID Log                                                |
+| `user_id`    | INT                | ID Pengguna Pelaksana Aksi                            |
+| `user_email` | VARCHAR(255)       | Email Pengguna                                        |
+| `user_role`  | VARCHAR(50)        | Peran Akun (`admin`, `user`)                          |
+| `action`     | VARCHAR(100)       | Kode Aksi Keamanan (cth: `ADMIN_CREATE_NOTIFICATION`) |
+| `details`    | TEXT               | Deskripsi Rinci Aktivitas                             |
+| `ip_address` | VARCHAR(100)       | Alamat IP Klien                                       |
+| `status`     | VARCHAR(50)        | Status (`SUCCESS`, `BLOCKED`, `WARNING`)              |
+| `created_at` | TIMESTAMP          | Waktu Kejadian                                        |
 
 ### 4. `signals` (Sinyal Trading)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | VARCHAR(50) PRIMARY KEY | Kode Sinyal (cth: `SIG-001`) |
-| `symbol` | VARCHAR(50) | Simbol Produk (cth: `XAUUSD`) |
-| `category` | VARCHAR(50) | Kategori (`Komoditi`, `Forex`, `Indeks`) |
-| `action` | VARCHAR(20) | Tindakan (`BUY` atau `SELL`) |
-| `entry_price` | NUMERIC(15,5) | Harga Masuk |
-| `tp1`, `tp2`, `sl` | NUMERIC(15,5) | Take Profit 1, 2, dan Stop Loss |
-| `rationale` | TEXT | Analisa Rasionasi Sinyal |
-| `timeframe` | VARCHAR(20) | Kerangka Waktu (`15m`, `30m`, `1h`) |
-| `status` | VARCHAR(20) | Status (`Aktif`, `Selesai`, `Batal`) |
+
+| Kolom              | Tipe Data               | Keterangan                               |
+| :----------------- | :---------------------- | :--------------------------------------- |
+| `id`               | VARCHAR(50) PRIMARY KEY | Kode Sinyal (cth: `SIG-001`)             |
+| `symbol`           | VARCHAR(50)             | Simbol Produk (cth: `XAUUSD`)            |
+| `category`         | VARCHAR(50)             | Kategori (`Komoditi`, `Forex`, `Indeks`) |
+| `action`           | VARCHAR(20)             | Tindakan (`BUY` atau `SELL`)             |
+| `entry_price`      | NUMERIC(15,5)           | Harga Masuk                              |
+| `tp1`, `tp2`, `sl` | NUMERIC(15,5)           | Take Profit 1, 2, dan Stop Loss          |
+| `rationale`        | TEXT                    | Analisa Rasionasi Sinyal                 |
+| `timeframe`        | VARCHAR(20)             | Kerangka Waktu (`15m`, `30m`, `1h`)      |
+| `status`           | VARCHAR(20)             | Status (`Aktif`, `Selesai`, `Batal`)     |
 
 ### 5. `news` (Berita Finansial & Analisa Pasar)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | SERIAL PRIMARY KEY | ID Berita |
-| `title` | VARCHAR(255) | Judul Artikel |
-| `slug` | VARCHAR(255) UNIQUE | URL Friendly Slug |
-| `category` | VARCHAR(50) | Kategori Berita |
-| `author` | VARCHAR(100) | Penulis / Sumber |
-| `image_url` | TEXT | URL Sampul Gambar |
-| `excerpt` | TEXT | Ringkasan Singkat |
-| `content` | TEXT | Isi Artikel Lengkap |
-| `created_at` | TIMESTAMP | Waktu Terbit |
+
+| Kolom        | Tipe Data           | Keterangan          |
+| :----------- | :------------------ | :------------------ |
+| `id`         | SERIAL PRIMARY KEY  | ID Berita           |
+| `title`      | VARCHAR(255)        | Judul Artikel       |
+| `slug`       | VARCHAR(255) UNIQUE | URL Friendly Slug   |
+| `category`   | VARCHAR(50)         | Kategori Berita     |
+| `author`     | VARCHAR(100)        | Penulis / Sumber    |
+| `image_url`  | TEXT                | URL Sampul Gambar   |
+| `excerpt`    | TEXT                | Ringkasan Singkat   |
+| `content`    | TEXT                | Isi Artikel Lengkap |
+| `created_at` | TIMESTAMP           | Waktu Terbit        |
 
 ### 6. `currencies` (Mata Uang & Instrumen Pasar)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | SERIAL PRIMARY KEY | ID Instrumen |
-| `symbol` | VARCHAR(20) | Simbol Pasar (cth: `EURUSD`, `XAUUSD`) |
-| `name` | VARCHAR(100) | Nama Lengkap Produk |
-| `category` | VARCHAR(50) | Jenis Pasar (`Forex`, `Komoditas`, `Indeks`, `Crypto`) |
-| `price` | NUMERIC(15,5) | Harga Pasar Terkini |
-| `decimals` | INT | Jumlah Digit Desimal |
-| `spread` | NUMERIC(10,2) | Biaya Spread |
-| `direction` | VARCHAR(20) | Arah Tren (`Naik`, `Turun`, `Acak`) |
-| `volatility` | NUMERIC(10,2) | Tingkat Volatilitas Harga |
-| `active` | BOOLEAN | Status Trading (`true` / `false`) |
 
-### 7. `transactions` (Transaksi Deposit & Withdraw)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `id` | VARCHAR(50) PRIMARY KEY | Kode Transaksi (cth: `TU-98412`, `WD-10293`, `PRF-12345`) |
-| `user_id` | INT REFERENCES users(id) | ID Pemilik Transaksi |
-| `user_name` | VARCHAR(255) | Nama Pemilik Transaksi |
-| `account_number` | VARCHAR(50) | Nomor Akun Trading Pengguna |
-| `type` | VARCHAR(20) | Tipe (`Top Up`, `Withdraw`, `Profit`) |
-| `channel` | VARCHAR(100) | Kanal Metode (QRIS, Bank BCA, Mandiri, Admin Profit Grant) |
-| `destination` | VARCHAR(100) | Rekening / Akun Tujuan |
-| `amount` | NUMERIC(15,2) | Jumlah Nominal Transaksi |
-| `status` | VARCHAR(20) | Status (`Menunggu`, `Berhasil`, `Ditolak`) |
-| `proof_image` | TEXT | Data URI gambar bukti transfer / resi pembayaran pengguna |
-| `created_at` | TIMESTAMP | Tanggal & Waktu Transaksi |
+| Kolom        | Tipe Data          | Keterangan                                             |
+| :----------- | :----------------- | :----------------------------------------------------- |
+| `id`         | SERIAL PRIMARY KEY | ID Instrumen                                           |
+| `symbol`     | VARCHAR(20)        | Simbol Pasar (cth: `EURUSD`, `XAUUSD`)                 |
+| `name`       | VARCHAR(100)       | Nama Lengkap Produk                                    |
+| `category`   | VARCHAR(50)        | Jenis Pasar (`Forex`, `Komoditas`, `Indeks`, `Crypto`) |
+| `price`      | NUMERIC(15,5)      | Harga Pasar Terkini                                    |
+| `decimals`   | INT                | Jumlah Digit Desimal                                   |
+| `spread`     | NUMERIC(10,2)      | Biaya Spread                                           |
+| `direction`  | VARCHAR(20)        | Arah Tren (`Naik`, `Turun`, `Acak`)                    |
+| `volatility` | NUMERIC(10,2)      | Tingkat Volatilitas Harga                              |
+| `active`     | BOOLEAN            | Status Trading (`true` / `false`)                      |
 
-### 8. `settings` (Pengaturan Aplikasi)
-| Kolom | Tipe Data | Keterangan |
-| :--- | :--- | :--- |
-| `key` | VARCHAR(100) PRIMARY KEY | Kunci Konfigurasi |
-| `value` | TEXT | Nilai Konfigurasi (JSON / Text) |
+### 7. `transactions` (Transaksi Deposit, Withdraw & Profit)
+
+| Kolom            | Tipe Data                | Keterangan                                                 |
+| :--------------- | :----------------------- | :--------------------------------------------------------- |
+| `id`             | VARCHAR(50) PRIMARY KEY  | Kode Transaksi (cth: `TU-98412`, `WD-10293`, `PRF-12345`)  |
+| `user_id`        | INT REFERENCES users(id) | ID Pemilik Transaksi                                       |
+| `user_name`      | VARCHAR(255)             | Nama Pemilik Transaksi                                     |
+| `account_number` | VARCHAR(50)              | Nomor Akun Trading Pengguna                                |
+| `type`           | VARCHAR(20)              | Tipe (`Top Up`, `Withdraw`, `Profit`)                      |
+| `channel`        | VARCHAR(100)             | Kanal Metode (QRIS, Bank BCA, Mandiri, Admin Profit Grant) |
+| `destination`    | VARCHAR(100)             | Rekening / Akun Tujuan                                     |
+| `amount`         | NUMERIC(15,2)            | Jumlah Nominal Transaksi (IDR atau USD)                    |
+| `status`         | VARCHAR(20)              | Status (`Menunggu`, `Berhasil`, `Ditolak`)                 |
+| `proof_image`    | TEXT                     | Data URI gambar bukti transfer / resi pembayaran pengguna  |
+| `created_at`     | TIMESTAMP                | Tanggal & Waktu Transaksi                                  |
+
+### 8. `rewards` (Katalog Hadiah Gotrade Rewards)
+
+| Kolom             | Tipe Data          | Keterangan                                                |
+| :---------------- | :----------------- | :-------------------------------------------------------- |
+| `id`              | SERIAL PRIMARY KEY | ID Hadiah                                                 |
+| `title`           | VARCHAR(255)       | Nama Produk / Hadiah                                      |
+| `category`        | VARCHAR(50)        | Kategori (`E-Wallet`, `Gadget`, `Merchandise`, `Voucher`) |
+| `points_required` | INT                | Poin yang Dibutuhkan                                      |
+| `stock`           | INT                | Sisa Stok Hadiah                                          |
+| `image_url`       | TEXT               | Foto Produk Hadiah                                        |
+| `description`     | TEXT               | Deskripsi & Spesifikasi Produk                            |
+| `is_featured`     | BOOLEAN            | Penanda Hadiah Unggulan                                   |
+| `active`          | BOOLEAN            | Status Ketersediaan Hadiah                                |
+
+### 9. `reward_redemptions` (Riwayat Penukaran Hadiah)
+
+| Kolom              | Tipe Data                  | Keterangan                                                |
+| :----------------- | :------------------------- | :-------------------------------------------------------- |
+| `id`               | SERIAL PRIMARY KEY         | ID Klaim                                                  |
+| `user_id`          | INT REFERENCES users(id)   | ID Pengguna yang Mengklaim                                |
+| `user_name`        | VARCHAR(255)               | Nama Pengguna                                             |
+| `user_email`       | VARCHAR(255)               | Email Pengguna                                            |
+| `reward_id`        | INT REFERENCES rewards(id) | ID Hadiah yang Diklaim                                    |
+| `reward_title`     | VARCHAR(255)               | Nama Hadiah                                               |
+| `points_spent`     | INT                        | Jumlah Poin yang Dibelanjakan                             |
+| `shipping_address` | TEXT                       | Alamat Kirim / No. E-Wallet Pengguna                      |
+| `status`           | VARCHAR(50)                | Status (`PENDING`, `PROCESSING`, `COMPLETED`, `REJECTED`) |
+| `notes`            | TEXT                       | Catatan Admin / Nomor Resi Pengiriman                     |
+| `created_at`       | TIMESTAMP                  | Waktu Klaim                                               |
+
+### 10. `referrals` (Manajemen Referral & Komisi)
+
+| Kolom            | Tipe Data          | Keterangan                   |
+| :--------------- | :----------------- | :--------------------------- |
+| `id`             | SERIAL PRIMARY KEY | ID Referral                  |
+| `user_id`        | INT                | ID Pengguna                  |
+| `user_name`      | VARCHAR(255)       | Nama Pengguna                |
+| `email`          | VARCHAR(255)       | Email Pengguna               |
+| `code`           | VARCHAR(50)        | Kode Referral Unik           |
+| `referred_by`    | VARCHAR(50)        | Kode Pengajak                |
+| `commission`     | NUMERIC(15,2)      | Akumulasi Komisi Referral    |
+| `invitees_count` | INT                | Jumlah Pendaftar yang Diajak |
 
 ---
 
@@ -149,269 +205,157 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
 
 1. **Role: Public / Guest**
    - Hak Akses: Halaman pengenalan (`/`), katalog berita umum (`/berita`), detail artikel (`/berita/$slug`), form masuk (`/login`), dan pendaftaran (`/register`).
-   - Batasan: Tidak dapat mengakses modul trading, deposit/withdraw, riwayat transaksi, atau portal admin.
+   - Batasan: Dilarang keras mengakses endpoint atau rute transaksi, trading, dan admin.
 
 2. **Role: Trader User (`user`)**
-   - Hak Akses: Dashboard trader (`/beranda`), pasar (`/pasar`), eksekusi trading (`/trade`), order aktif (`/order`), riwayat pribadi (`/riwayat`), pengajuan deposit (`/deposit`), penarikan dana (`/withdraw`), program referral (`/referral`), dan profil (`/profil`).
+   - Hak Akses: Dashboard trader (`/beranda`), pasar (`/pasar`), eksekusi trading (`/trade`), order aktif (`/order`), riwayat pribadi (`/riwayat`), pengajuan deposit (`/deposit`), penarikan dana (`/withdraw`), program referral (`/referral`), Gotrade Rewards (`/rewards`), dan profil (`/profil`).
    - Fitur Notifikasi: Melihat notifikasi siaran publik via modal lonceng (`/beranda`), filter tipe notifikasi, tracking baca/belum dibaca via client storage.
-   - Batasan: Dilarang keras mengakses endpoint atau rute `/admin/*`. Permintaan ke API admin akan direspons dengan kode status `403 Forbidden`.
+   - Batasan: Dilarang mengakses endpoint atau rute `/admin/*` (HTTP 403 Forbidden).
 
 3. **Role: Super Administrator (`admin`)**
-   - Hak Akses: Seluruh kontrol panel administratif (`/admin/*`), manajemen pengguna (`/admin/users`), kelola profit per akun (`/admin/profit`), manajemen notifikasi & siaran broadcast (`/admin/notifikasi`), persetujuan transaksi Top-Up & Bukti Transfer (`/admin/top-up`), persetujuan penarikan (`/admin/withdraw`), manajemen sinyal (`/admin/sinyal`), artikel berita (`/admin/berita`), instrumen pasar (`/admin/mata-uang`), komisi referral (`/admin/referral`), riwayat audit logs (`/admin/audit-logs`), dan pengaturan sistem/QRIS (`/admin/pengaturan`).
+   - Hak Akses: Seluruh kontrol panel administratif (`/admin/*`), manajemen pengguna (`/admin/users`), kelola profit per akun (`/admin/profit`), manajemen notifikasi siaran (`/admin/notifikasi`), persetujuan Top-Up dengan viewer bukti transfer (`/admin/top-up`), persetujuan penarikan (`/admin/withdraw`), manajemen katalog & klaim Rewards (`/admin/rewards`), manajemen sinyal (`/admin/sinyal`), artikel berita (`/admin/berita`), instrumen pasar (`/admin/mata-uang`), komisi referral (`/admin/referral`), riwayat audit logs (`/admin/audit-logs`), dan pengaturan sistem/QRIS (`/admin/pengaturan`).
 
-4. **Komponen Proteksi RBAC Sisi Klien (`AdminLayout`)**
-   - Jika pengguna belum terautentikasi atau bukan bertipe `role === "admin"`, komponen `AdminLayout` mencegat render dan menampilkan status **Akses Ditolak (RBAC 403)** dengan opsi login akun administrator atau kembali ke Beranda.
+4. **Kebijakan Privasi Sharing Tautan (No Open Graph / No Twitter Cards)**
+   - Seluruh tag `property="og:*"` dan `name="twitter:*"` telah dihapus secara menyeluruh dari seluruh rute.
+   - Membagikan tautan website di WhatsApp, Telegram, iMessage, atau media sosial lainnya akan tampil sebagai tautan teks murni tanpa thumbnail gambar atau preview kartu.
 
 ---
 
 ## 5. Pemetaan Fitur & Struktur Halaman Menu
 
-### A. Akses Publik & Autentikasi (`/`, `/login`, `/register`)
-- **Onboarding Card (`/`)**: Tampilan sambutan aplikasi, pengenalan fitur utama, legalitas resmi, dan tombol aksi Login/Registrasi.
-- **Login Page (`/login`)**: Form autentikasi email & password dengan pemicu sekali-klik *Quick Demo Account* (Akun Trader `user@gotrade.com` & Akun Administrator `admin@gotrade.com`). Dilindungi dari brute force dengan lockout otomatis setelah 5 kegagalan berturut-turut.
-- **Register Page (`/register`)**: Pendaftaran akun trader baru yang aman tanpa input nomor HP (Nama Lengkap, Email, Kata Sandi, dan Konfirmasi Sandi), otomatis menggenerasikan 8-digit nomor akun trading unik.
+### A. Akses Publik & Autentikasi
+
+- **Landing / Onboarding (`/`)**: Sambutan aplikasi, pengenalan fitur utama, legalitas, dan tombol aksi Login/Registrasi.
+- **Login (`/login`)**: Form autentikasi email & password dengan proteksi lockout brute-force (maksimal 5 kegagalan berturut-turut).
+- **Register (`/register`)**: Pendaftaran trader baru dengan username unik, email, password terenkripsi, penautan referral otomatis, dan pembuatan nomor akun trading 8-digit.
+- **Berita Finansial (`/berita` & `/berita/$slug`)**: Katalog berita finansial terupdate dengan klasifikasi kategori dan pembaca artikel responsif.
 
 ### B. Portal Utama Trader (User Interface)
-- **Beranda (`/beranda`)**:
-  - Header interaktif: Ikon lonceng notifikasi dengan titik merah (badge) dinamis saat ada pesan belum dibaca.
-  - Ringkasan total balance akun trader.
-  - Shortcut menu transaksi cepat (Deposit, Withdraw, Trade, Referral).
-  - Ticker pergerakan harga populer real-time.
-  - Seksi Signal Produk Terpopuler lengkap dengan tombol "Lihat Semua" ke `/pasar`.
-  - Carousel berita finansial terbaru.
-- **Pusat Notifikasi (`NotificationModal`)**:
-  - Modal interaktif menampilkan pesan siaran resmi dari administrator.
-  - Filter kategori (*Semua, Promo, Info, Peringatan, Sistem*).
-  - Tombol aksi cepat ke tautan tujuan terkait (misal `/trade` atau `/deposit`).
-  - Opsi *Tandai Semua Sudah Dibaca*.
-- **Pasar (`/pasar`)**:
-  - Tab kategori instrumen (*Semua, Forex, Komoditi, Indeks, Crypto*).
-  - Pencarian instrumen secara instan (*live search*).
-  - Daftar harga Bid/Ask real-time, grafik indikator mini, dan toggle favorit.
-- **Trade (`/trade`)**:
-  - Grafik pergerakan harga interaktif berbasis Recharts.
-  - Panel eksekusi order: Pilihan `BUY` / `SELL`, pengaturan ukuran lot, input Take Profit (TP), dan Stop Loss (SL).
-  - Kalkulasi kalkulator estimasi profit/loss otomatis.
-- **Order (`/order`)**:
-  - Ringkasan posisi trading yang sedang terbuka (*Open Positions*).
-  - Detail P/L berjalan dan fungsi penutupan posisi (*Close Order*).
-- **Riwayat Transaksi (`/riwayat`)**:
-  - Riwayat lengkap deposit, penarikan dana, profit grant dari admin, serta histori transaksi.
-  - Penyelarasan status sinkron dengan database admin: status **Selesai** (badge hijau) saat disetujui admin, **Diproses** (badge kuning) saat menunggu, dan **Gagal** (badge merah) saat ditolak.
-  - Format mata uang ganda: Top Up dan Withdraw dalam Rupiah (IDR) dengan subteks ekuivalen USD, sedangkan Profit dalam USD dengan subteks ekuivalen Rupiah.
-- **Deposit / Top Up (`/deposit`)**:
-  - Opsi pembayaran lengkap via **QRIS Dinamis** dan Transfer Bank / E-Wallet.
-  - Batas **Minimal Deposit**: **$1,000 USD** (setara Rp16.000.000 IDR).
-  - Fitur Unggah Bukti Transfer dengan pratinjau thumbnail, perbesar layar penuh, dan kompresi client-side.
-- **Withdraw / Penarikan (`/withdraw`)**:
-  - Formulir penarikan dana ke rekening bank / e-wallet terdaftar.
-  - Batas **Minimal Penarikan (WD)**: **Rp100.000 IDR** (setara $6.25 USD).
-  - Validasi kecukupan saldo secara langsung sebelum pengajuan.
-- **Berita Finansial (`/berita` & `/berita/$slug`)**:
-  - Katalog berita finansial terupdate dengan klasifikasi kategori dan pembaca artikel detail.
-- **Program Referral (`/referral`)**:
-  - Tampilan kode unik referral pengguna, statistik komisi yang diperoleh, dan generator tautan ajakan kustom.
-- **Profil Pengguna (`/profil`)**:
-  - Detail identitas trader, nomor akun trading, status tipe akun, ubah kata sandi, dan opsi keluar (*Logout*).
-- **Menu Lainnya (`/lainnya`)**:
-  - Akses cepat Pusat Notifikasi & Siaran, informasi perbankan, panduan bantuan, dan pengaturan saldo demo.
+
+- **Beranda (`/beranda`)**: Ringkasan saldo balance, ticker harga real-time, sinyal terpopuler, shortcut transaksi cepat, dan lonceng notifikasi interaktif.
+- **Pasar (`/pasar`)**: Listing produk Forex, Komoditi, Indeks, Crypto, pencarian langsung (_live search_), spread real-time, dan filter favorit.
+- **Trade (`/trade`)**: Grafik candlestick Recharts, kalkulator ukuran lot, panel eksekusi `BUY` / `SELL`, Take Profit (TP), dan Stop Loss (SL).
+- **Order (`/order`)**: Menu transaksi cepat Top Up & Withdraw serta riwayat order berjalan.
+- **Riwayat Transaksi (`/riwayat`)**: Histori transaksi (Deposit, Withdraw, Profit Grant) dengan penanda status visual (Berhasil/Hijau, Menunggu/Kuning, Ditolak/Merah) serta format mata uang ganda (IDR & USD).
+- **Deposit / Top Up (`/deposit`)**: Pembayaran via QRIS Dinamis & Transfer Bank. Batas minimal deposit adalah **$1,000 USD** (setara Rp16.000.000 IDR). Fitur unggah bukti transfer dilengkapi kompresi client-side dan preview thumbnail.
+- **Withdraw / Penarikan (`/withdraw`)**: Penarikan dana ke rekening bank / e-wallet. Batas minimal adalah **Rp100.000 IDR** (setara $6.25 USD) dengan validasi kecukupan saldo sebelum pengajuan.
+- **Gotrade Rewards (`/rewards`)**: Program penukaran hadiah dengan rasio **1 Poin per Saldo Rp 1.000.000 IDR**. Menyediakan katalog hadiah mulai dari saldo e-wallet (GoPay, OVO, DANA), smartwatch, iPhone, hingga logam mulia Antam. Formulir klaim menyertakan alamat pengiriman dan pelacak status penukaran.
+- **Program Referral (`/referral`)**: Kode referral unik pengguna, ringkasan statistik komisi, dan tombol salin tautan ajakan.
+- **Profil Pengguna (`/profil`)**: Detail identitas trader, nomor akun trading, ubah kata sandi, dan tombol keluar (_Logout_) aman.
+- **Menu Lainnya (`/lainnya`)**: Akses cepat Gotrade Rewards, Pusat Notifikasi, bantuan CS, dan pengaturan saldo demo.
 
 ### C. Panel Kontrol Administrator (`/admin/*`)
-- **Dashboard Admin Users (`/admin/users`)**:
-  - Pencarian dan manajemen seluruh pendaftar akun trader.
-  - Penyesuaian saldo trader secara langsung, pengubahan peran (*role*), dan pemblokiran akun.
-- **Kelola Profit User (`/admin/profit`)**:
-  - Tampilan daftar seluruh pengguna terdaftar dengan rincian: **Username**, **Email**, **Saldo Deposit**, dan **Saldo Profit**.
-  - Injeksi profit langsung ke akun trader pilihan dengan nominal kustom ($ USD).
-- **Manajemen Notifikasi & Siaran (`/admin/notifikasi`)**:
-  - **Statistik Siaran**: Total notifikasi, jumlah notifikasi tersemat (pinned), jumlah promo/alerts, serta target broadcast (100% pengguna aktif).
-  - **Aksi CRUD Notifikasi**: Pembuatan notifikasi baru, pengeditan pesan, 1-klik sematkan/lepaskan sematan, dan dialog konfirmasi penghapusan aman.
-  - **Live In-App Preview**: Pratinjau waktu-nyata tampilan kartu notifikasi pada perangkat pengguna sebelum disiarkan.
-  - **Kategori & Tautan**: Kategori Info, Promo, Peringatan, Sistem, Trading, dengan tautan opsional ke rute fitur.
-- **Kelola Mata Uang & Pasar (`/admin/mata-uang`)**:
-  - Tambah, edit, dan hapus instrumen pasar (Forex, Metals, Index, Crypto).
-  - Penyesuaian spread dan status aktif/nonaktif trading.
-- **Kelola Sinyal Trading (`/admin/sinyal`)**:
-  - CRUD penuh sinyal analitis (Simbol, Aksi BUY/SELL, Entry Price, TP1, TP2, SL, timeframe, rasionasi).
-- **Kelola Berita Finansial (`/admin/berita`)**:
-  - CRUD penuh artikel berita finansial, pengunggahan sampul gambar, penentuan slug URL, dan publikasi.
-- **Persetujuan Top-Up (`/admin/top-up`)**:
-  - Verifikasi pengajuan deposit trader dengan kolom khusus Bukti Transfer, thumbnail resi, dan modal peninjauan resolusi penuh.
-  - Tombol persetujuan yang secara otomatis mengkreditkan saldo akun trader secara instan.
-- **Persetujuan Withdraw (`/admin/withdraw`)**:
-  - Verifikasi permohonan penarikan dana trader dan tombol persetujuan yang memotong saldo akun trader.
-- **Pengaturan Referral (`/admin/referral`)**:
-  - Konfigurasi persentase komisi referral tiap level tier.
-- **Pengaturan Sistem (`/admin/pengaturan`)**:
-  - Unggah dan kelola gambar QRIS resmi, live preview tampilan mobile, dan konfigurasi profil perusahaan.
-- **Audit Logs Keamanan (`/admin/audit-logs`)**:
-  - Pemantauan real-time aktivitas login, perubahan data oleh admin, percobaan akses RBAC yang ditolak, dan status mesin proteksi brute-force.
+
+- **Manajemen User (`/admin/users`)**: Daftar lengkap pengguna, pencarian, pengeditan saldo, pengubahan role, dan status akun.
+- **Kelola Profit User (`/admin/profit`)**: Injeksi saldo profit trading langsung ke akun pengguna terdaftar dengan nominal kustom ($ USD).
+- **Manajemen Rewards (`/admin/rewards`)**: Kelola katalog hadiah Gotrade Rewards (Tambah, Edit, Hapus, Atur Stok, Poin Dibutuhkan) serta verifikasi proses klaim (_PENDING_ -> _PROCESSING_ -> _COMPLETED_ / _REJECTED_) lengkap dengan nomor resi kirim.
+- **Manajemen Notifikasi & Siaran (`/admin/notifikasi`)**: CRUD notifikasi siaran, live in-app preview, statistik broadcast, dan pin pengumuman penting.
+- **Persetujuan Top-Up (`/admin/top-up`)**: Verifikasi resi bukti transfer dengan modal layar penuh, tombol persetujuan yang otomatis mengkreditkan saldo pengguna.
+- **Persetujuan Withdraw (`/admin/withdraw`)**: Verifikasi permohonan penarikan dana trader dan pemotongan saldo akun.
+- **Kelola Mata Uang (`/admin/mata-uang`)**: Tambah, edit, dan atur spread instrumen pasar.
+- **Kelola Sinyal (`/admin/sinyal`)**: CRUD sinyal trading analitis.
+- **Kelola Berita (`/admin/berita`)**: CRUD artikel berita finansial dan publikasi konten.
+- **Pengaturan Referral (`/admin/referral`)**: Pengaturan persentase komisi referral per tier.
+- **Pengaturan Sistem (`/admin/pengaturan`)**: Unggah gambar QRIS resmi deposit dan konfigurasi sistem.
+- **Audit Logs Keamanan (`/admin/audit-logs`)**: Pemantauan real-time aktivitas login, aksi admin, percobaan akses RBAC yang ditolak, dan status brute-force.
 
 ---
 
 ## 6. Spesifikasi Lengkap API Endpoints
 
-| Endpoint | Method | Otentikasi | Deskripsi & Hak Akses |
-| :--- | :--- | :--- | :--- |
-| `/api/health` | `GET` | Publik | Cek kesehatan server, koneksi database, dan status RBAC |
-| `/api/auth/demo-accounts` | `GET` | Publik | Mendapatkan daftar akun demo siap pakai (`user` & `admin`) |
-| `/api/auth/login` | `POST` | Publik | Masuk akun trader atau admin dengan proteksi brute force |
-| `/api/auth/register` | `POST` | Publik | Pendaftaran akun trader baru secara aman |
-| `/api/auth/me` | `GET` | Bearer Token | Mengambil data profil akun yang sedang login |
-| `/api/auth/logout` | `POST` | Bearer Token | Mengakhiri sesi pengguna dan mencabut token secara kriptografis |
-| `/api/currencies` | `GET` | Publik | Mengambil daftar harga instrumen pasar aktif |
-| `/api/currencies` | `POST/PUT/DELETE` | Admin Token | CRUD instrumen mata uang pasar (RBAC Admin) |
-| `/api/signals` | `GET` | Publik | Mengambil sinyal trading aktif |
-| `/api/signals` | `POST/PUT/DELETE` | Admin Token | CRUD sinyal trading analitis (RBAC Admin) |
-| `/api/news` | `GET` | Publik | Mengambil daftar artikel berita finansial |
-| `/api/news` | `POST/PUT/DELETE` | Admin Token | CRUD artikel berita finansial (RBAC Admin) |
-| `/api/notifications` | `GET` | Publik | Mengambil daftar notifikasi siaran publik untuk pengguna |
-| `/api/admin/notifications` | `GET` | Admin Token | Mengambil seluruh notifikasi beserta ringkasan statistik siaran (RBAC Admin) |
-| `/api/admin/notifications` | `POST` | Admin Token | Menyiarkan notifikasi baru ke seluruh pengguna (RBAC Admin) |
-| `/api/admin/notifications` | `PUT/PATCH` | Admin Token | Memperbarui isi, status pin, atau badge notifikasi (RBAC Admin) |
-| `/api/admin/notifications` | `DELETE` | Admin Token | Menghapus notifikasi siaran dari database (RBAC Admin) |
-| `/api/transactions` | `GET` | Admin Token | Mengambil daftar riwayat transaksi deposit/withdraw (RBAC Admin) |
-| `/api/transactions` | `POST` | User Token | Pengajuan deposit (Top Up min $1,000) atau withdraw baru |
-| `/api/transactions` | `PUT/PATCH` | Admin Token | Persetujuan atau penolakan pengajuan transaksi trader (RBAC Admin) |
-| `/api/admin/profit` | `POST` | Admin Token | Injeksi profit langsung ke saldo akun trader (RBAC Admin) |
-| `/api/users` | `GET/POST/PUT/DELETE` | Admin Token | Manajemen data, saldo, dan status akun pengguna (RBAC Admin) |
-| `/api/admin/audit-logs` | `GET` | Admin Token | Melihat riwayat jejak audit dan status sistem keamanan (RBAC Admin) |
-| `/api/referrals` | `GET/POST` | User Token | Akses kode dan komisi referral pengguna |
-| `/api/referrals` | `PUT/DELETE` | Admin Token | Pengaturan komisi dan manajemen referral (RBAC Admin) |
-| `/api/settings` | `GET` | Publik | Mengambil pengaturan umum aplikasi |
-| `/api/settings` | `POST/PUT` | Admin Token | Memperbarui konfigurasi sistem dan QRIS (RBAC Admin) |
+| Endpoint                         | Method                | Otentikasi   | Deskripsi & Hak Akses                                                        |
+| :------------------------------- | :-------------------- | :----------- | :--------------------------------------------------------------------------- |
+| `/api/health`                    | `GET`                 | Publik       | Cek kesehatan server, koneksi database, dan status RBAC                      |
+| `/api/auth/demo-accounts`        | `GET`                 | Publik       | Mendapatkan daftar akun demo siap pakai (tanpa kebocoran kata sandi)         |
+| `/api/auth/login`                | `POST`                | Publik       | Masuk akun trader atau admin dengan proteksi brute force                     |
+| `/api/auth/register`             | `POST`                | Publik       | Pendaftaran akun trader baru secara aman                                     |
+| `/api/auth/me`                   | `GET`                 | Bearer Token | Mengambil data profil akun yang sedang login                                 |
+| `/api/auth/logout`               | `POST`                | Bearer Token | Mengakhiri sesi pengguna dan mencabut token secara kriptografis              |
+| `/api/currencies`                | `GET`                 | Publik       | Mengambil daftar harga instrumen pasar aktif                                 |
+| `/api/currencies`                | `POST/PUT/DELETE`     | Admin Token  | CRUD instrumen mata uang pasar (RBAC Admin)                                  |
+| `/api/signals`                   | `GET`                 | Publik       | Mengambil sinyal trading aktif                                               |
+| `/api/signals`                   | `POST/PUT/DELETE`     | Admin Token  | CRUD sinyal trading analitis (RBAC Admin)                                    |
+| `/api/news`                      | `GET`                 | Publik       | Mengambil daftar artikel berita finansial                                    |
+| `/api/news`                      | `POST/PUT/DELETE`     | Admin Token  | CRUD artikel berita finansial (RBAC Admin)                                   |
+| `/api/notifications`             | `GET`                 | Publik       | Mengambil daftar notifikasi siaran publik untuk pengguna                     |
+| `/api/admin/notifications`       | `GET`                 | Admin Token  | Mengambil seluruh notifikasi beserta ringkasan statistik siaran (RBAC Admin) |
+| `/api/admin/notifications`       | `POST`                | Admin Token  | Menyiarkan notifikasi baru ke seluruh pengguna (RBAC Admin)                  |
+| `/api/admin/notifications`       | `PUT/PATCH`           | Admin Token  | Memperbarui isi, status pin, atau badge notifikasi (RBAC Admin)              |
+| `/api/admin/notifications`       | `DELETE`              | Admin Token  | Menghapus notifikasi siaran dari database (RBAC Admin)                       |
+| `/api/rewards`                   | `GET`                 | User Token   | Mengambil katalog hadiah dan kalkulasi poin saldo pengguna                   |
+| `/api/rewards/redeem`            | `POST`                | User Token   | Mengajukan penukaran hadiah dengan pemotongan poin                           |
+| `/api/admin/rewards`             | `GET/POST/PUT/DELETE` | Admin Token  | CRUD katalog hadiah Gotrade Rewards (RBAC Admin)                             |
+| `/api/admin/rewards/redemptions` | `GET/PUT`             | Admin Token  | Mengambil dan memperbarui status klaim hadiah pengguna (RBAC Admin)          |
+| `/api/transactions`              | `GET`                 | Admin Token  | Mengambil daftar riwayat transaksi deposit/withdraw (RBAC Admin)             |
+| `/api/transactions`              | `POST`                | User Token   | Pengajuan deposit (Top Up min $1,000) atau withdraw baru                     |
+| `/api/transactions`              | `PUT/PATCH`           | Admin Token  | Persetujuan atau penolakan pengajuan transaksi trader (RBAC Admin)           |
+| `/api/admin/profit`              | `POST`                | Admin Token  | Injeksi profit langsung ke saldo akun trader (RBAC Admin)                    |
+| `/api/users`                     | `GET/POST/PUT/DELETE` | Admin Token  | Manajemen data, saldo, dan status akun pengguna (RBAC Admin)                 |
+| `/api/admin/audit-logs`          | `GET`                 | Admin Token  | Melihat riwayat jejak audit dan status sistem keamanan (RBAC Admin)          |
+| `/api/referrals`                 | `GET/POST`            | User Token   | Akses kode dan komisi referral pengguna                                      |
+| `/api/referrals`                 | `PUT/DELETE`          | Admin Token  | Pengaturan komisi dan manajemen referral (RBAC Admin)                        |
+| `/api/settings`                  | `GET`                 | Publik       | Mengambil pengaturan umum aplikasi                                           |
+| `/api/settings`                  | `POST/PUT`            | Admin Token  | Memperbarui konfigurasi sistem dan QRIS (RBAC Admin)                         |
 
 ---
 
-## 7. Laporan Pengujian Lintas Peran & Keamanan (*Comprehensive Multi-Role & RBAC Test Suite*)
+## 7. Master Quality Assurance & Security Test Report
 
-Pengujian komprehensif dieksekusi secara otomatis dan mencakup seluruh alur bisnis, hak akses peran, integritas data, serta seluruh halaman aplikasi:
+Pengujian komprehensif dieksekusi secara otomatis melalui _Master End-to-End Suite_ (`scripts/test-master-suite.ts`):
 
 ### Ringkasan Eksekusi Pengujian:
-- **Total Uji Kasus**: 37 Skenario Uji
-- **Status Akhir**: **37 PASSED / 0 FAILED (100% Lolos)**
+
+- **Total Uji Kasus**: **59 Skenario Uji**
+- **Status Akhir**: **59 PASSED / 0 FAILED (100% Success)**
 - **Hasil Kompilasi (`compile_applet`)**: **SUCCESS**
 - **Hasil Pemindaian Linter (`lint_applet`)**: **0 Errors**
 
 ---
 
-### A. Matrix Pengujian Peran 1: Public / Guest (Pengunjung Tamu)
+### Rincian Hasil Pengujian Matrix:
 
-| Halaman / Route | Fitur & Akses Pengujian | Endpoint API | Status | Catatan Hasil Pengujian |
-| :--- | :--- | :--- | :---: | :--- |
-| **Onboarding (`/`)** | Tampilan pengenalan, indikator legalitas, navigasi Login/Daftar | - | **PASSED** | Renders mulus; transisi geser slide berfungsi normal. |
-| **Login (`/login`)** | Form email & sandi, proteksi brute-force, quick demo credentials | `POST /api/auth/login` | **PASSED** | Kredensial diverifikasi dengan aman menggunakan salted scrypt. |
-| **Register (`/register`)** | Pendaftaran trader baru tanpa nomor HP, nomor akun 8 digit unik | `POST /api/auth/register` | **PASSED** | Validasi input ketat, duplikasi email dicegah secara otomatis. |
-| **Katalog Berita (`/berita`)** | Daftar berita finansial terupdate & filter kategori | `GET /api/news` | **PASSED** | Data berita berhasil dimuat dan terorganisir per kategori. |
-| **Detail Berita (`/berita/$slug`)** | Pembaca artikel detail dengan layout responsif | `GET /api/news` | **PASSED** | Slug dinamis dimuat dengan navigasi kembali yang mulus. |
-| **Proteksi RBAC Tamu** | Tamu membuka endpoint administratif tanpa token | `GET /api/users`, `GET /api/admin/*` | **PASSED** | Dicegat dengan status **401 Unauthorized** (RBAC Active). |
-
----
-
-### B. Matrix Pengujian Peran 2: Akun Trader (`user@gotrade.com` / User Role)
-
-| Halaman / Route | Fitur & Akses Pengujian | Endpoint API | Status | Catatan Hasil Pengujian |
-| :--- | :--- | :--- | :---: | :--- |
-| **Beranda (`/beranda`)** | Dashboard trader, saldo akun, ticker harga, tombol lonceng notifikasi | `GET /api/signals`, `GET /api/currencies`, `GET /api/notifications` | **PASSED** | Lonceng menampilkan dot merah saat ada pesan baru; popup modal terbuka. |
-| **Pasar (`/pasar`)** | Listing produk Forex, Metal, Indeks, Crypto, pencarian live & favorit | `GET /api/currencies` | **PASSED** | Filter kategori & search query bekerja instan tanpa lag. |
-| **Trading View (`/trade`)** | Grafik harga interaktif, kalkulator lot, eksekusi order Buy/Sell & TP/SL | `GET /api/currencies` | **PASSED** | Grafik candlestick/garis teranimasi; simulasi eksekusi berjalan akurat. |
-| **Order Aktif (`/order`)** | Menu transaksi cepat Top Up & Withdraw serta riwayat transaksi | - | **PASSED** | Navigasi menu mengarahkan pengguna ke halaman yang tepat. |
-| **Riwayat Transaksi (`/riwayat`)** | Histori deposit, withdraw, profit grant dengan filter status dan IDR/USD | `GET /api/transactions` | **PASSED** | Sinkronisasi status Berhasil (hijau), Menunggu (kuning), Ditolak (merah). |
-| **Deposit / Top Up (`/deposit`)** | Form deposit QRIS/Bank, unggah bukti transfer interaktif, kompresi canvas | `POST /api/transactions` | **PASSED** | Validasi minimal $1,000 USD (Rp16.000.000) bekerja; resi terunggah rapi. |
-| **Withdrawal (`/withdraw`)** | Form penarikan ke rekening bank/e-wallet & validasi saldo mencukupi | `POST /api/transactions` | **PASSED** | Validasi batas minimal Rp100.000 dan saldo mencukupi berjalan presisi. |
-| **Referral (`/referral`)** | Kode unik referral, statistik komisi, dan tombol salin tautan | `GET /api/referrals` | **PASSED** | Generator tautan referral berfungsi dengan indikator tersalin ke clipboard. |
-| **Profil (`/profil`)** | Identitas trader, ganti password, & tombol Logout aman | `GET /api/auth/me`, `POST /api/auth/logout` | **PASSED** | Sesi berakhir dan token dicabut secara kriptografis dari penyimpanan. |
-| **Lainnya (`/lainnya`)** | Pusat notifikasi, panduan bantuan, simulasi saldo akun demo | `GET /api/notifications` | **PASSED** | Modal notifikasi terbuka dari menu akun; saldo demo dapat disesuaikan. |
-| **Percobaan Pelanggaran RBAC** | Trader mencoba mengakses endpoint administratif | `GET /api/users`, `POST /api/admin/profit` | **PASSED** | **RBAC Guard Aktif**: Diblokir dengan status **403 Forbidden**. |
+| Kategori Pengujian                | Cakupan Fitur / Endpoint                                                                                                                                                                                 |   Status   | Keterangan Hasil                                                                           |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------: | :----------------------------------------------------------------------------------------- |
+| **Akses Seluruh Rute SPA**        | 27 Rute (`/`, `/login`, `/register`, `/berita`, `/beranda`, `/pasar`, `/trade`, `/order`, `/riwayat`, `/deposit`, `/withdraw`, `/rewards`, `/referral`, `/profil`, `/lainnya`, serta 12 rute `/admin/*`) | **PASSED** | 100% rute merespons 200 OK dengan HTML valid tanpa error.                                  |
+| **Privasi Sharing Tautan**        | Inspeksi tag Open Graph & Twitter Cards                                                                                                                                                                  | **PASSED** | Tidak ada tag `og:*` atau `twitter:*` yang ditemukan; tautan dibagikan sebagai teks murni. |
+| **Autentikasi & Akun**            | Login admin, registrasi trader, pencegahan email ganda, salted scrypt                                                                                                                                    | **PASSED** | Autentikasi aman; token JWT HMAC-SHA256 dikeluarkan dengan benar.                          |
+| **Proteksi RBAC Tamu & User**     | `/api/users`, `/api/admin/profit`, `/api/admin/notifications`, `/api/admin/audit-logs`                                                                                                                   | **PASSED** | Tamu ditolak 401 Unauthorized; User biasa ditolak 403 Forbidden.                           |
+| **Pipeline Deposit ($1,000 min)** | Validasi limit < Rp16.000.000, pengajuan deposit $2,000, persetujuan admin, kredit saldo otomatis                                                                                                        | **PASSED** | Saldo trader terkreditasi presisi menjadi $2,000 USD.                                      |
+| **Injeksi Profit Admin**          | POST `/api/admin/profit` sebesar $500 USD                                                                                                                                                                | **PASSED** | Saldo balance naik menjadi $2,500 dan saldo profit $500.                                   |
+| **Gotrade Rewards Engine**        | Kalkulasi 40 Poin dari saldo Rp 40.000.000, klaim reward 8 poin, update ledger poin sisa (32 Poin), update status admin COMPLETED                                                                        | **PASSED** | Ledger poin berkurang akurat dan status klaim tersimpan rapi.                              |
+| **Pipeline Penarikan (WD)**       | Validasi limit < Rp100.000, pengajuan withdraw Rp 8.000.000 ($500 USD), persetujuan admin, debit saldo                                                                                                   | **PASSED** | Saldo terpotong presisi dari $2,500 menjadi $2,000 USD.                                    |
+| **Admin CRUD & Audit Logs**       | CRUD notifikasi siaran & pencatatan audit log keamanan                                                                                                                                                   | **PASSED** | Seluruh aksi terekam dalam tabel `audit_logs` dengan IP dan status.                        |
 
 ---
 
-### C. Matrix Pengujian Peran 3: Super Administrator (`admin@gotrade.com` / Admin Role)
+## 8. Sub-Second Speed & Performance Optimization Report
 
-| Halaman / Route | Fitur & Akses Pengujian | Endpoint API | Status | Catatan Hasil Pengujian |
-| :--- | :--- | :--- | :---: | :--- |
-| **Sidebar & Layout Admin (`/admin`)** | Navigasi sidebar lengkap (termasuk Notifikasi), verifikasi izin admin | `GET /api/users` | **PASSED** | Menu Notifikasi muncul di sidebar; proteksi `AdminLayout` aktif. |
-| **Kelola Users (`/admin/users`)** | Listing trader, pencarian, pengeditan saldo, status akun & role | `GET/POST/PUT/DELETE /api/users` | **PASSED** | Pembuatan dan update akun trader tersimpan ke database. |
-| **Kelola Profit (`/admin/profit`)** | Listing pengguna & injeksi saldo profit secara langsung | `POST /api/admin/profit` | **PASSED** | Profit langsung menambah saldo profit dan saldo balance trader. |
-| **Kelola Notifikasi (`/admin/notifikasi`)** | CRUD notifikasi siaran, live in-app preview, sematkan pesan, statistik | `GET/POST/PUT/DELETE /api/admin/notifications` | **PASSED** | Notifikasi terkirim ke seluruh pengguna; audit log tercatat otomatis. |
-| **Kelola Pasar (`/admin/mata-uang`)** | CRUD instrumen pasar (Forex/Metals/Indices/Crypto) & spread | `GET/POST/PUT/DELETE /api/currencies` | **PASSED** | Perubahan instrumen langsung tercermin di halaman Pasar trader. |
-| **Kelola Sinyal (`/admin/sinyal`)** | CRUD sinyal trading (Simbol, Action, TP, SL, Rasionasi) | `GET/POST/PUT/DELETE /api/signals` | **PASSED** | Sinyal baru langsung tampil di Beranda dan menu Sinyal trader. |
-| **Kelola Berita (`/admin/berita`)** | CRUD berita finansial (Judul, Slug, Kategori, Gambar, Konten) | `GET/POST/PUT/DELETE /api/news` | **PASSED** | Artikel berita terbit dan dapat diakses publik melalui slug. |
-| **Persetujuan Top-Up (`/admin/top-up`)** | Peninjauan bukti transfer resolusi penuh, tombol Setujui / Tolak | `GET/PUT /api/transactions` | **PASSED** | Persetujuan deposit otomatis mengkreditkan saldo akun pengguna. |
-| **Persetujuan Withdraw (`/admin/withdraw`)** | Verifikasi permohonan penarikan dana trader & tombol Setujui | `GET/PUT /api/transactions` | **PASSED** | Persetujuan penarikan memotong saldo akun trader secara akurat. |
-| **Pengaturan Referral (`/admin/referral`)** | Pengaturan komisi referral per tier | `GET/POST/PUT/DELETE /api/referrals` | **PASSED** | Perubahan komisi tersimpan aman di database. |
-| **Audit Logs Keamanan (`/admin/audit-logs`)** | Pemantauan aktivitas login, perubahan data, dan pelanggaran RBAC | `GET /api/admin/audit-logs` | **PASSED** | Rekaman log tersimpan rapi dengan rincian IP, aksi, dan status. |
-| **Pengaturan Sistem (`/admin/pengaturan`)** | Unggah QRIS pembayaran, nama rekening merchant, status sistem | `GET/POST /api/settings` | **PASSED** | QRIS baru tersimpan dan otomatis tampil di halaman Deposit trader. |
+Gotrade dirancang dan dioptimalkan secara komprehensif untuk mencapai waktu muat di bawah 1 detik (**< 1.000ms / Sub-Second Response Rate**) pada seluruh halaman dan endpoint API.
 
----
+### Arsitektur Optimasi Performa:
 
-## 8. Kesimpulan & Status Kesiapan Rilis
+1. **Server-Side Compression (Gzip / Brotli)**:
+   - Integrasi middleware kompresi `compression` pada backend Express (`level: 6, threshold: 1024`), memperkecil ukuran transmisi payload HTML, JS, CSS, dan JSON hingga 70–80%.
+2. **TanStack Router Intent Preloading**:
+   - Konfigurasi `defaultPreload: "intent"` dengan ambang tunda interaksi mikro `30ms` dan `defaultPreloadStaleTime: 60.000ms`. Rute diunduh secara instan begitu pengguna mengarahkan kursor/sentuhan ke tautan navigasi sebelum klik terjadi.
+3. **In-Memory SWR Client Micro-Cache**:
+   - Klien `secureFetch` dilengkapi cache memori ultra-cepat untuk permintaan `GET` (TTL 5 detik). Pergantian tab antar-halaman (_Beranda, Pasar, Trade, Order, Profil, Riwayat, Rewards_) merespons dalam waktu **< 30ms** tanpa waterfall latency jaringan.
+   - Cache otomatis dibersihkan secara cerdas saat terjadi mutasi data (_POST, PUT, DELETE, PATCH_).
+4. **Non-Blocking Asynchronous DB Persistence**:
+   - Penulisan snapshot disk PostgreSQL disederhanakan melalui debouncing non-blocking `500ms`, menjaga eksekusi query tetap instan (< 1ms).
+5. **HTTP Cache-Control & Asset Immutability**:
+   - Seluruh aset statis (_gambar logo, ikon, font_) diberi header `Cache-Control: public, max-age=31536000, immutable`.
 
-Seluruh fitur, antarmuka pengguna, sistem keamanan RBAC, dan modul administratif telah diuji secara menyeluruh. Aplikasi Gotrade siap digunakan dalam lingkungan produksi dengan standar keamanan, integritas data, dan keandalan tinggi.
+### Hasil Benchmark Kecepatan Akses (scripts/test-loading-speed.ts):
 
----
-
-## 9. Laporan Penanganan Insiden Keamanan & Audit Penutupan Celah (RBAC Bypass Fix)
-
-### A. Latar Belakang & Identifikasi Kerentanan (Root Cause Analysis)
-- **Gejala yang Ditemukan**: Pengguna tamu yang sama sekali belum login atau pengguna akun trader biasa membuka halaman panel `/admin/*`, disajikan layar blokir `403 Forbidden • RBAC Protected`. Namun saat menekan tombol **"Masuk Sebagai Administrator"**, aplikasi langsung memberikan akses penuh ke dashboard admin tanpa meminta kata sandi.
-- **Penyebab Utama (Root Cause)**:
-  1. Pada komponen `AdminLayout.tsx`, tombol `"Masuk Sebagai Administrator"` sebelumnya memanggil fungsi bawaan demo `loginAsDemo("admin")`.
-  2. Fungsi tersebut secara otomatis mengautentikasi akun admin menggunakan kredensial demo (`admin@gotrade.com`) langsung ke server dan memperbarui state sesi di peramban tanpa tantangan kata sandi fisik dari pengguna.
-  3. Endpoint publik `/api/auth/demo-accounts` dan konstanta state klien membocorkan kata sandi teks polos administrator.
-
-### B. Implementasi Solusi & Remediasi Keamanan
-1. **Pencabutan Bypass & Mewajibkan Form Login Otentik**:
-   - Menghapus pemanggilan `loginAsDemo("admin")` dari seluruh halaman dan tata letak `AdminLayout.tsx`.
-   - Tombol **"Masuk Sebagai Administrator"** kini menghapus sesi lama pengguna reguler (`logout()`), menampilkan pemberitahuan pengalihan, dan mengarahkan pengguna secara sah ke halaman `/login`.
-   - Pengguna diwajibkan mengetikkan email dan kata sandi administrator yang sah secara manual.
-2. **Penghapusan Backdoor `loginAsDemo` dari Core Client State**:
-   - Menghapus method `loginAsDemo` dan tipe antarmukanya dari `src/lib/auth-context.tsx`.
-   - Menghapus atribut `password` dari struktur `DEFAULT_DEMO_ACCOUNTS` di sisi klien.
-3. **Pembersihan Kebocoran Kredensial Server**:
-   - Memperbarui endpoint `GET /api/auth/demo-accounts` di `src/server/api-handler.ts` agar tidak lagi menyertakan properti `password` dalam respons JSON ke publik.
-4. **Pencegahan Tabrakan Kunci Sequence Notifikasi**:
-   - Memastikan pembuatan notifikasi baru (`POST /api/admin/notifications`) selalu mengkalkulasikan ID unik berikutnya dengan `SELECT COALESCE(MAX(id), 0) + 1` guna mencegah pelanggaran konstrain unik primary key.
-
-### C. Hasil Pengujian Keamanan & Regresi (Security Regression Test)
-Pengujian regresi keamanan otomatis dijalankan melalui skrip pengujian khusus `scripts/test-security-bypass.ts` dan suite menyeluruh `scripts/test-all-features.ts`:
-- `GET /api/auth/demo-accounts` tidak membocorkan kata sandi teks polos: **PASSED**
-- Permintaan tidak terotentikasi ke `/api/users`, `/api/admin/notifications`, `/api/admin/audit-logs` diblokir `401 Unauthorized`: **PASSED**
-- Token Bearer palsu/acak ditolak seketika dengan `401 Unauthorized`: **PASSED**
-- Token akun trader reguler diblokir saat mengakses endpoint admin dengan `403 Forbidden`: **PASSED**
-- Percobaan login admin dengan kata sandi salah gagal dan tidak mengeluarkan token sesi: **PASSED**
-- Seluruh 37 skenario pengujian fungsional aplikasi: **37 PASSED, 0 FAILED**.
+- **Total Rute & Endpoint Diuji**: **33 Rute** (27 Halaman SPA + 6 API Endpoints)
+- **Status Lolos (< 1.000ms)**: **33 / 33 (100%)**
+- **Rata-Rata Waktu Muat (Average Latency)**: **~23ms**
+- **Waktu Muat Tercepat (Min Latency)**: **4ms**
+- **Waktu Muat Terlama (Max Latency)**: **77ms**
 
 ---
 
-## 10. Peningkatan Sistem Real-Time Notifikasi & Optimasi Responsivitas Mobile
+## 9. Status Kesiapan Rilis
 
-### A. Sinkronisasi Real-Time Notifikasi & Indikator Badge Pengguna
-- **Masalah Sebelumnya**:
-  1. Ketika admin membuat atau menyiarkan notifikasi baru di `/admin/notifikasi`, pengguna yang sedang aktif di website tidak menerima pembaruan otomatis karena data hanya diambil satu kali saat inisialisasi awal (*one-time fetch on mount*).
-  2. Ikon lonceng (*Bell*) di beberapa halaman pengguna (`/order`, `/profil`, dan header `/lainnya`) tidak memiliki indikator badge unread atau bahkan tidak memicu modal notifikasi asli.
-- **Penyelesaian & Implementasi**:
-  1. **Mekanisme Real-Time Polling & Event-Driven Broadcast**:
-     - Membangun *shared singleton reactive listener* pada `src/lib/notifications.ts` dengan *background poller* interval 3,5 detik.
-     - Mengintegrasikan *window focus* dan *document visibility change* sehingga peramban langsung menyinkronkan data notifikasi saat pengguna membuka atau berpindah kembali ke tab aplikasi.
-     - Menyematkan `broadcastNotificationUpdate()` pada setiap aksi CRUD admin (`POST`, `PUT`, `DELETE` di `NotificationsAdminPage.tsx`) melalui `CustomEvent` dan `localStorage` cross-tab synchronization.
-  2. **Badge Penanda Angka Merah Universal**:
-     - Seluruh ikon lonceng pada halaman **Beranda** (`/beranda`), **Order** (`/order`), **Profil** (`/profil`), dan **Lainnya** (`/lainnya`) kini menampilkan badge merah dinamis dengan jumlah pesan belum dibaca (`unreadCount`).
-     - Badge otomatis berkurang atau hilang secara instan saat notifikasi ditandai telah dibaca.
-
-### B. Desain Responsif & UX Komponen Modal Pop-up di Perangkat Mobile
-- **Masalah Sebelumnya**:
-  1. Modal dialog Radix pada layar ponsel sempit (360px – 390px) menempel ketat ke tepi layar peramban tanpa margin pengaman yang seimbang.
-  2. Tombol tutup dialog (*Close X*) bentrok secara horizontal dengan tombol aksi (*Tandai Dibaca*), menyebabkan elemen bertumpuk dan sulit disentuh pada perangkat layar sentuh.
-  3. Teks panjang dan filter kategori dapat meluap (*overflow*) secara horizontal di layar kecil.
-- **Penyelesaian & Implementasi**:
-  1. **Viewport-Adaptive Container**:
-     - Menyesuaikan kontainer modal menjadi `w-[94vw] max-w-md` dengan `rounded-2xl` dan `max-h-[88dvh]`, memberikan margin proporsional pada semua ukuran layar mobile (iPhone SE, standar Android, tablet, hingga desktop).
-  2. **Pemisahan Jalur Header & Clearance Tombol Tutup**:
-     - Memberikan ruang `pr-12` pada `DialogHeader` sehingga tombol `X` Radix berdiri bebas tanpa menabrak judul atau tombol aksi.
-     - Memindahkan tombol **"Tandai Dibaca"** ke bilah sub-header berdampingan dengan scroll filter kategori (*Semua, Promo, Info, Peringatan, Sistem*).
-  3. **Mobile-Friendly Cards & Typography**:
-     - Penataan kartu notifikasi dengan pemisahan visual yang tegas antara status belum dibaca (*soft primary highlight + pulsating dot*) dan telah dibaca.
-     - Menambahkan aturan pemenggalan kata `break-words whitespace-pre-line` dan touch target responsif untuk kenyamanan sentuhan jari di layar sentuh ponsel.
-
-
+Seluruh halaman, fitur, alur transaksi finansial, sistem rewards loyalitas, proteksi privasi URL sharing, arsitektur keamanan RBAC, serta target performa sub-detik (**Average Latency 23ms**) telah terverifikasi secara penuh. Aplikasi Gotrade berada dalam status **Production-Ready (Siap Rilis)** dengan keandalan dan kecepatan tinggi.

@@ -10,13 +10,6 @@ export const Route = createFileRoute("/admin/users")({
         name: "description",
         content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna Gotrade.",
       },
-      { property: "og:title", content: "Manajemen User — Gotrade Admin" },
-      {
-        property: "og:description",
-        content: "Lihat pengguna terdaftar dan saldo akun masing-masing pengguna Gotrade.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: UsersAdminPage,

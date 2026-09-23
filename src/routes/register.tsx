@@ -17,13 +17,6 @@ export const Route = createFileRoute("/register")({
         name: "description",
         content: "Isi lengkap formulir untuk membuat Akun Gotrade dan mulai trading.",
       },
-      { property: "og:title", content: "Buka Akun Gotrade — Daftar Sekarang" },
-      {
-        property: "og:description",
-        content: "Isi lengkap formulir untuk membuat Akun Gotrade dan mulai trading.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: RegisterPage,
@@ -39,6 +32,7 @@ function RegisterPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [referralCode, setReferralCode] = useState(search.ref || "");
   const [password, setPassword] = useState("");
@@ -53,8 +47,13 @@ function RegisterPage() {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!name.trim() || !email.trim() || !password) {
-      setErrorMsg("Nama lengkap, email, dan password wajib diisi.");
+    if (!name.trim() || !username.trim() || !email.trim() || !password) {
+      setErrorMsg("Nama lengkap, username, email, dan password wajib diisi.");
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      setErrorMsg("Username minimal 3 karakter.");
       return;
     }
 
@@ -80,8 +79,10 @@ function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          username: username.trim(),
           email: email.trim(),
           password,
+          referralCode: referralCode.trim() || undefined,
         }),
       });
 
@@ -90,7 +91,7 @@ function RegisterPage() {
 
       if (res.ok && data.success) {
         toast.success("Pendaftaran Berhasil!", {
-          description: `Selamat datang di Gotrade, ${data.user.name}`,
+          description: `Selamat datang di Gotrade, ${data.user.name} (@${data.user.username || username.trim()})`,
         });
         void navigate({ to: "/login" });
       } else {
@@ -143,6 +144,18 @@ function RegisterPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Masukkan nama lengkap Anda"
+              className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
+            />
+          </Field>
+
+          {/* Username */}
+          <Field label="Username" required>
+            <Input
+              value={username}
+              onChange={(e) =>
+                setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))
+              }
+              placeholder="Masukkan username (contoh: trader_pro88)"
               className="h-12 rounded-lg border-border bg-card text-sm placeholder:text-muted-foreground/60"
             />
           </Field>

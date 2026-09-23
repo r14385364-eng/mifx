@@ -24,10 +24,6 @@ export const Route = createFileRoute("/berita/$slug")({
       meta: [
         { title: `${article.title} — Gotrade` },
         { name: "description", content: article.excerpt },
-        { property: "og:title", content: `${article.title} — Gotrade` },
-        { property: "og:description", content: article.excerpt },
-        { property: "og:type", content: "article" },
-        { name: "twitter:card", content: "summary" },
       ],
     };
   },

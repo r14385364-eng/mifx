@@ -1,11 +1,24 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
+import compression from "compression";
 import { initDatabase, query, DbUser } from "./db";
 import { handleApiRequest } from "./api-handler";
 
 export const app = express();
 
-// Enhanced security headers middleware
+// High performance Gzip/Brotli compression for sub-second payloads
+app.use(
+  compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
+
+// Enhanced security headers & performance caching middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
@@ -17,6 +30,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.secure || req.headers["x-forwarded-proto"] === "https") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
+
+  // Cache static asset requests
+  if (req.path.match(/\.(jpg|jpeg|png|gif|svg|ico|webp|woff|woff2|ttf|css|js)$/i)) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  }
+
   next();
 });
 

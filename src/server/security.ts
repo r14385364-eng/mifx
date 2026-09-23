@@ -167,7 +167,11 @@ export type Permission =
   | "referrals:write"
   | "settings:read"
   | "settings:write"
-  | "audit:read";
+  | "audit:read"
+  | "rewards:read"
+  | "rewards:write"
+  | "rewards:delete"
+  | "rewards:redeem";
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: [
@@ -196,6 +200,10 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "settings:read",
     "settings:write",
     "audit:read",
+    "rewards:read",
+    "rewards:write",
+    "rewards:delete",
+    "rewards:redeem",
   ],
   user: [
     "transactions:read_self",
@@ -205,6 +213,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "currencies:read",
     "referrals:read_self",
     "settings:read",
+    "rewards:read",
+    "rewards:redeem",
   ],
 };
 

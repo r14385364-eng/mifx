@@ -31,13 +31,6 @@ export const Route = createFileRoute("/profil")({
         name: "description",
         content: "Kelola data diri, email, nomor handphone, dan keamanan akun Gotrade Anda.",
       },
-      { property: "og:title", content: "Profil — Gotrade" },
-      {
-        property: "og:description",
-        content: "Kelola data diri, email, nomor handphone, dan keamanan akun Gotrade Anda.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ProfilePage,
@@ -98,7 +91,7 @@ function ProfilePage() {
   const displayAccountNumber = user?.accountNumber || "1006568912";
   const displayBalance =
     user?.balance != null
-      ? `$${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "$0.00";
 
   return (
