@@ -687,7 +687,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (request.method === "GET") {
       try {
         const users = await query<DbUser>(
-          "SELECT id, name, COALESCE(username, '') as username, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, account_type, created_at FROM users ORDER BY id ASC",
+          "SELECT id, name, COALESCE(username, '') as username, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, COALESCE(base_profit, 0) as base_profit, account_type, created_at FROM users ORDER BY id ASC",
         );
         return jsonResponse({ success: true, users });
       } catch (err: unknown) {
@@ -942,31 +942,46 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           [status, id],
         );
 
-        // Balance adjustment if transaction approved (Kurs: 1 USD = 16,000 IDR)
+        // Balance & Profit adjustment if transaction approved (Kurs: 1 USD = 16,000 IDR)
         if (status === "Berhasil" && tx.status !== "Berhasil") {
           const rawAmount = Number(tx.amount);
           const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
           if (tx.type === "Top Up") {
+            // Read initial profit percentage setting (default 10%)
+            const settingRows = await query<{ value: string }>(
+              "SELECT value FROM settings WHERE key = 'initial_profit_percentage'",
+            );
+            const initProfitPct = Number(settingRows[0]?.value || "10") || 10;
+            const initialProfitBasisUSD = amountUSD * (initProfitPct / 100);
+
             if (tx.user_id) {
-              await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
-                amountUSD,
-                tx.user_id,
-              ]);
+              await query(
+                `UPDATE users
+                 SET balance = balance + $1 + $2,
+                     base_profit = COALESCE(base_profit, 0) + $2,
+                     profit = COALESCE(profit, 0) + $2
+                 WHERE id = $3`,
+                [amountUSD, initialProfitBasisUSD, tx.user_id],
+              );
             } else if (tx.account_number) {
-              await query("UPDATE users SET balance = balance + $1 WHERE account_number = $2", [
-                amountUSD,
-                tx.account_number,
-              ]);
+              await query(
+                `UPDATE users
+                 SET balance = balance + $1 + $2,
+                     base_profit = COALESCE(base_profit, 0) + $2,
+                     profit = COALESCE(profit, 0) + $2
+                 WHERE account_number = $3`,
+                [amountUSD, initialProfitBasisUSD, tx.account_number],
+              );
             }
           } else if (tx.type === "Withdraw") {
             if (tx.user_id) {
-              await query("UPDATE users SET balance = GREATEST(0, balance - $1) WHERE id = $2", [
-                amountUSD,
-                tx.user_id,
-              ]);
+              await query(
+                "UPDATE users SET balance = GREATEST(0, balance - $1), profit = GREATEST(0, COALESCE(profit, 0) - $1) WHERE id = $2",
+                [amountUSD, tx.user_id],
+              );
             } else if (tx.account_number) {
               await query(
-                "UPDATE users SET balance = GREATEST(0, balance - $1) WHERE account_number = $2",
+                "UPDATE users SET balance = GREATEST(0, balance - $1), profit = GREATEST(0, COALESCE(profit, 0) - $1) WHERE account_number = $2",
                 [amountUSD, tx.account_number],
               );
             }
@@ -976,28 +991,42 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           const rawAmount = Number(tx.amount);
           const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
           if (tx.type === "Top Up") {
+            const settingRows = await query<{ value: string }>(
+              "SELECT value FROM settings WHERE key = 'initial_profit_percentage'",
+            );
+            const initProfitPct = Number(settingRows[0]?.value || "10") || 10;
+            const initialProfitBasisUSD = amountUSD * (initProfitPct / 100);
+
             if (tx.user_id) {
-              await query("UPDATE users SET balance = GREATEST(0, balance - $1) WHERE id = $2", [
-                amountUSD,
-                tx.user_id,
-              ]);
+              await query(
+                `UPDATE users
+                 SET balance = GREATEST(0, balance - $1 - $2),
+                     base_profit = GREATEST(0, COALESCE(base_profit, 0) - $2),
+                     profit = GREATEST(0, COALESCE(profit, 0) - $2)
+                 WHERE id = $3`,
+                [amountUSD, initialProfitBasisUSD, tx.user_id],
+              );
             } else if (tx.account_number) {
               await query(
-                "UPDATE users SET balance = GREATEST(0, balance - $1) WHERE account_number = $2",
-                [amountUSD, tx.account_number],
+                `UPDATE users
+                 SET balance = GREATEST(0, balance - $1 - $2),
+                     base_profit = GREATEST(0, COALESCE(base_profit, 0) - $2),
+                     profit = GREATEST(0, COALESCE(profit, 0) - $2)
+                 WHERE account_number = $3`,
+                [amountUSD, initialProfitBasisUSD, tx.account_number],
               );
             }
           } else if (tx.type === "Withdraw") {
             if (tx.user_id) {
-              await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [
-                amountUSD,
-                tx.user_id,
-              ]);
+              await query(
+                "UPDATE users SET balance = balance + $1, profit = COALESCE(profit, 0) + $1 WHERE id = $2",
+                [amountUSD, tx.user_id],
+              );
             } else if (tx.account_number) {
-              await query("UPDATE users SET balance = balance + $1 WHERE account_number = $2", [
-                amountUSD,
-                tx.account_number,
-              ]);
+              await query(
+                "UPDATE users SET balance = balance + $1, profit = COALESCE(profit, 0) + $1 WHERE account_number = $2",
+                [amountUSD, tx.account_number],
+              );
             }
           }
         }
@@ -1062,13 +1091,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // Balance Validation for Withdrawal
+          // Balance & Profit Validation for Withdrawal
+          const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
+            currentUser.id,
+          ]);
+          const userProfitUSD =
+            freshUserRows.length > 0
+              ? Number(freshUserRows[0].profit || 0)
+              : Number(currentUser.profit || 0);
+
           const amountUSD = numericAmount / 16000;
-          if (Number(currentUser.balance) < amountUSD) {
+          if (userProfitUSD < amountUSD) {
+            const userProfitIDR = userProfitUSD * 16000;
             return jsonResponse(
               {
                 success: false,
-                message: `Saldo tidak mencukupi. Saldo Anda: $${Number(currentUser.balance).toFixed(2)} USD (dibutuhkan ~$${amountUSD.toFixed(2)} USD).`,
+                message: `Penarikan gagal. Sesuai aturan, penarikan (withdraw) hanya dapat dilakukan dari saldo Profit. Saldo profit Anda saat ini: Rp${userProfitIDR.toLocaleString("id-ID")} ($${userProfitUSD.toFixed(2)} USD). Saldo deposit awal/top-up tidak dapat ditarik.`,
               },
               400,
             );
@@ -1113,7 +1151,164 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   }
 
   // ==========================================
-  // RBAC RESTRICTED: /api/admin/profit (ADMIN ONLY)
+  // RBAC RESTRICTED: /api/admin/profit/apply-daily-rate (GLOBAL/USER DAILY PROFIT)
+  // ==========================================
+  if (url.pathname === "/api/admin/profit/apply-daily-rate" && request.method === "POST") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    try {
+      const body = (await request.json()) as { dailyRatePercent: number; targetUserId?: number };
+      const rate = Number(body.dailyRatePercent);
+
+      if (isNaN(rate) || rate <= 0) {
+        return jsonResponse(
+          { success: false, message: "Persentase profit harian harus berupa angka positif." },
+          400,
+        );
+      }
+
+      // Save the updated global daily rate setting
+      const existingKey = await query(
+        "SELECT key FROM settings WHERE key = 'global_daily_profit_rate'",
+      );
+      if (existingKey.length > 0) {
+        await query(
+          "UPDATE settings SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = 'global_daily_profit_rate'",
+          [rate.toString()],
+        );
+      } else {
+        await query(
+          "INSERT INTO settings (key, value, updated_at) VALUES ('global_daily_profit_rate', $1, CURRENT_TIMESTAMP)",
+          [rate.toString()],
+        );
+      }
+
+      // Fetch target users (specific user or all non-admin users with base_profit)
+      let usersToProcess: DbUser[] = [];
+      if (body.targetUserId) {
+        usersToProcess = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
+          body.targetUserId,
+        ]);
+      } else {
+        usersToProcess = await query<DbUser>(
+          "SELECT * FROM users WHERE role = 'user' ORDER BY id ASC",
+        );
+      }
+
+      if (usersToProcess.length === 0) {
+        return jsonResponse({
+          success: true,
+          message: `Rate profit harian diset ke ${rate}%, namun tidak ada user yang diproses.`,
+          affectedCount: 0,
+          rate,
+        });
+      }
+
+      let affectedCount = 0;
+      for (const u of usersToProcess) {
+        const baseProfitVal = Number(u.base_profit) || 0;
+        // If user has no base profit set yet, but has balance, fallback to 10% of deposit balance as basis
+        const effectiveBasis =
+          baseProfitVal > 0
+            ? baseProfitVal
+            : Math.max(0, (Number(u.balance) - (Number(u.profit) || 0)) * 0.1);
+
+        if (effectiveBasis <= 0) continue;
+
+        const dailyGain = Math.round(effectiveBasis * (rate / 100) * 100) / 100;
+        if (dailyGain <= 0) continue;
+
+        // If user's base_profit wasn't stored, update base_profit too
+        if (baseProfitVal <= 0 && effectiveBasis > 0) {
+          await query("UPDATE users SET base_profit = $1 WHERE id = $2", [effectiveBasis, u.id]);
+        }
+
+        await query(
+          `UPDATE users
+           SET profit = COALESCE(profit, 0) + $1,
+               balance = COALESCE(balance, 0) + $1
+           WHERE id = $2`,
+          [dailyGain, u.id],
+        );
+
+        const txId = "PRF-" + Date.now().toString().slice(-6);
+        await query(
+          `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
+           VALUES ($1, $2, $3, $4, 'Profit', 'Profit Harian (${rate}%)', 'Gotrade Wallet', $5, 'Berhasil')`,
+          [txId, u.id, u.name, u.account_number, dailyGain * 16000],
+        );
+
+        affectedCount++;
+      }
+
+      void logSecurityEvent({
+        userId: adminCheck.user.id,
+        userEmail: adminCheck.user.email,
+        userRole: adminCheck.user.role,
+        action: "GLOBAL_DAILY_PROFIT_APPLIED",
+        details: `Admin menerapkan profit harian ${rate}% (dihitung dari basis nominal profit) ke ${affectedCount} user.`,
+        ipAddress: clientIp,
+        status: "SUCCESS",
+      });
+
+      return jsonResponse({
+        success: true,
+        message: `Berhasil menerapkan profit harian ${rate}% ke ${affectedCount} user! (Berlaku hanya ke nominal basis profit).`,
+        affectedCount,
+        rate,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error applying daily profit rate";
+      return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // ==========================================
+  // RBAC RESTRICTED: /api/admin/profit/update-base-profit (SET BASE PROFIT NOMINAL)
+  // ==========================================
+  if (url.pathname === "/api/admin/profit/update-base-profit" && request.method === "PUT") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    try {
+      const body = (await request.json()) as { userId: number; baseProfit: number };
+      const { userId, baseProfit } = body;
+
+      if (!userId || isNaN(Number(baseProfit)) || Number(baseProfit) < 0) {
+        return jsonResponse(
+          { success: false, message: "ID User dan nominal basis profit valid wajib diisi." },
+          400,
+        );
+      }
+
+      const existing = await query<DbUser>("SELECT * FROM users WHERE id = $1", [userId]);
+      if (existing.length === 0) {
+        return jsonResponse({ success: false, message: "User tidak ditemukan." }, 404);
+      }
+
+      const updated = await query<DbUser>(
+        `UPDATE users SET base_profit = $1 WHERE id = $2 RETURNING *`,
+        [Number(baseProfit), userId],
+      );
+
+      return jsonResponse({
+        success: true,
+        message: `Basis profit nominal untuk ${existing[0].name} berhasil diubah menjadi $${Number(baseProfit).toFixed(2)} USD (Rp ${(Number(baseProfit) * 16000).toLocaleString("id-ID")})`,
+        user: updated[0],
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error updating base profit";
+      return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // ==========================================
+  // RBAC RESTRICTED: /api/admin/profit (ADMIN ONLY - INDIVIDUAL PROFIT)
   // ==========================================
   if (url.pathname === "/api/admin/profit" && request.method === "POST") {
     const adminCheck = await requireAdmin(request);

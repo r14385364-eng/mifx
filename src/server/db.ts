@@ -21,6 +21,7 @@ export type DbUser = {
   account_number: string;
   balance: number;
   profit: number;
+  base_profit: number;
   account_type: string;
   referred_by?: string;
   created_at: string;
@@ -273,6 +274,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS base_profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
   `);
 
   // Create transactions table
@@ -825,7 +827,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     console.log("[PostgreSQL] Seeded 7 default Gotrade Rewards catalog items");
   }
 
-  // Seed default QRIS settings if not present
+  // Seed default QRIS and profit settings if not present
   const qrisCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, ["qris_image"]);
   if (qrisCheck.rows.length === 0) {
     await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, ["qris_image", ""]);
@@ -836,6 +838,20 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
       "qris_payload",
       "00020101021226590014ID.LINKAJA.WWW01189360091100223030310215GOTRADEINDONESIA5204581253033605802ID5914GOTRADE INDONESIA6007JAKARTA61051234062070703A016304",
+    ]);
+  }
+
+  const profitSettingCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "initial_profit_percentage",
+  ]);
+  if (profitSettingCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "initial_profit_percentage",
+      "10",
+    ]);
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "global_daily_profit_rate",
+      "5",
     ]);
   }
 

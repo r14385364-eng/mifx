@@ -47,7 +47,12 @@ const paymentSources = [
   { id: "shopeepay", label: "ShopeePay", category: "E-Wallet" },
 ];
 
-const quickAmounts = [16000000, 25000000, 50000000, 100000000];
+const quickAmounts = [
+  { idr: 16000000, label: "Rp 16 Jt ($1,000)" },
+  { idr: 32000000, label: "Rp 32 Jt ($2,000)" },
+  { idr: 50000000, label: "Rp 50 Jt ($3,125)" },
+  { idr: 100000000, label: "Rp 100 Jt ($6,250)" },
+];
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -441,19 +446,19 @@ function DepositPage() {
             {errors["amount"] && (
               <p className="mt-1 text-[11px] text-red-500">{errors["amount"]}</p>
             )}
-            <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-2 gap-2">
               {quickAmounts.map((q) => (
                 <button
-                  key={q}
+                  key={q.idr}
                   type="button"
-                  onClick={() => setAmount(String(q))}
-                  className={`rounded-lg border py-1.5 text-[11px] font-medium transition-colors ${
-                    numericAmount === q
+                  onClick={() => setAmount(String(q.idr))}
+                  className={`rounded-lg border py-1.5 text-[11px] font-semibold transition-colors ${
+                    numericAmount === q.idr
                       ? "border-primary bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  {q >= 1000000 ? `${q / 1000000} Jt` : `${q / 1000} Rb`}
+                  {q.label}
                 </button>
               ))}
             </div>
