@@ -130,6 +130,17 @@ export type DbRewardRedemption = {
   updated_at: string;
 };
 
+export type DbUserBankAccount = {
+  id: number;
+  user_id: number;
+  bank_name: string;
+  account_number: string;
+  account_holder: string;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 let poolInstance: pg.Pool | null = null;
 let isInMemory = false;
 let initPromise: Promise<void> | null = null;
@@ -431,6 +442,20 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
       shipping_address TEXT,
       notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create user_bank_accounts table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_bank_accounts (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL,
+      bank_name VARCHAR(100) NOT NULL,
+      account_number VARCHAR(100) NOT NULL,
+      account_holder VARCHAR(255) NOT NULL,
+      is_primary BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -1078,8 +1103,8 @@ export async function initDatabase() {
       await pool.query("SELECT 1");
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[PostgreSQL] Connection to remote/local DATABASE_URL failed (${errMsg}). Seamlessly falling back to built-in in-memory PostgreSQL engine...`,
+      console.log(
+        `[PostgreSQL] DATABASE_URL not reachable (${errMsg}). Initializing in-memory PostgreSQL engine...`,
       );
       // Clean up failed pool if needed
       try {
@@ -1114,8 +1139,8 @@ export async function query<T = unknown>(sql: string, params: unknown[] = []): P
   } catch (err: unknown) {
     if (!isInMemory) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[PostgreSQL] Query failed on pool (${errMsg}). Switching to in-memory PostgreSQL engine...`,
+      console.log(
+        `[PostgreSQL] DATABASE_URL query unavailable (${errMsg}). Switching to in-memory PostgreSQL engine...`,
       );
       pool = createMemoryPool();
       poolInstance = pool;

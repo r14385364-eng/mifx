@@ -8,6 +8,7 @@ import {
   DbNews,
   DbAuditLog,
   DbNotification,
+  DbUserBankAccount,
 } from "./db";
 import {
   generateToken,
@@ -2598,6 +2599,193 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error updating redemption status";
       return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // /api/user/bank-accounts
+  if (url.pathname === "/api/user/bank-accounts") {
+    const auth = await requireAuth(request);
+    if ("errorResponse" in auth) {
+      return auth.errorResponse;
+    }
+    const user = auth.user;
+
+    // GET: List all bank accounts for logged-in user
+    if (request.method === "GET") {
+      try {
+        const bankAccounts = await query<DbUserBankAccount>(
+          "SELECT * FROM user_bank_accounts WHERE user_id = $1 ORDER BY is_primary DESC, id ASC",
+          [user.id],
+        );
+        return jsonResponse({ success: true, bankAccounts });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching bank accounts";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    // POST: Create a new bank account
+    if (request.method === "POST") {
+      try {
+        const body = (await request.json()) as {
+          bankName?: string;
+          accountNumber?: string;
+          accountHolder?: string;
+          isPrimary?: boolean;
+        };
+
+        const bankName = body.bankName ? sanitizeText(body.bankName).trim() : "";
+        const accountNumber = body.accountNumber ? sanitizeText(body.accountNumber).trim() : "";
+        const accountHolder = body.accountHolder ? sanitizeText(body.accountHolder).trim() : "";
+
+        if (!bankName || !accountNumber || !accountHolder) {
+          return jsonResponse(
+            { success: false, message: "Nama bank, nomor rekening, dan nama pemilik wajib diisi." },
+            400,
+          );
+        }
+
+        // Check if user already has any bank account
+        const existingCount = await query<{ count: string }>(
+          "SELECT COUNT(*) as count FROM user_bank_accounts WHERE user_id = $1",
+          [user.id],
+        );
+        const count = parseInt(existingCount[0]?.count || "0", 10);
+
+        let isPrimary = Boolean(body.isPrimary);
+        if (count === 0) {
+          isPrimary = true; // First account is always primary
+        }
+
+        if (isPrimary) {
+          await query("UPDATE user_bank_accounts SET is_primary = false WHERE user_id = $1", [
+            user.id,
+          ]);
+        }
+
+        const inserted = await query<DbUserBankAccount>(
+          `INSERT INTO user_bank_accounts (user_id, bank_name, account_number, account_holder, is_primary)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [user.id, bankName, accountNumber, accountHolder, isPrimary],
+        );
+
+        return jsonResponse({
+          success: true,
+          message: "Rekening bank berhasil ditambahkan.",
+          bankAccount: inserted[0],
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error adding bank account";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    // PUT: Update an existing bank account
+    if (request.method === "PUT" || request.method === "PATCH") {
+      try {
+        const body = (await request.json()) as {
+          id: number;
+          bankName?: string;
+          accountNumber?: string;
+          accountHolder?: string;
+          isPrimary?: boolean;
+        };
+
+        if (!body.id) {
+          return jsonResponse({ success: false, message: "ID rekening wajib disertakan." }, 400);
+        }
+
+        const existing = await query<DbUserBankAccount>(
+          "SELECT * FROM user_bank_accounts WHERE id = $1 AND user_id = $2",
+          [body.id, user.id],
+        );
+
+        if (existing.length === 0) {
+          return jsonResponse({ success: false, message: "Rekening bank tidak ditemukan." }, 404);
+        }
+
+        const current = existing[0];
+        const bankName = body.bankName ? sanitizeText(body.bankName).trim() : current.bank_name;
+        const accountNumber = body.accountNumber
+          ? sanitizeText(body.accountNumber).trim()
+          : current.account_number;
+        const accountHolder = body.accountHolder
+          ? sanitizeText(body.accountHolder).trim()
+          : current.account_holder;
+        const isPrimary =
+          body.isPrimary !== undefined ? Boolean(body.isPrimary) : current.is_primary;
+
+        if (isPrimary && !current.is_primary) {
+          await query("UPDATE user_bank_accounts SET is_primary = false WHERE user_id = $1", [
+            user.id,
+          ]);
+        }
+
+        const updated = await query<DbUserBankAccount>(
+          `UPDATE user_bank_accounts
+           SET bank_name = $1, account_number = $2, account_holder = $3, is_primary = $4, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5 AND user_id = $6
+           RETURNING *`,
+          [bankName, accountNumber, accountHolder, isPrimary, body.id, user.id],
+        );
+
+        return jsonResponse({
+          success: true,
+          message: "Rekening bank berhasil diperbarui.",
+          bankAccount: updated[0],
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error updating bank account";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    // DELETE: Delete a bank account
+    if (request.method === "DELETE") {
+      try {
+        const urlObj = new URL(request.url);
+        const idParam = urlObj.searchParams.get("id");
+        let id = idParam ? parseInt(idParam, 10) : null;
+        if (!id) {
+          const body = (await request.json().catch(() => ({}))) as { id?: number };
+          id = body.id || null;
+        }
+
+        if (!id) {
+          return jsonResponse({ success: false, message: "ID rekening wajib disertakan." }, 400);
+        }
+
+        const existing = await query<DbUserBankAccount>(
+          "SELECT * FROM user_bank_accounts WHERE id = $1 AND user_id = $2",
+          [id, user.id],
+        );
+
+        if (existing.length === 0) {
+          return jsonResponse({ success: false, message: "Rekening bank tidak ditemukan." }, 404);
+        }
+
+        const wasPrimary = existing[0].is_primary;
+        await query("DELETE FROM user_bank_accounts WHERE id = $1 AND user_id = $2", [id, user.id]);
+
+        // If the deleted account was primary, set the remaining newest account as primary
+        if (wasPrimary) {
+          const remaining = await query<DbUserBankAccount>(
+            "SELECT * FROM user_bank_accounts WHERE user_id = $1 ORDER BY id DESC LIMIT 1",
+            [user.id],
+          );
+          if (remaining.length > 0) {
+            await query("UPDATE user_bank_accounts SET is_primary = true WHERE id = $1", [
+              remaining[0].id,
+            ]);
+          }
+        }
+
+        return jsonResponse({ success: true, message: "Rekening bank berhasil dihapus." });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error deleting bank account";
+        return jsonResponse({ success: false, message }, 500);
+      }
     }
   }
 

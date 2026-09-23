@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowDownToLine, CheckCircle2, Clock, Info } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ArrowDownToLine, Building2, CheckCircle2, Clock, Info } from "lucide-react";
+import { useState, useEffect } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { useAuth } from "@/lib/auth-context";
@@ -37,6 +37,61 @@ function WithdrawPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [savedBanks, setSavedBanks] = useState<
+    Array<{
+      id: number;
+      bank_name: string;
+      account_number: string;
+      account_holder: string;
+      is_primary: boolean;
+    }>
+  >([]);
+  const [selectedBankId, setSelectedBankId] = useState<string>("manual");
+
+  useEffect(() => {
+    fetch("/api/user/bank-accounts")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.bankAccounts) && data.bankAccounts.length > 0) {
+          setSavedBanks(data.bankAccounts);
+          // Default select primary bank account
+          const primary =
+            data.bankAccounts.find(
+              (b: {
+                id: number;
+                bank_name: string;
+                account_number: string;
+                account_holder: string;
+                is_primary: boolean;
+              }) => b.is_primary,
+            ) || data.bankAccounts[0];
+          if (primary) {
+            setSelectedBankId(String(primary.id));
+            setDestination(primary.bank_name);
+            setAccountNumber(primary.account_number);
+            setAccountName(primary.account_holder);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleBankSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedBankId(val);
+    if (val === "manual") {
+      setDestination("");
+      setAccountNumber("");
+      setAccountName(user?.name || "");
+    } else {
+      const found = savedBanks.find((b) => String(b.id) === val);
+      if (found) {
+        setDestination(found.bank_name);
+        setAccountNumber(found.account_number);
+        setAccountName(found.account_holder);
+      }
+    }
+  };
 
   const profitUSD = user?.profit ?? 0;
   const availableProfitRupiah = profitUSD * 16000;
@@ -145,65 +200,30 @@ function WithdrawPage() {
       </header>
 
       <main className="flex flex-col gap-5 px-4 py-4 pb-6">
-        {/* Minimal Withdraw & Profit Rule Banner */}
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-foreground">
-          <Info className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-          <div className="text-xs space-y-1">
-            <p className="font-bold text-amber-800 dark:text-amber-300">
-              Ketentuan Penarikan (Withdraw)
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              • Penarikan dana{" "}
-              <strong className="text-foreground">HANYA dapat dilakukan dari Saldo Profit</strong>.
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              • Saldo deposit awal / top-up utama{" "}
-              <strong className="text-amber-700 dark:text-amber-300">TIDAK DAPAT ditarik</strong>.
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              • Minimal Penarikan:{" "}
-              <strong className="text-blue-600 dark:text-blue-400">Rp 100.000 IDR</strong> (setara{" "}
-              <strong className="text-foreground">$6.25 USD</strong>).
-            </p>
-          </div>
-        </div>
-
         {/* Saldo Profit (Withdrawable) Card */}
-        <section className="flex flex-col gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                <ArrowDownToLine className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                  Saldo Profit (Dapat Ditarik)
-                </p>
-                <p className="text-lg font-extrabold text-foreground">
-                  {formatRupiah(availableProfitRupiah)}
-                </p>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  setara ${profitUSD.toFixed(2)} USD
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setAmount(String(availableProfitRupiah))}
-              disabled={availableProfitRupiah <= 0}
-              className="rounded-lg bg-emerald-500 text-white px-3 py-1.5 text-xs font-bold transition-all hover:bg-emerald-600 disabled:opacity-50"
-            >
-              Tarik Semua Profit
-            </button>
-          </div>
-
-          {/* Deposit Balance Info Badge */}
-          <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
-            <span className="text-muted-foreground">Saldo Deposit Utama (Non-WD):</span>
-            <span className="font-semibold text-muted-foreground">
-              {formatRupiah(depositBalanceRupiah)} (${depositBalanceUSD.toFixed(2)} USD)
+        <section className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <ArrowDownToLine className="h-5 w-5 text-primary" />
             </span>
+            <div>
+              <p className="text-xs text-muted-foreground">Saldo Tersedia</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatRupiah(availableProfitRupiah)}
+              </p>
+              <p className="text-[11px] text-muted-foreground font-medium">
+                setara ${profitUSD.toFixed(2)} USD
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setAmount(String(availableProfitRupiah))}
+            disabled={availableProfitRupiah <= 0}
+            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+          >
+            Tarik Semua
+          </button>
         </section>
 
         {/* Form */}
@@ -211,7 +231,37 @@ function WithdrawPage() {
           onSubmit={handleSubmit}
           className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm"
         >
-          <h2 className="text-sm font-semibold text-foreground">Detail Penarikan</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Detail Penarikan</h2>
+            {savedBanks.length > 0 && (
+              <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                {savedBanks.length} Rekening Tersimpan
+              </span>
+            )}
+          </div>
+
+          {/* Saved Bank Selector if user has saved bank accounts */}
+          {savedBanks.length > 0 && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/30 p-3">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                Pilih Rekening Tujuan
+              </label>
+              <select
+                value={selectedBankId}
+                onChange={handleBankSelectChange}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
+              >
+                {savedBanks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.bank_name} — {b.account_number} a.n. {b.account_holder}{" "}
+                    {b.is_primary ? "(Utama)" : ""}
+                  </option>
+                ))}
+                <option value="manual">+ Gunakan Rekening Lain (Input Manual)</option>
+              </select>
+            </div>
+          )}
 
           {/* Nominal */}
           <div>

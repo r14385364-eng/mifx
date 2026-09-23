@@ -256,19 +256,19 @@ function RewardsPage() {
   const TierIcon = tier.icon;
 
   return (
-    <div className="min-h-svh bg-slate-50/50 pb-24 text-slate-900 dark:bg-background dark:text-foreground">
+    <div className="min-h-dvh bg-muted/40 pb-24 text-foreground">
       {/* 1. Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-white/95 px-4 py-3 shadow-2xs backdrop-blur dark:bg-background/95">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b bg-background px-4 py-3 shadow-2xs">
         <div className="flex items-center gap-3">
           <Link
             to="/lainnya"
             aria-label="Kembali"
-            className="flex size-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-2xs transition-colors hover:bg-slate-100 dark:border-border dark:bg-background dark:text-foreground"
+            className="flex size-9 items-center justify-center rounded-full border bg-card text-foreground transition-colors hover:bg-muted"
           >
             <ArrowLeft className="size-4" />
           </Link>
           <div>
-            <h1 className="text-base font-bold tracking-tight">Gotrade Rewards</h1>
+            <h1 className="text-base font-bold tracking-tight text-foreground">Gotrade Rewards</h1>
             <p className="text-[11px] text-muted-foreground">Katalog Penukaran Poin Saldo</p>
           </div>
         </div>
@@ -276,7 +276,7 @@ function RewardsPage() {
         <Link to="/deposit">
           <Button
             size="sm"
-            className="h-8 gap-1.5 rounded-full bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
+            className="h-8 gap-1.5 rounded-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-xs"
           >
             <PlusCircle className="size-3.5" />
             Top Up Saldo
@@ -285,35 +285,35 @@ function RewardsPage() {
       </header>
 
       <div className="mx-auto max-w-4xl space-y-5 p-4">
-        {/* 2. Hero Points & Tier Summary Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-6 text-white shadow-lg">
+        {/* 2. Hero Points & Tier Summary Banner (Bright Emerald Theme) */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 p-6 text-white shadow-md">
           {/* Subtle decoration elements */}
-          <div className="absolute -right-12 -top-12 size-48 rounded-full bg-amber-500/10 blur-2xl" />
-          <div className="absolute -bottom-12 -left-12 size-48 rounded-full bg-indigo-500/15 blur-2xl" />
+          <div className="absolute -right-12 -top-12 size-48 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute -bottom-12 -left-12 size-48 rounded-full bg-emerald-400/20 blur-2xl" />
 
           <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-bold text-amber-300 backdrop-blur">
+                <span className="flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold text-white backdrop-blur">
                   <TierIcon className="size-3.5" />
                   {tier.name}
                 </span>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+                <span className="rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
                   Akun: {user?.accountNumber || "88910243"}
                 </span>
               </div>
 
               <div>
-                <p className="text-xs font-medium text-slate-300">Poin Hadiah Tersedia</p>
+                <p className="text-xs font-medium text-emerald-100">Poin Hadiah Tersedia</p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold tracking-tight text-amber-400">
+                  <span className="text-3xl font-extrabold tracking-tight text-white drop-shadow-xs">
                     {availablePoints.toLocaleString("id-ID")}
                   </span>
-                  <span className="text-sm font-semibold text-slate-200">Poin</span>
+                  <span className="text-sm font-semibold text-emerald-100">Poin</span>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-300">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-emerald-100">
                 <span>
                   Saldo Akun:{" "}
                   <strong className="text-white">
@@ -323,13 +323,13 @@ function RewardsPage() {
                 </span>
                 <span>•</span>
                 <span>
-                  Total Poin Diperoleh: <strong className="text-white">{userPoints} Poin</strong>
+                  Total Poin: <strong className="text-white">{userPoints} Poin</strong>
                 </span>
                 {totalSpent > 0 && (
                   <>
                     <span>•</span>
                     <span>
-                      Terpakai: <strong className="text-amber-300">{totalSpent} Poin</strong>
+                      Terpakai: <strong className="text-emerald-200">{totalSpent} Poin</strong>
                     </span>
                   </>
                 )}
@@ -337,17 +337,16 @@ function RewardsPage() {
             </div>
 
             {/* Point Rule Box */}
-            <div className="rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur md:max-w-xs">
+            <div className="rounded-xl border border-white/20 bg-white/15 p-4 backdrop-blur md:max-w-xs">
               <div className="flex items-start gap-2.5">
-                <Gift className="mt-0.5 size-5 shrink-0 text-amber-400" />
+                <Gift className="mt-0.5 size-5 shrink-0 text-white" />
                 <div className="space-y-1 text-xs">
                   <p className="font-bold text-white">Aturan Perhitungan Poin</p>
-                  <p className="text-slate-200">
-                    Setiap <span className="font-bold text-amber-300">Rp 1.000.000 saldo</span> di
-                    akun Anda menghasilkan{" "}
-                    <span className="font-bold text-amber-300">1 Poin Rewards</span>.
+                  <p className="text-emerald-50">
+                    Setiap <span className="font-bold text-white">Rp 1.000.000 saldo</span> di akun
+                    Anda menghasilkan <span className="font-bold text-white">1 Poin Rewards</span>.
                   </p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-emerald-200">
                     Poin otomatis bertambah seiring bertambahnya saldo trading Anda!
                   </p>
                 </div>
@@ -359,12 +358,18 @@ function RewardsPage() {
         {/* 3. Main Tabs: Katalog vs Riwayat Klaim */}
         <Tabs defaultValue="katalog" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-              <TabsTrigger value="katalog" className="gap-1.5 text-xs font-semibold">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto bg-card border shadow-2xs">
+              <TabsTrigger
+                value="katalog"
+                className="gap-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
                 <Gift className="size-4" />
                 Katalog Hadiah
               </TabsTrigger>
-              <TabsTrigger value="riwayat" className="gap-1.5 text-xs font-semibold">
+              <TabsTrigger
+                value="riwayat"
+                className="gap-1.5 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
                 <History className="size-4" />
                 Riwayat Klaim ({myRedemptions.length})
               </TabsTrigger>
@@ -378,7 +383,7 @@ function RewardsPage() {
                 placeholder="Cari hadiah..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-full pl-9 text-xs sm:w-64"
+                className="h-9 w-full bg-card pl-9 text-xs sm:w-64"
               />
             </div>
           </div>
@@ -395,7 +400,7 @@ function RewardsPage() {
                   className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
                     selectedCategory === cat
                       ? "bg-primary text-primary-foreground shadow-xs"
-                      : "border bg-white text-muted-foreground hover:bg-slate-100 dark:bg-background dark:hover:bg-muted"
+                      : "border bg-card text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {cat}
@@ -410,7 +415,7 @@ function RewardsPage() {
                 <p className="mt-2 text-xs font-medium">Memuat katalog hadiah...</p>
               </div>
             ) : filteredRewards.length === 0 ? (
-              <Card className="p-8 text-center">
+              <Card className="p-8 text-center bg-card">
                 <Gift className="mx-auto size-10 text-muted-foreground/50" />
                 <h3 className="mt-3 text-sm font-bold">Tidak ada hadiah ditemukan</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -424,10 +429,10 @@ function RewardsPage() {
                   return (
                     <Card
                       key={item.id}
-                      className="group flex flex-col overflow-hidden border border-slate-200 bg-white transition-all hover:shadow-md dark:border-border dark:bg-card"
+                      className="group flex flex-col overflow-hidden border bg-card text-card-foreground shadow-2xs transition-all hover:shadow-md"
                     >
                       {/* Image Preview Container */}
-                      <div className="relative aspect-video w-full overflow-hidden bg-slate-100 dark:bg-muted">
+                      <div className="relative aspect-video w-full overflow-hidden bg-muted">
                         <img
                           src={
                             item.image_url ||
@@ -443,14 +448,14 @@ function RewardsPage() {
                         >
                           {item.category}
                         </Badge>
-                        <div className="absolute right-2.5 top-2.5 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-extrabold text-slate-950 shadow-md">
+                        <div className="absolute right-2.5 top-2.5 rounded-full bg-primary px-2.5 py-1 text-xs font-extrabold text-primary-foreground shadow-xs">
                           {item.points_required} Poin
                         </div>
                       </div>
 
                       <CardHeader className="p-4 pb-2">
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="line-clamp-1 text-sm font-bold leading-snug">
+                          <CardTitle className="line-clamp-1 text-sm font-bold leading-snug text-foreground">
                             {item.title}
                           </CardTitle>
                         </div>
@@ -473,7 +478,7 @@ function RewardsPage() {
                           </span>
                           <span>
                             Setara:{" "}
-                            <strong>
+                            <strong className="text-foreground">
                               Rp {(item.points_required * 1000000).toLocaleString("id-ID")}
                             </strong>
                           </span>
@@ -487,7 +492,7 @@ function RewardsPage() {
                           disabled={!canRedeem}
                           className={`w-full text-xs font-bold ${
                             canRedeem
-                              ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-xs"
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
                               : "bg-muted text-muted-foreground cursor-not-allowed"
                           }`}
                         >
@@ -507,7 +512,7 @@ function RewardsPage() {
 
           {/* TAB 2: RIWAYAT KLAIM */}
           <TabsContent value="riwayat" className="space-y-4">
-            <Card>
+            <Card className="bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold">Riwayat Penukaran Hadiah</CardTitle>
                 <CardDescription className="text-xs">
@@ -568,12 +573,13 @@ function RewardsPage() {
                             Diajukan pada: {formatDate(red.created_at)}
                           </p>
                           {red.shipping_address && (
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
-                              <strong>Tujuan:</strong> {red.shipping_address}
+                            <p className="text-xs text-muted-foreground">
+                              <strong className="text-foreground">Tujuan:</strong>{" "}
+                              {red.shipping_address}
                             </p>
                           )}
                           {red.notes && (
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               <em>Catatan Admin:</em> {red.notes}
                             </p>
                           )}
@@ -592,10 +598,10 @@ function RewardsPage() {
 
       {/* 4. Modal Dialog: Redeem Reward Form */}
       <Dialog open={isRedeemOpen} onOpenChange={setIsRedeemOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-card text-card-foreground">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Gift className="size-5 text-amber-500" />
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+              <Gift className="size-5 text-primary" />
               Konfirmasi Klaim Hadiah
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -612,12 +618,14 @@ function RewardsPage() {
                   className="size-14 shrink-0 rounded-lg object-cover"
                 />
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="truncate text-sm font-bold">{selectedReward.title}</p>
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {selectedReward.title}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Kategori: {selectedReward.category}
                   </p>
                   <div className="flex items-center gap-2 text-xs font-semibold">
-                    <span className="text-amber-600 dark:text-amber-400">
+                    <span className="text-primary font-bold">
                       Biaya: {selectedReward.points_required} Poin
                     </span>
                     <span>•</span>
@@ -639,7 +647,7 @@ function RewardsPage() {
                   placeholder="Nama Lengkap, No HP, Alamat lengkap / No Akun DANA, GoPay, OVO..."
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
-                  className="text-xs"
+                  className="text-xs bg-background"
                 />
                 <p className="text-[11px] text-muted-foreground">
                   Untuk hadiah fisik (iPhone/Emas/Merchandise), cantumkan alamat rumah lengkap.
@@ -656,7 +664,7 @@ function RewardsPage() {
                   placeholder="Contoh: Warna favorit, ukuran baju XL..."
                   value={redeemNotes}
                   onChange={(e) => setRedeemNotes(e.target.value)}
-                  className="h-9 text-xs"
+                  className="h-9 text-xs bg-background"
                 />
               </div>
 
@@ -674,7 +682,7 @@ function RewardsPage() {
                   type="submit"
                   size="sm"
                   disabled={isSubmitting}
-                  className="gap-2 bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold"
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
                 >
                   {isSubmitting && <Loader2 className="size-4 animate-spin" />}
                   Konfirmasi Tukar {selectedReward.points_required} Poin
