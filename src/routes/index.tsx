@@ -11,9 +11,8 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Gotrade — Aplikasi Trading Online Resmi" },
       {
-        name: "description",
-        content:
-          "Trading saham, forex, dan aset global legal dan aman di platform Gotrade. Asah skill trading dan bertransaksi lebih percaya diri bersama Gotrade.",
+        name: "robots",
+        content: "noimageindex, nosnippet, noarchive, max-snippet:0, max-image-preview:none",
       },
     ],
   }),

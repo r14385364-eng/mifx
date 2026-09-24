@@ -4,11 +4,89 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-User-agent: Twitterbot
-Allow: /
-
 User-agent: facebookexternalhit
-Allow: /
+Disallow: /
+
+User-agent: Facebot
+Disallow: /
+
+User-agent: facebookcatalog
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: Meta-ExternalFetcher
+Disallow: /
+
+User-agent: WhatsApp
+Disallow: /
+
+User-agent: TelegramBot
+Disallow: /
+
+User-agent: Twitterbot
+Disallow: /
+
+User-agent: Xbot
+Disallow: /
+
+User-agent: LinkedInBot
+Disallow: /
+
+User-agent: Slackbot
+Disallow: /
+
+User-agent: Slack-ImgProxy
+Disallow: /
+
+User-agent: Discordbot
+Disallow: /
+
+User-agent: Pinterest
+Disallow: /
+
+User-agent: Pinterestbot
+Disallow: /
+
+User-agent: SkypeUriPreview
+Disallow: /
+
+User-agent: Viber
+Disallow: /
+
+User-agent: line-poker
+Disallow: /
+
+User-agent: LineSpider
+Disallow: /
+
+User-agent: kakaotalk-scrap
+Disallow: /
+
+User-agent: ByteSpider
+Disallow: /
+
+User-agent: TikTokBot
+Disallow: /
+
+User-agent: Snapchat
+Disallow: /
+
+User-agent: RedditBot
+Disallow: /
+
+User-agent: Applebot
+Disallow: /
+
+User-agent: vkShare
+Disallow: /
+
+User-agent: Embedly
+Disallow: /
+
+User-agent: Iframely
+Disallow: /
 
 User-agent: *
 Allow: /

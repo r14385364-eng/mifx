@@ -82,8 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Gotrade — Aplikasi Trading Online Resmi" },
       {
-        name: "description",
-        content: "Trading saham, forex, dan aset global legal dan aman bersama Gotrade.",
+        name: "robots",
+        content: "noimageindex, nosnippet, noarchive, max-snippet:0, max-image-preview:none",
       },
       { name: "author", content: "Gotrade" },
     ],
