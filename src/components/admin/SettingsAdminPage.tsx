@@ -297,15 +297,6 @@ export function SettingsAdminPage() {
                           </button>
                         </div>
                       </div>
-
-                      <div>
-                        <p className="text-[10px] font-medium text-muted-foreground">
-                          Atas Nama Rekening
-                        </p>
-                        <p className="mt-0.5 text-xs font-bold text-foreground">
-                          {accountName || "Gotrade Indonesia Official"}
-                        </p>
-                      </div>
                     </div>
 
                     <p className="mt-2.5 flex items-center justify-center gap-1 text-[10px] text-muted-foreground">

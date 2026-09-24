@@ -370,11 +370,6 @@ function DepositPage() {
                 </button>
               </div>
             </div>
-
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Atas Nama Rekening</p>
-              <p className="mt-0.5 text-xs font-bold text-foreground">{accountNameTarget}</p>
-            </div>
           </div>
 
           <p className="mt-3 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
