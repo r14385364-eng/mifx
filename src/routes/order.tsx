@@ -14,46 +14,12 @@ export const Route = createFileRoute("/order")({
       { title: "Menu Transaksi — Gotrade" },
       {
         name: "description",
-        content:
-          "Akses menu Top up, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
+        content: "Akses menu Deposit dan Withdraw akun Gotrade Anda secara cepat dan aman.",
       },
     ],
   }),
   component: OrderPage,
 });
-
-const quickMenus = [
-  {
-    title: "Top up",
-    to: "/deposit",
-    icon: Wallet,
-    iconColor: "text-primary bg-primary/10",
-    buttonColor: "bg-primary text-primary-foreground",
-    buttonText: "Top Up Sekarang",
-    description:
-      "Isi saldo akun trading Gotrade Anda melalui QRIS, transfer bank, atau e-wallet resmi secara instan.",
-  },
-  {
-    title: "Withdraw",
-    to: "/withdraw",
-    icon: ArrowDownToLine,
-    iconColor: "text-emerald-600 bg-emerald-500/10",
-    buttonColor: "bg-emerald-600 text-white",
-    buttonText: "Withdraw Sekarang",
-    description:
-      "Tarik saldo trading atau keuntungan Anda langsung ke rekening bank atau e-wallet dengan aman.",
-  },
-  {
-    title: "Riwayat",
-    to: "/riwayat",
-    icon: History,
-    iconColor: "text-primary bg-primary/10",
-    buttonColor: "bg-primary text-primary-foreground",
-    buttonText: "Buka Riwayat Transaksi",
-    description:
-      "Lihat catatan lengkap riwayat transaksi trading, deposit, dan withdraw akun Anda.",
-  },
-];
 
 function OrderPage() {
   const { user } = useAuth();
@@ -134,38 +100,31 @@ function OrderPage() {
           </div>
         </div>
 
-        {/* 3 Menu Cards */}
-        <div className="flex flex-col gap-3">
-          {quickMenus.map((menu) => {
-            const Icon = menu.icon;
-            return (
-              <div
-                key={menu.title}
-                className="rounded-xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${menu.iconColor}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-bold text-foreground">{menu.title}</h2>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{menu.description}</p>
-                    <Link
-                      to={menu.to}
-                      className={`mt-3 inline-flex items-center justify-center rounded-lg px-4 py-2 text-xs font-semibold shadow-xs transition-opacity hover:opacity-90 active:opacity-80 ${menu.buttonColor}`}
-                    >
-                      {menu.buttonText}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Order Menu Section styled like Akun in /lainnya */}
+        <div>
+          <p className="mb-1.5 px-1 text-xs font-bold text-gray-700 dark:text-gray-300">Order</p>
+          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xs divide-y divide-gray-100 dark:border-border dark:bg-card dark:divide-border">
+            <Link
+              to="/deposit"
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/50"
+            >
+              <Wallet className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <span className="flex-1 text-sm font-medium text-gray-900 dark:text-foreground">
+                Deposit
+              </span>
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+            </Link>
+            <Link
+              to="/withdraw"
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/50"
+            >
+              <ArrowDownToLine className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <span className="flex-1 text-sm font-medium text-gray-900 dark:text-foreground">
+                Withdraw
+              </span>
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+            </Link>
+          </div>
         </div>
       </main>
 

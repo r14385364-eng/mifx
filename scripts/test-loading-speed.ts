@@ -25,6 +25,7 @@ async function runSpeedBenchmark() {
     { path: "/rewards", label: "Gotrade Rewards" },
     { path: "/referral", label: "Referral Program" },
     { path: "/profil", label: "Profile Page" },
+    { path: "/pengaturan", label: "User Settings & Dark Mode" },
     { path: "/lainnya", label: "More Menu" },
     { path: "/berita", label: "News Feed" },
     { path: "/admin/users", label: "Admin Users" },
@@ -60,9 +61,7 @@ async function runSpeedBenchmark() {
     latencies.push(duration);
 
     if (res.ok && duration < 1000) {
-      console.log(
-        `[PASS - ${duration}ms] ${route.label.padEnd(25)} -> ${route.path}`,
-      );
+      console.log(`[PASS - ${duration}ms] ${route.label.padEnd(25)} -> ${route.path}`);
       passed++;
     } else {
       console.error(
@@ -72,9 +71,7 @@ async function runSpeedBenchmark() {
     }
   }
 
-  const avgLatency = Math.round(
-    latencies.reduce((a, b) => a + b, 0) / latencies.length,
-  );
+  const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
   const maxLatency = Math.max(...latencies);
   const minLatency = Math.min(...latencies);
 

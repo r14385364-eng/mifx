@@ -18,11 +18,13 @@ import {
   Loader2,
   LogOut,
   Mail,
+  Moon,
   Phone,
   Plus,
   Send,
   Settings,
   Sparkles,
+  Sun,
   Trash2,
   User,
   Users,
@@ -36,6 +38,7 @@ import { AppLogo } from "@/components/AppLogo";
 import { useAuth } from "@/lib/auth-context";
 import { NotificationModal } from "@/components/NotificationModal";
 import { useNotifications } from "@/lib/notifications";
+import { useTheme } from "@/lib/theme-context";
 
 export const Route = createFileRoute("/lainnya")({
   head: () => ({
@@ -95,6 +98,7 @@ export function LainnyaPage() {
   }, [user?.balance]);
 
   // Modals state
+  const { isDark } = useTheme();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const { unreadCount } = useNotifications();
@@ -551,12 +555,46 @@ export function LainnyaPage() {
               )}
             </button>
             <Link
-              to="/admin/pengaturan"
+              to="/pengaturan"
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50"
             >
               <Settings className="h-5 w-5 text-gray-700" />
-              <span className="flex-1 text-sm font-medium text-gray-900">Pengaturan</span>
+              <div className="flex flex-1 items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">Pengaturan</span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    isDark
+                      ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20"
+                      : "bg-amber-500/15 text-amber-700 border border-amber-500/20"
+                  }`}
+                >
+                  {isDark ? (
+                    <>
+                      <Moon className="h-3 w-3" />
+                      Mode Gelap
+                    </>
+                  ) : (
+                    <>
+                      <Sun className="h-3 w-3" />
+                      Mode Terang
+                    </>
+                  )}
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
             </Link>
+            {user?.role === "admin" && (
+              <Link
+                to="/admin/pengaturan"
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-emerald-50/40 text-emerald-700"
+              >
+                <Settings className="h-5 w-5 text-emerald-600" />
+                <span className="flex-1 text-sm font-semibold">
+                  Pengaturan Admin (QRIS & Profit)
+                </span>
+                <ChevronRight className="h-4 w-4 text-emerald-600" />
+              </Link>
+            )}
           </div>
         </div>
 

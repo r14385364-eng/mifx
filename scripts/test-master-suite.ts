@@ -70,6 +70,7 @@ async function runMasterTestSuite() {
     "/rewards",
     "/referral",
     "/profil",
+    "/pengaturan",
     "/lainnya",
     "/admin/users",
     "/admin/profit",
@@ -349,17 +350,17 @@ async function runMasterTestSuite() {
     if (!res.ok) throw new Error(`Approval failed: ${res.status}`);
   });
 
-  await test("User balance accurately credited to $2,000 USD", async () => {
+  await test("User balance accurately credited to $2,200 USD ($2,000 + 10% Initial Profit $200)", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = (await res.json()) as { user: TraderUser };
-    if (Number(data.user.balance) !== 2000) {
-      throw new Error(`Expected $2,000, got $${data.user.balance}`);
+    if (Number(data.user.balance) !== 2200) {
+      throw new Error(`Expected $2,200, got $${data.user.balance}`);
     }
   });
 
-  await test("POST /api/admin/profit grants $500 profit to trader", async () => {
+  await test("POST /api/admin/profit grants $500 profit to trader ($2,700 total)", async () => {
     if (!testTraderUser) throw new Error("User not created");
     const res = await fetch(`${baseUrl}/api/admin/profit`, {
       method: "POST",
@@ -378,7 +379,7 @@ async function runMasterTestSuite() {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const meData = (await meRes.json()) as { user: TraderUser };
-    if (Number(meData.user.balance) !== 2500 || Number(meData.user.profit) !== 500) {
+    if (Number(meData.user.balance) !== 2700 || Number(meData.user.profit) !== 700) {
       throw new Error(
         `Balance mismatch: balance=${meData.user.balance}, profit=${meData.user.profit}`,
       );
@@ -392,7 +393,7 @@ async function runMasterTestSuite() {
   let chosenReward: RewardItem | null = null;
   let redemptionId = 0;
 
-  await test("Rewards API accurately computes 40 Points from $2,500 USD (Rp 40,000,000)", async () => {
+  await test("Rewards API accurately computes 43 Points from $2,700 USD (Rp 43,200,000)", async () => {
     const res = await fetch(`${baseUrl}/api/rewards`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
@@ -401,8 +402,8 @@ async function runMasterTestSuite() {
       userPoints?: number;
       rewards?: RewardItem[];
     };
-    if (data.userPoints !== 40) {
-      throw new Error(`Expected 40 points, got ${data.userPoints}`);
+    if (data.userPoints !== 43) {
+      throw new Error(`Expected 43 points, got ${data.userPoints}`);
     }
     if (!Array.isArray(data.rewards) || data.rewards.length < 7) {
       throw new Error("Reward catalog insufficient");
@@ -434,13 +435,13 @@ async function runMasterTestSuite() {
     redemptionId = data.redemption.id;
   });
 
-  await test("Remaining points ledger correctly updated (40 - 8 = 32 Points)", async () => {
+  await test("Remaining points ledger correctly updated (43 - 8 = 35 Points)", async () => {
     if (!chosenReward) throw new Error("Reward item not found");
     const res = await fetch(`${baseUrl}/api/rewards`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = (await res.json()) as { availablePoints?: number };
-    const expectedRemaining = 40 - chosenReward.points_required;
+    const expectedRemaining = 43 - chosenReward.points_required;
     if (data.availablePoints !== expectedRemaining) {
       throw new Error(
         `Expected ${expectedRemaining} available points, got ${data.availablePoints}`,
@@ -526,13 +527,13 @@ async function runMasterTestSuite() {
     if (!res.ok) throw new Error(`Approval failed: ${res.status}`);
   });
 
-  await test("User balance accurately debited from $2,500 to $2,000 USD", async () => {
+  await test("User balance accurately debited from $2,700 to $2,200 USD", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = (await res.json()) as { user: TraderUser };
-    if (Number(data.user.balance) !== 2000) {
-      throw new Error(`Expected $2000, got $${data.user.balance}`);
+    if (Number(data.user.balance) !== 2200) {
+      throw new Error(`Expected $2200, got $${data.user.balance}`);
     }
   });
 

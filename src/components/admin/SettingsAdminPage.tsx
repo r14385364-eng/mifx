@@ -25,7 +25,6 @@ export function SettingsAdminPage() {
   const [qrisImage, setQrisImage] = useState<string>("");
   const [qrisMerchantName, setQrisMerchantName] = useState<string>("Gotrade Indonesia Official");
   const [initialProfitPct, setInitialProfitPct] = useState<string>("10");
-  const [globalDailyRate, setGlobalDailyRate] = useState<string>("5");
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -45,8 +44,6 @@ export function SettingsAdminPage() {
             setQrisMerchantName(data.settings.qris_merchant_name);
           if (data.settings.initial_profit_percentage)
             setInitialProfitPct(data.settings.initial_profit_percentage);
-          if (data.settings.global_daily_profit_rate)
-            setGlobalDailyRate(data.settings.global_daily_profit_rate);
         }
       } catch {
         // use default state
@@ -96,7 +93,6 @@ export function SettingsAdminPage() {
         qris_image: qrisImage,
         qris_merchant_name: qrisMerchantName,
         initial_profit_percentage: initialProfitPct,
-        global_daily_profit_rate: globalDailyRate,
       };
 
       const res = await secureFetch("/api/settings", {
@@ -108,8 +104,7 @@ export function SettingsAdminPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         toast.success("Pengaturan berhasil disimpan ke Database!", {
-          description:
-            "Pengaturan QRIS dan mekanisme persentase profit harian/deposit telah aktif.",
+          description: "Pengaturan QRIS dan persentase profit awal deposit telah aktif.",
         });
       } else {
         toast.error("Gagal menyimpan pengaturan.");
@@ -273,7 +268,7 @@ export function SettingsAdminPage() {
                   Pengaturan Persentase Profit Trading
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Atur persentase profit deposit awal dan persentase profit harian global.
+                  Atur persentase profit awal yang diberikan otomatis saat deposit trader disetujui.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -302,33 +297,6 @@ export function SettingsAdminPage() {
                     deposit Rp 1 Juta dan disetujui admin, user otomatis mendapat nominal basis
                     profit{" "}
                     <strong className="text-amber-600 dark:text-amber-400">Rp 100.000</strong>.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-border/60">
-                  <Label htmlFor="global-daily-rate" className="text-xs font-semibold">
-                    Rate Profit Harian Global Default (%)
-                  </Label>
-                  <div className="relative flex items-center">
-                    <Input
-                      id="global-daily-rate"
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      value={globalDailyRate}
-                      onChange={(e) => setGlobalDailyRate(e.target.value)}
-                      placeholder="Contoh: 5"
-                      className="font-bold"
-                    />
-                    <span className="absolute right-3 text-xs font-bold text-muted-foreground">
-                      %
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Rate ini dapat diubah setiap hari di halaman Admin Profit (misal hari ini 5%,
-                    besok 15%) dan hanya berlaku ke nominal basis profit Rp 100.000, bukan ke saldo
-                    deposit utama 1 Juta.
                   </p>
                 </div>
               </CardContent>
