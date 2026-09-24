@@ -919,6 +919,51 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ]);
   }
 
+  // Seed default contact person settings (Contact Person Gotrade Anda - AKSAY) if not present
+  const contactListCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "contact_persons_list",
+  ]);
+  const defaultContactPersons = [
+    {
+      id: "contact_aksay",
+      name: "AKSAY",
+      role: "Gotrade Dedicated Account Support",
+      whatsappLabel: "Whatsapp",
+      whatsappNumber: "082329157278",
+      email: "support@gotrade.com",
+      active: true,
+    },
+  ];
+
+  if (contactListCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "contact_persons_list",
+      JSON.stringify(defaultContactPersons),
+    ]);
+  }
+
+  const contactNameCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "contact_person_name",
+  ]);
+  if (contactNameCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "contact_person_name",
+      "AKSAY",
+    ]);
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "contact_person_role",
+      "Gotrade Dedicated Account Support",
+    ]);
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "contact_person_phone",
+      "082329157278",
+    ]);
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "contact_person_email",
+      "support@gotrade.com",
+    ]);
+  }
+
   // Seed default QRIS and profit settings if not present
   const qrisCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, ["qris_image"]);
   if (qrisCheck.rows.length === 0) {

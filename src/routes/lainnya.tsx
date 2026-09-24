@@ -53,6 +53,36 @@ export const Route = createFileRoute("/lainnya")({
   component: LainnyaPage,
 });
 
+interface ContactPersonItem {
+  id: string;
+  name: string;
+  role: string;
+  whatsappLabel?: string;
+  whatsappNumber: string;
+  email?: string;
+  active?: boolean;
+}
+
+const defaultContactPersons: ContactPersonItem[] = [
+  {
+    id: "contact_aksay",
+    name: "AKSAY",
+    role: "Gotrade Dedicated Account Support",
+    whatsappLabel: "Whatsapp",
+    whatsappNumber: "082329157278",
+    email: "support@gotrade.com",
+    active: true,
+  },
+];
+
+function formatWaUrl(phone: string): string {
+  const cleaned = phone.replace(/[^0-9]/g, "");
+  if (!cleaned) return "https://wa.me/6282329157278";
+  if (cleaned.startsWith("62")) return `https://wa.me/${cleaned}`;
+  if (cleaned.startsWith("0")) return `https://wa.me/62${cleaned.slice(1)}`;
+  return `https://wa.me/${cleaned}`;
+}
+
 type UserBankAccount = {
   id: number;
   user_id: number;
@@ -109,6 +139,48 @@ export function LainnyaPage() {
     title: string;
     desc: string;
   } | null>(null);
+
+  // Dynamic Contact Persons from Admin Settings (CRUD)
+  const [contactPersons, setContactPersons] = useState<ContactPersonItem[]>(defaultContactPersons);
+
+  useEffect(() => {
+    async function loadContactSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        if (res.ok && data.success && data.settings) {
+          if (data.settings.contact_persons_list) {
+            try {
+              const list = JSON.parse(data.settings.contact_persons_list);
+              if (Array.isArray(list) && list.length > 0) {
+                setContactPersons(list);
+                return;
+              }
+            } catch {
+              // fallback to single fields
+            }
+          }
+
+          if (data.settings.contact_person_name) {
+            setContactPersons([
+              {
+                id: "contact_primary",
+                name: data.settings.contact_person_name || "AKSAY",
+                role: data.settings.contact_person_role || "Gotrade Dedicated Account Support",
+                whatsappLabel: data.settings.contact_person_wa_label || "Whatsapp",
+                whatsappNumber: data.settings.contact_person_phone || "082329157278",
+                email: data.settings.contact_person_email || "support@gotrade.com",
+                active: true,
+              },
+            ]);
+          }
+        }
+      } catch {
+        // use default state
+      }
+    }
+    void loadContactSettings();
+  }, []);
 
   // Bank accounts states & handlers
   const [bankAccounts, setBankAccounts] = useState<UserBankAccount[]>([]);
@@ -719,44 +791,71 @@ export function LainnyaPage() {
         {/* 8. Contact Person Gotrade Anda */}
         <div>
           <p className="mb-1.5 px-1 text-xs font-bold text-gray-700">Contact Person Gotrade Anda</p>
-          <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-2xs">
-            {/* Header AKSAY */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00a651]/20 bg-[#e6f7ef] text-[#00a651]">
-                <Headphones className="h-5 w-5" />
+          <div className="space-y-3">
+            {contactPersons.filter((c) => c.active !== false).length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-white p-4 text-center text-xs text-gray-500 shadow-2xs">
+                Tidak ada contact person yang aktif saat ini.
               </div>
-              <div className="flex flex-col">
-                <span className="text-base font-extrabold tracking-wide text-gray-900">AKSAY</span>
-                <span className="text-xs text-gray-400">Gotrade Dedicated Account Support</span>
-              </div>
-            </div>
+            ) : (
+              contactPersons
+                .filter((c) => c.active !== false)
+                .map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-2xs"
+                  >
+                    {/* Header Contact */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00a651]/20 bg-[#e6f7ef] text-[#00a651]">
+                        <Headphones className="h-5 w-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-base font-extrabold tracking-wide text-gray-900">
+                          {contact.name}
+                        </span>
+                        <span className="text-xs text-gray-400">{contact.role}</span>
+                      </div>
+                    </div>
 
-            {/* Contact details */}
-            <div className="flex flex-col gap-2.5 border-t border-gray-100 pt-3">
-              <a
-                href="https://wa.me/6282329157278"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
-              >
-                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-900">Whatsapp</span>
-                  <span className="text-xs font-medium text-gray-500">082329157278</span>
-                </div>
-              </a>
+                    {/* Contact details */}
+                    <div className="flex flex-col gap-2.5 border-t border-gray-100 pt-3">
+                      {contact.whatsappNumber && (
+                        <a
+                          href={formatWaUrl(contact.whatsappNumber)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
+                        >
+                          <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-medium text-gray-900">
+                              {contact.whatsappLabel || "Whatsapp"}
+                            </span>
+                            <span className="text-xs font-medium text-gray-500">
+                              {contact.whatsappNumber}
+                            </span>
+                          </div>
+                        </a>
+                      )}
 
-              <a
-                href="mailto:support@gotrade.com"
-                className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
-              >
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-900">Email</span>
-                  <span className="text-xs font-medium text-gray-500">support@gotrade.com</span>
-                </div>
-              </a>
-            </div>
+                      {contact.email && (
+                        <a
+                          href={`mailto:${contact.email}`}
+                          className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
+                        >
+                          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-medium text-gray-900">Email</span>
+                            <span className="text-xs font-medium text-gray-500">
+                              {contact.email}
+                            </span>
+                          </div>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
         </div>
 

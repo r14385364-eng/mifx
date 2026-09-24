@@ -4,8 +4,11 @@ import {
   Copy,
   Edit2,
   Eye,
+  Headphones,
   Info,
   Landmark,
+  Mail,
+  Phone,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -43,6 +46,16 @@ export interface PaymentSourceItem {
   active: boolean;
 }
 
+export interface ContactPersonItem {
+  id: string;
+  name: string;
+  role: string;
+  whatsappLabel?: string;
+  whatsappNumber: string;
+  email?: string;
+  active: boolean;
+}
+
 const defaultPaymentSources: PaymentSourceItem[] = [
   { id: "bca", label: "Bank BCA", category: "Bank", active: true },
   { id: "mandiri", label: "Bank Mandiri", category: "Bank", active: true },
@@ -56,27 +69,62 @@ const defaultPaymentSources: PaymentSourceItem[] = [
   { id: "shopeepay", label: "ShopeePay", category: "E-Wallet", active: true },
 ];
 
+const defaultContactPersons: ContactPersonItem[] = [
+  {
+    id: "contact_aksay",
+    name: "AKSAY",
+    role: "Gotrade Dedicated Account Support",
+    whatsappLabel: "Whatsapp",
+    whatsappNumber: "082329157278",
+    email: "support@gotrade.com",
+    active: true,
+  },
+];
+
+function formatWaUrl(phone: string): string {
+  const cleaned = phone.replace(/[^0-9]/g, "");
+  if (!cleaned) return "https://wa.me/6282329157278";
+  if (cleaned.startsWith("62")) return `https://wa.me/${cleaned}`;
+  if (cleaned.startsWith("0")) return `https://wa.me/62${cleaned.slice(1)}`;
+  return `https://wa.me/${cleaned}`;
+}
+
 export function SettingsAdminPage() {
+  // Deposit target account states
   const [bankName, setBankName] = useState<string>("Keb Hana Bank");
   const [accountNumber, setAccountNumber] = useState<string>("11628950560");
   const [accountName, setAccountName] = useState<string>("AKSAY S.PUTRA");
   const [initialProfitPct, setInitialProfitPct] = useState<string>("10");
   const [paymentSources, setPaymentSources] = useState<PaymentSourceItem[]>(defaultPaymentSources);
 
+  // Contact Persons state (AKSAY Dedicated Support)
+  const [contactPersons, setContactPersons] = useState<ContactPersonItem[]>(defaultContactPersons);
+  const [contactSearch, setContactSearch] = useState<string>("");
+
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
+  const [copiedBank, setCopiedBank] = useState<boolean>(false);
 
   // Search & Filter state for payment sources CRUD
   const [sourceSearch, setSourceSearch] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<"ALL" | "Bank" | "E-Wallet">("ALL");
 
   // Modal State for Add / Edit Source
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingItem, setEditingItem] = useState<PaymentSourceItem | null>(null);
-  const [formLabel, setFormLabel] = useState<string>("");
-  const [formCategory, setFormCategory] = useState<"Bank" | "E-Wallet">("Bank");
-  const [formActive, setFormActive] = useState<boolean>(true);
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState<boolean>(false);
+  const [editingSourceItem, setEditingSourceItem] = useState<PaymentSourceItem | null>(null);
+  const [formSourceLabel, setFormSourceLabel] = useState<string>("");
+  const [formSourceCategory, setFormSourceCategory] = useState<"Bank" | "E-Wallet">("Bank");
+  const [formSourceActive, setFormSourceActive] = useState<boolean>(true);
+
+  // Modal State for Add / Edit Contact Person
+  const [isContactModalOpen, setIsContactModalOpen] = useState<boolean>(false);
+  const [editingContactItem, setEditingContactItem] = useState<ContactPersonItem | null>(null);
+  const [formContactName, setFormContactName] = useState<string>("");
+  const [formContactRole, setFormContactRole] = useState<string>("");
+  const [formContactWaLabel, setFormContactWaLabel] = useState<string>("Whatsapp");
+  const [formContactWaNumber, setFormContactWaNumber] = useState<string>("");
+  const [formContactEmail, setFormContactEmail] = useState<string>("");
+  const [formContactActive, setFormContactActive] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadSettings() {
@@ -92,6 +140,7 @@ export function SettingsAdminPage() {
             setAccountName(data.settings.deposit_account_name);
           if (data.settings.initial_profit_percentage)
             setInitialProfitPct(data.settings.initial_profit_percentage);
+
           if (data.settings.deposit_payment_sources) {
             try {
               const parsed = JSON.parse(data.settings.deposit_payment_sources);
@@ -101,6 +150,29 @@ export function SettingsAdminPage() {
             } catch {
               // fallback to defaults
             }
+          }
+
+          if (data.settings.contact_persons_list) {
+            try {
+              const parsedContacts = JSON.parse(data.settings.contact_persons_list);
+              if (Array.isArray(parsedContacts) && parsedContacts.length > 0) {
+                setContactPersons(parsedContacts);
+              }
+            } catch {
+              // fallback
+            }
+          } else if (data.settings.contact_person_name) {
+            setContactPersons([
+              {
+                id: "contact_aksay",
+                name: data.settings.contact_person_name,
+                role: data.settings.contact_person_role || "Gotrade Dedicated Account Support",
+                whatsappLabel: data.settings.contact_person_wa_label || "Whatsapp",
+                whatsappNumber: data.settings.contact_person_phone || "082329157278",
+                email: data.settings.contact_person_email || "support@gotrade.com",
+                active: true,
+              },
+            ]);
           }
         }
       } catch {
@@ -117,11 +189,13 @@ export function SettingsAdminPage() {
     customBankName?: string,
     customAccountNum?: string,
     customAccountName?: string,
+    customContacts?: ContactPersonItem[],
   ) => {
     const bName = (customBankName ?? bankName).trim();
     const aNum = (customAccountNum ?? accountNumber).trim();
     const aName = (customAccountName ?? accountName).trim();
     const sourcesToSave = customSources ?? paymentSources;
+    const contactsToSave = customContacts ?? contactPersons;
 
     if (!bName || !aNum || !aName) {
       toast.error("Mohon lengkapi seluruh data nama bank, nomor rekening, dan atas nama.");
@@ -130,12 +204,18 @@ export function SettingsAdminPage() {
 
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, string> = {
         deposit_bank_name: bName,
         deposit_account_number: aNum,
         deposit_account_name: aName,
         initial_profit_percentage: initialProfitPct,
         deposit_payment_sources: JSON.stringify(sourcesToSave),
+        contact_persons_list: JSON.stringify(contactsToSave),
+        contact_person_name: contactsToSave[0]?.name || "AKSAY",
+        contact_person_role: contactsToSave[0]?.role || "Gotrade Dedicated Account Support",
+        contact_person_phone: contactsToSave[0]?.whatsappNumber || "082329157278",
+        contact_person_wa_label: contactsToSave[0]?.whatsappLabel || "Whatsapp",
+        contact_person_email: contactsToSave[0]?.email || "support@gotrade.com",
       };
 
       const res = await secureFetch("/api/settings", {
@@ -162,64 +242,67 @@ export function SettingsAdminPage() {
   const handleSaveAll = async () => {
     const success = await persistSettings();
     if (success) {
-      toast.success("Pengaturan berhasil disimpan ke Database!", {
+      toast.success("Seluruh pengaturan berhasil disimpan ke Database!", {
         description:
-          "Rekening tujuan & pilihan sumber dana telah ter-update di halaman deposit trader.",
+          "Rekening tujuan deposit & profil contact person AKSAY telah ter-update di seluruh sistem.",
       });
     }
   };
 
   // Payment Sources CRUD Handlers
-  const openAddModal = () => {
-    setEditingItem(null);
-    setFormLabel("");
-    setFormCategory("Bank");
-    setFormActive(true);
-    setIsModalOpen(true);
+  const openAddSourceModal = () => {
+    setEditingSourceItem(null);
+    setFormSourceLabel("");
+    setFormSourceCategory("Bank");
+    setFormSourceActive(true);
+    setIsSourceModalOpen(true);
   };
 
-  const openEditModal = (item: PaymentSourceItem) => {
-    setEditingItem(item);
-    setFormLabel(item.label);
-    setFormCategory(item.category);
-    setFormActive(item.active !== false);
-    setIsModalOpen(true);
+  const openEditSourceModal = (item: PaymentSourceItem) => {
+    setEditingSourceItem(item);
+    setFormSourceLabel(item.label);
+    setFormSourceCategory(item.category);
+    setFormSourceActive(item.active !== false);
+    setIsSourceModalOpen(true);
   };
 
   const handleSaveSourceModal = async () => {
-    if (!formLabel.trim()) {
+    if (!formSourceLabel.trim()) {
       toast.error("Nama sumber dana wajib diisi.");
       return;
     }
 
     let updatedSources: PaymentSourceItem[];
-    if (editingItem) {
-      // Update
+    if (editingSourceItem) {
       updatedSources = paymentSources.map((item) =>
-        item.id === editingItem.id
-          ? { ...item, label: formLabel.trim(), category: formCategory, active: formActive }
+        item.id === editingSourceItem.id
+          ? {
+              ...item,
+              label: formSourceLabel.trim(),
+              category: formSourceCategory,
+              active: formSourceActive,
+            }
           : item,
       );
-      toast.success(`"${formLabel.trim()}" berhasil diperbarui`);
+      toast.success(`"${formSourceLabel.trim()}" berhasil diperbarui`);
     } else {
-      // Create
       const generatedId =
-        formLabel
+        formSourceLabel
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "")
           .slice(0, 15) + `_${Date.now().toString().slice(-4)}`;
       const newItem: PaymentSourceItem = {
         id: generatedId,
-        label: formLabel.trim(),
-        category: formCategory,
-        active: formActive,
+        label: formSourceLabel.trim(),
+        category: formSourceCategory,
+        active: formSourceActive,
       };
       updatedSources = [...paymentSources, newItem];
-      toast.success(`"${formLabel.trim()}" berhasil ditambahkan`);
+      toast.success(`"${formSourceLabel.trim()}" berhasil ditambahkan`);
     }
 
     setPaymentSources(updatedSources);
-    setIsModalOpen(false);
+    setIsSourceModalOpen(false);
     void persistSettings(updatedSources);
   };
 
@@ -247,13 +330,113 @@ export function SettingsAdminPage() {
     }
   };
 
-  const handleCopyPreview = () => {
+  // Contact Persons CRUD Handlers (AKSAY / Support Gotrade)
+  const openAddContactModal = () => {
+    setEditingContactItem(null);
+    setFormContactName("");
+    setFormContactRole("Gotrade Dedicated Account Support");
+    setFormContactWaLabel("Whatsapp");
+    setFormContactWaNumber("082329157278");
+    setFormContactEmail("support@gotrade.com");
+    setFormContactActive(true);
+    setIsContactModalOpen(true);
+  };
+
+  const openEditContactModal = (item: ContactPersonItem) => {
+    setEditingContactItem(item);
+    setFormContactName(item.name);
+    setFormContactRole(item.role);
+    setFormContactWaLabel(item.whatsappLabel || "Whatsapp");
+    setFormContactWaNumber(item.whatsappNumber);
+    setFormContactEmail(item.email || "");
+    setFormContactActive(item.active !== false);
+    setIsContactModalOpen(true);
+  };
+
+  const handleSaveContactModal = async () => {
+    if (!formContactName.trim()) {
+      toast.error("Nama Contact Person wajib diisi.");
+      return;
+    }
+    if (!formContactWaNumber.trim()) {
+      toast.error("Nomor WhatsApp wajib diisi.");
+      return;
+    }
+
+    let updatedContacts: ContactPersonItem[];
+    if (editingContactItem) {
+      updatedContacts = contactPersons.map((c) =>
+        c.id === editingContactItem.id
+          ? {
+              ...c,
+              name: formContactName.trim(),
+              role: formContactRole.trim(),
+              whatsappLabel: formContactWaLabel.trim() || "Whatsapp",
+              whatsappNumber: formContactWaNumber.trim(),
+              email: formContactEmail.trim(),
+              active: formContactActive,
+            }
+          : c,
+      );
+      toast.success(`Contact person "${formContactName.trim()}" berhasil diperbarui`);
+    } else {
+      const generatedId = `contact_${Date.now().toString().slice(-6)}`;
+      const newContact: ContactPersonItem = {
+        id: generatedId,
+        name: formContactName.trim(),
+        role: formContactRole.trim() || "Gotrade Dedicated Account Support",
+        whatsappLabel: formContactWaLabel.trim() || "Whatsapp",
+        whatsappNumber: formContactWaNumber.trim(),
+        email: formContactEmail.trim(),
+        active: formContactActive,
+      };
+      updatedContacts = [...contactPersons, newContact];
+      toast.success(`Contact person "${formContactName.trim()}" berhasil ditambahkan`);
+    }
+
+    setContactPersons(updatedContacts);
+    setIsContactModalOpen(false);
+    void persistSettings(undefined, undefined, undefined, undefined, updatedContacts);
+  };
+
+  const handleDeleteContact = (item: ContactPersonItem) => {
+    if (contactPersons.length <= 1) {
+      if (
+        !confirm(
+          `Apakah Anda yakin ingin menghapus "${item.name}"? Halaman /lainnya tidak akan memiliki contact person jika dihapus.`,
+        )
+      ) {
+        return;
+      }
+    }
+    const updated = contactPersons.filter((c) => c.id !== item.id);
+    setContactPersons(updated);
+    toast.success(`Contact person "${item.name}" telah dihapus.`);
+    void persistSettings(undefined, undefined, undefined, undefined, updated);
+  };
+
+  const handleToggleContactActive = (item: ContactPersonItem) => {
+    const updated = contactPersons.map((c) => (c.id === item.id ? { ...c, active: !c.active } : c));
+    setContactPersons(updated);
+    toast.info(`Status "${item.name}" diubah menjadi ${!item.active ? "Aktif" : "Nonaktif"}.`);
+    void persistSettings(undefined, undefined, undefined, undefined, updated);
+  };
+
+  const handleResetContactsDefault = async () => {
+    if (confirm("Kembalikan contact person ke profil default AKSAY (082329157278)?")) {
+      setContactPersons(defaultContactPersons);
+      await persistSettings(undefined, undefined, undefined, undefined, defaultContactPersons);
+      toast.success("Contact person telah di-reset ke profil default AKSAY.");
+    }
+  };
+
+  const handleCopyPreviewBank = () => {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(accountNumber).catch(() => {});
     }
-    setCopied(true);
+    setCopiedBank(true);
     toast.success("Nomor rekening berhasil disalin!");
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopiedBank(false), 2000);
   };
 
   // Filtered payment sources for table
@@ -268,17 +451,30 @@ export function SettingsAdminPage() {
     (s) => s.category === "E-Wallet" && s.active !== false,
   );
 
+  // Filtered contact persons
+  const filteredContacts = contactPersons.filter((c) => {
+    const search = contactSearch.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(search) ||
+      c.role.toLowerCase().includes(search) ||
+      c.whatsappNumber.includes(search) ||
+      (c.email && c.email.toLowerCase().includes(search))
+    );
+  });
+
+  const activeContacts = contactPersons.filter((c) => c.active !== false);
+
   return (
     <AdminLayout
       title="Pengaturan Sistem"
-      subtitle="Kelola rekening bank tujuan deposit, sumber dana, dan konfigurasi platform"
+      subtitle="Kelola rekening bank tujuan deposit, sumber dana, dan profil contact person support AKSAY"
     >
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header Action Bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-              <Landmark className="mr-1.5 h-3.5 w-3.5" /> Konfigurasi Rekening & Deposit
+              <Landmark className="mr-1.5 h-3.5 w-3.5" /> Konfigurasi Rekening & Support Platform
             </Badge>
           </div>
           <Button
@@ -294,7 +490,156 @@ export function SettingsAdminPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Main Controls (7 cols) */}
           <div className="space-y-6 lg:col-span-7">
-            {/* Rekening Tujuan Deposit Gotrade */}
+            {/* 1. Contact Person Gotrade Anda (AKSAY Support CRUD) */}
+            <Card className="border-emerald-500/30 shadow-xs">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <Headphones className="h-4 w-4" />
+                      </div>
+                      Contact Person Gotrade Anda (Halaman /lainnya)
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Kelola profil support dedikasi (Nama: AKSAY, Jabatan, Nomor WhatsApp, Email)
+                      yang tampil pada kartu Contact Person di halaman <strong>/lainnya</strong>.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetContactsDefault}
+                      title="Reset ke profil default AKSAY"
+                      className="h-8 text-xs text-muted-foreground"
+                    >
+                      <RotateCcw className="mr-1 h-3 w-3" /> Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={openAddContactModal}
+                      className="h-8 gap-1 bg-[#00a651] text-xs text-white hover:bg-[#00a651]/90"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Tambah Contact
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    placeholder="Cari nama contact person, role, atau nomor WhatsApp..."
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+
+                {/* List Contacts Table / Cards */}
+                <div className="max-h-72 divide-y overflow-y-auto rounded-lg border">
+                  {filteredContacts.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      Tidak ada contact person yang cocok dengan pencarian.
+                    </div>
+                  ) : (
+                    filteredContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className={`flex items-center justify-between p-3 text-xs transition-colors hover:bg-muted/30 ${
+                          !contact.active ? "bg-muted/10 opacity-60" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#00a651]/30 bg-[#e6f7ef] text-[#00a651] shadow-2xs">
+                            <Headphones className="h-4 w-4" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-extrabold tracking-wide text-foreground">
+                                {contact.name}
+                              </span>
+                              <Badge
+                                variant={contact.active ? "default" : "secondary"}
+                                className={`text-[9px] px-1.5 py-0 ${
+                                  contact.active
+                                    ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20"
+                                    : ""
+                                }`}
+                              >
+                                {contact.active ? "Aktif" : "Nonaktif"}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">{contact.role}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                                <Phone className="h-3 w-3" />
+                                {contact.whatsappLabel || "Whatsapp"}: {contact.whatsappNumber}
+                              </span>
+                              {contact.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {contact.email}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Toggle Active Switch */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              {contact.active ? "Aktif" : "Nonaktif"}
+                            </span>
+                            <Switch
+                              checked={contact.active}
+                              onCheckedChange={() => handleToggleContactActive(contact)}
+                              className="scale-75"
+                            />
+                          </div>
+
+                          {/* Edit Button */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => openEditContactModal(contact)}
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title="Edit Contact Person"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+
+                          {/* Delete Button */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteContact(contact)}
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            title="Hapus Contact Person"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Perubahan pada nama (contoh: <strong>AKSAY</strong>), role/jabatan, atau nomor
+                  WhatsApp akan langsung muncul di halaman <strong>/lainnya</strong> trader.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 2. Rekening Tujuan Deposit Gotrade */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -360,7 +705,7 @@ export function SettingsAdminPage() {
               </CardContent>
             </Card>
 
-            {/* CRUD Rekening / E-Wallet Sumber Dana */}
+            {/* 3. CRUD Rekening / E-Wallet Sumber Dana */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -388,8 +733,8 @@ export function SettingsAdminPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={openAddModal}
-                      className="h-8 gap-1 text-xs bg-primary text-primary-foreground"
+                      onClick={openAddSourceModal}
+                      className="h-8 gap-1 bg-primary text-xs text-primary-foreground"
                     >
                       <Plus className="h-3.5 w-3.5" /> Tambah Sumber Dana
                     </Button>
@@ -446,7 +791,7 @@ export function SettingsAdminPage() {
                 </div>
 
                 {/* List Table */}
-                <div className="max-h-80 overflow-y-auto rounded-lg border divide-y">
+                <div className="max-h-72 divide-y overflow-y-auto rounded-lg border">
                   {filteredSources.length === 0 ? (
                     <div className="py-8 text-center text-xs text-muted-foreground">
                       Tidak ada rekening atau e-wallet yang cocok.
@@ -456,7 +801,7 @@ export function SettingsAdminPage() {
                       <div
                         key={item.id}
                         className={`flex items-center justify-between p-2.5 text-xs transition-colors hover:bg-muted/30 ${
-                          !item.active ? "opacity-60 bg-muted/10" : ""
+                          !item.active ? "bg-muted/10 opacity-60" : ""
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
@@ -505,7 +850,7 @@ export function SettingsAdminPage() {
                             type="button"
                             size="icon"
                             variant="ghost"
-                            onClick={() => openEditModal(item)}
+                            onClick={() => openEditSourceModal(item)}
                             className="h-7 w-7 text-muted-foreground hover:text-foreground"
                             title="Edit sumber dana"
                           >
@@ -536,7 +881,7 @@ export function SettingsAdminPage() {
               </CardContent>
             </Card>
 
-            {/* Profit Mechanism Settings Card */}
+            {/* 4. Profit Mechanism Settings Card */}
             <Card className="border-amber-500/30 bg-amber-500/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -583,19 +928,115 @@ export function SettingsAdminPage() {
 
           {/* Live Mobile Preview (5 cols) */}
           <div className="space-y-6 lg:col-span-5">
+            {/* Live Preview: Contact Person Gotrade Anda (/lainnya) */}
+            <Card className="border-emerald-500/30 bg-muted/10 shadow-xs">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <Eye className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Live Preview
+                    /lainnya
+                  </CardTitle>
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 text-[10px] text-emerald-600"
+                  >
+                    Contact Person
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Pratinjau kartu kontak support yang dilihat trader pada halaman /lainnya secara
+                  real time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="mx-auto max-w-xs space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+                  <p className="px-1 text-xs font-bold text-gray-700 dark:text-gray-200">
+                    Contact Person Gotrade Anda
+                  </p>
+
+                  {activeContacts.length === 0 ? (
+                    <div className="rounded-xl border border-gray-100 bg-white p-4 text-center text-xs text-gray-500 dark:bg-card">
+                      Tidak ada contact person yang aktif.
+                    </div>
+                  ) : (
+                    activeContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-2xs dark:border-border dark:bg-card"
+                      >
+                        {/* Header Contact */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00a651]/20 bg-[#e6f7ef] text-[#00a651]">
+                            <Headphones className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-base font-extrabold tracking-wide text-gray-900 dark:text-gray-100">
+                              {contact.name || "AKSAY"}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {contact.role || "Gotrade Dedicated Account Support"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Contact details */}
+                        <div className="flex flex-col gap-2.5 border-t border-gray-100 pt-3 dark:border-border">
+                          {contact.whatsappNumber && (
+                            <a
+                              href={formatWaUrl(contact.whatsappNumber)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
+                            >
+                              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-600 dark:text-gray-300" />
+                              <div className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-900 dark:text-gray-200">
+                                  {contact.whatsappLabel || "Whatsapp"}
+                                </span>
+                                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                  {contact.whatsappNumber}
+                                </span>
+                              </div>
+                            </a>
+                          )}
+
+                          {contact.email && (
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
+                            >
+                              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-600 dark:text-gray-300" />
+                              <div className="flex flex-col">
+                                <span className="text-xs font-medium text-gray-900 dark:text-gray-200">
+                                  Email
+                                </span>
+                                <span className="text-xs font-medium text-gray-500">
+                                  {contact.email}
+                                </span>
+                              </div>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Preview: Rekening Tujuan Deposit (/deposit) */}
             <Card className="border-primary/20 bg-muted/10">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                    <Eye className="h-4 w-4 text-primary" /> Live Preview Trader
+                    <Eye className="h-4 w-4 text-primary" /> Live Preview /deposit
                   </CardTitle>
                   <Badge variant="outline" className="text-[10px]">
-                    Tampilan /deposit
+                    Rekening Tujuan
                   </Badge>
                 </div>
                 <CardDescription>
-                  Pratinjau tampilan kartu rekening & pilihan sumber dana yang dilihat pengguna saat
-                  deposit.
+                  Pratinjau tampilan kartu rekening & sumber dana di halaman /deposit.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -635,11 +1076,15 @@ export function SettingsAdminPage() {
                           </span>
                           <button
                             type="button"
-                            onClick={handleCopyPreview}
+                            onClick={handleCopyPreviewBank}
                             className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                           >
-                            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            {copied ? "Tersalin" : "Salin"}
+                            {copiedBank ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                            {copiedBank ? "Tersalin" : "Salin"}
                           </button>
                         </div>
                       </div>
@@ -694,11 +1139,10 @@ export function SettingsAdminPage() {
                     <Info className="h-4 w-4" />
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <p className="font-semibold text-foreground">Panduan Rekening & Sumber Dana</p>
+                    <p className="font-semibold text-foreground">Bantuan Pengaturan</p>
                     <p>
-                      Rekening tujuan adalah tempat trader mentransfer dana deposit. Sedangkan
-                      sumber dana adalah daftar rekening / e-wallet asal milik trader yang dapat
-                      dipilih saat mengajukan deposit.
+                      Semua perubahan Contact Person AKSAY dan Rekening Tujuan Bank langsung aktif
+                      di sisi trader tanpa perlu refresh browser atau restart server.
                     </p>
                   </div>
                 </div>
@@ -708,15 +1152,124 @@ export function SettingsAdminPage() {
         </div>
       </div>
 
+      {/* Modal Dialog for Add / Edit Contact Person (AKSAY) */}
+      <Dialog open={isContactModalOpen} onOpenChange={setIsContactModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Headphones className="h-5 w-5 text-emerald-600" />
+              {editingContactItem ? "Edit Contact Person Support" : "Tambah Contact Person Baru"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingContactItem
+                ? "Perbarui nama, jabatan, nomor WhatsApp, email, dan status aktif kontak support ini."
+                : "Tambahkan profil kontak support yang akan tampil di halaman /lainnya trader."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-name" className="text-xs font-semibold">
+                Nama Lengkap / Panggilan
+              </Label>
+              <Input
+                id="contact-name"
+                value={formContactName}
+                onChange={(e) => setFormContactName(e.target.value)}
+                placeholder="Contoh: AKSAY"
+                className="font-bold tracking-wide"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-role" className="text-xs font-semibold">
+                Jabatan / Keterangan Role
+              </Label>
+              <Input
+                id="contact-role"
+                value={formContactRole}
+                onChange={(e) => setFormContactRole(e.target.value)}
+                placeholder="Contoh: Gotrade Dedicated Account Support"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-1 space-y-1.5">
+                <Label htmlFor="contact-wa-label" className="text-xs font-semibold">
+                  Platform
+                </Label>
+                <Input
+                  id="contact-wa-label"
+                  value={formContactWaLabel}
+                  onChange={(e) => setFormContactWaLabel(e.target.value)}
+                  placeholder="Whatsapp"
+                />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="contact-wa-num" className="text-xs font-semibold">
+                  Nomor WhatsApp / Handphone
+                </Label>
+                <Input
+                  id="contact-wa-num"
+                  value={formContactWaNumber}
+                  onChange={(e) => setFormContactWaNumber(e.target.value)}
+                  placeholder="Contoh: 082329157278"
+                  className="font-mono font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email" className="text-xs font-semibold">
+                Email Support (Opsional)
+              </Label>
+              <Input
+                id="contact-email"
+                type="email"
+                value={formContactEmail}
+                onChange={(e) => setFormContactEmail(e.target.value)}
+                placeholder="Contoh: support@gotrade.com"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-xs font-semibold text-foreground">Status Tampil</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tampilkan profil ini di halaman /lainnya trader
+                </p>
+              </div>
+              <Switch checked={formContactActive} onCheckedChange={setFormContactActive} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsContactModalOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveContactModal}
+              className="bg-[#00a651] text-xs text-white hover:bg-[#00a651]/90"
+            >
+              {editingContactItem ? "Simpan Perubahan" : "Tambahkan Contact"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Dialog for Add / Edit Source */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isSourceModalOpen} onOpenChange={setIsSourceModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? "Edit Rekening / E-Wallet" : "Tambah Rekening / E-Wallet Baru"}
+              {editingSourceItem ? "Edit Rekening / E-Wallet" : "Tambah Rekening / E-Wallet Baru"}
             </DialogTitle>
             <DialogDescription>
-              {editingItem
+              {editingSourceItem
                 ? "Perbarui nama, kategori, atau status aktif sumber dana ini."
                 : "Tambahkan pilihan bank atau e-wallet baru yang dapat dipilih trader saat deposit."}
             </DialogDescription>
@@ -728,8 +1281,8 @@ export function SettingsAdminPage() {
               </Label>
               <Input
                 id="source-label"
-                value={formLabel}
-                onChange={(e) => setFormLabel(e.target.value)}
+                value={formSourceLabel}
+                onChange={(e) => setFormSourceLabel(e.target.value)}
                 placeholder="Contoh: Bank Jago, SeaBank, LinkAja"
               />
             </div>
@@ -739,9 +1292,9 @@ export function SettingsAdminPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setFormCategory("Bank")}
+                  onClick={() => setFormSourceCategory("Bank")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-2.5 text-xs font-semibold transition-all ${
-                    formCategory === "Bank"
+                    formSourceCategory === "Bank"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:bg-muted/40"
                   }`}
@@ -750,9 +1303,9 @@ export function SettingsAdminPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormCategory("E-Wallet")}
+                  onClick={() => setFormSourceCategory("E-Wallet")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-2.5 text-xs font-semibold transition-all ${
-                    formCategory === "E-Wallet"
+                    formSourceCategory === "E-Wallet"
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:bg-muted/40"
                   }`}
@@ -769,14 +1322,14 @@ export function SettingsAdminPage() {
                   Tampilkan pilihan ini di form deposit trader
                 </p>
               </div>
-              <Switch checked={formActive} onCheckedChange={setFormActive} />
+              <Switch checked={formSourceActive} onCheckedChange={setFormSourceActive} />
             </div>
           </div>
           <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => setIsSourceModalOpen(false)}
               className="text-xs"
             >
               Batal
@@ -784,9 +1337,9 @@ export function SettingsAdminPage() {
             <Button
               type="button"
               onClick={handleSaveSourceModal}
-              className="text-xs bg-primary text-primary-foreground"
+              className="bg-primary text-xs text-primary-foreground"
             >
-              {editingItem ? "Simpan Perubahan" : "Tambahkan"}
+              {editingSourceItem ? "Simpan Perubahan" : "Tambahkan"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1318,8 +1318,16 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     try {
-      const body = (await request.json()) as { userId: number; amount: number; note?: string };
-      const { userId, amount } = body;
+      const body = (await request.json()) as {
+        userId?: number;
+        user_id?: number;
+        amount?: number;
+        profitAmount?: number;
+        note?: string;
+        notes?: string;
+      };
+      const userId = Number(body.userId ?? body.user_id ?? 0);
+      const amount = Number(body.amount ?? body.profitAmount ?? 0);
 
       if (!userId || !amount || amount <= 0) {
         return jsonResponse(
@@ -2302,18 +2310,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     try {
       const user = authResult.user;
       const body = (await request.json()) as {
-        rewardId: number;
+        rewardId?: number;
+        reward_id?: number;
         shippingAddress?: string;
+        shipping_address?: string;
         notes?: string;
       };
+      const rewardId = Number(body.rewardId ?? body.reward_id ?? 0);
+      const shippingAddress = body.shippingAddress ?? body.shipping_address;
 
-      if (!body.rewardId) {
+      if (!rewardId) {
         return jsonResponse({ success: false, message: "ID Hadiah harus ditentukan." }, 400);
       }
 
       const rewardRes = await query<DbReward>(
         "SELECT * FROM rewards WHERE id = $1 AND active = true",
-        [body.rewardId],
+        [rewardId],
       );
       if (rewardRes.length === 0) {
         return jsonResponse(
@@ -2553,18 +2565,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     try {
       const body = (await request.json()) as {
-        id: number;
+        id?: number;
+        redemption_id?: number;
+        redemptionId?: number;
         status: "PENDING" | "PROCESSED" | "COMPLETED" | "REJECTED";
         notes?: string;
+        admin_notes?: string;
       };
+      const redemptionId = Number(body.id ?? body.redemption_id ?? body.redemptionId ?? 0);
+      const notes = body.notes ?? body.admin_notes;
 
-      if (!body.id || !body.status) {
+      if (!redemptionId || !body.status) {
         return jsonResponse({ success: false, message: "ID dan status klaim diperlukan." }, 400);
       }
 
       const existing = await query<DbRewardRedemption>(
         "SELECT * FROM reward_redemptions WHERE id = $1",
-        [body.id],
+        [redemptionId],
       );
       if (existing.length === 0) {
         return jsonResponse({ success: false, message: "Data klaim reward tidak ditemukan." }, 404);
@@ -2588,7 +2605,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
          SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP
          WHERE id = $3
          RETURNING *`,
-        [body.status, body.notes ? sanitizeText(body.notes) : curr.notes, curr.id],
+        [body.status, notes ? sanitizeText(notes) : curr.notes, curr.id],
       );
 
       return jsonResponse({
@@ -2629,14 +2646,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       try {
         const body = (await request.json()) as {
           bankName?: string;
+          bank_name?: string;
           accountNumber?: string;
+          account_number?: string;
           accountHolder?: string;
+          account_holder?: string;
           isPrimary?: boolean;
+          is_primary?: boolean;
         };
 
-        const bankName = body.bankName ? sanitizeText(body.bankName).trim() : "";
-        const accountNumber = body.accountNumber ? sanitizeText(body.accountNumber).trim() : "";
-        const accountHolder = body.accountHolder ? sanitizeText(body.accountHolder).trim() : "";
+        const rawBankName = body.bankName ?? body.bank_name;
+        const rawAccNumber = body.accountNumber ?? body.account_number;
+        const rawAccHolder = body.accountHolder ?? body.account_holder;
+        const rawIsPrimary = body.isPrimary ?? body.is_primary;
+
+        const bankName = rawBankName ? sanitizeText(String(rawBankName)).trim() : "";
+        const accountNumber = rawAccNumber ? sanitizeText(String(rawAccNumber)).trim() : "";
+        const accountHolder = rawAccHolder ? sanitizeText(String(rawAccHolder)).trim() : "";
 
         if (!bankName || !accountNumber || !accountHolder) {
           return jsonResponse(
@@ -2652,7 +2678,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         );
         const count = parseInt(existingCount[0]?.count || "0", 10);
 
-        let isPrimary = Boolean(body.isPrimary);
+        let isPrimary = rawIsPrimary !== undefined ? Boolean(rawIsPrimary) : false;
         if (count === 0) {
           isPrimary = true; // First account is always primary
         }
@@ -2685,20 +2711,26 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (request.method === "PUT" || request.method === "PATCH") {
       try {
         const body = (await request.json()) as {
-          id: number;
+          id?: number;
+          bank_account_id?: number;
           bankName?: string;
+          bank_name?: string;
           accountNumber?: string;
+          account_number?: string;
           accountHolder?: string;
+          account_holder?: string;
           isPrimary?: boolean;
+          is_primary?: boolean;
         };
 
-        if (!body.id) {
+        const targetId = Number(body.id ?? body.bank_account_id ?? 0);
+        if (!targetId) {
           return jsonResponse({ success: false, message: "ID rekening wajib disertakan." }, 400);
         }
 
         const existing = await query<DbUserBankAccount>(
           "SELECT * FROM user_bank_accounts WHERE id = $1 AND user_id = $2",
-          [body.id, user.id],
+          [targetId, user.id],
         );
 
         if (existing.length === 0) {
@@ -2706,15 +2738,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         const current = existing[0];
-        const bankName = body.bankName ? sanitizeText(body.bankName).trim() : current.bank_name;
-        const accountNumber = body.accountNumber
-          ? sanitizeText(body.accountNumber).trim()
-          : current.account_number;
-        const accountHolder = body.accountHolder
-          ? sanitizeText(body.accountHolder).trim()
-          : current.account_holder;
-        const isPrimary =
-          body.isPrimary !== undefined ? Boolean(body.isPrimary) : current.is_primary;
+        const rawBankName = body.bankName ?? body.bank_name;
+        const rawAccNumber = body.accountNumber ?? body.account_number;
+        const rawAccHolder = body.accountHolder ?? body.account_holder;
+        const rawIsPrimary = body.isPrimary ?? body.is_primary;
+
+        const bankName =
+          rawBankName !== undefined ? sanitizeText(String(rawBankName)).trim() : current.bank_name;
+        const accountNumber =
+          rawAccNumber !== undefined
+            ? sanitizeText(String(rawAccNumber)).trim()
+            : current.account_number;
+        const accountHolder =
+          rawAccHolder !== undefined
+            ? sanitizeText(String(rawAccHolder)).trim()
+            : current.account_holder;
+        const isPrimary = rawIsPrimary !== undefined ? Boolean(rawIsPrimary) : current.is_primary;
 
         if (isPrimary && !current.is_primary) {
           await query("UPDATE user_bank_accounts SET is_primary = false WHERE user_id = $1", [
