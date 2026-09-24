@@ -853,15 +853,21 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
   }
 
   // Seed default bank account deposit settings if not present
-  const bankNameCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+  const bankNameCheck = await pool.query(`SELECT key, value FROM settings WHERE key = $1`, [
     "deposit_bank_name",
   ]);
   if (bankNameCheck.rows.length === 0) {
     await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
       "deposit_bank_name",
-      "Line bank",
+      "Keb Hana Bank",
+    ]);
+  } else if (bankNameCheck.rows[0].value === "Line bank") {
+    await pool.query(`UPDATE settings SET value = $1 WHERE key = $2`, [
+      "Keb Hana Bank",
+      "deposit_bank_name",
     ]);
   }
+
   const bankAccCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
     "deposit_account_number",
   ]);
@@ -871,13 +877,45 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       "11628950560",
     ]);
   }
-  const bankAccNameCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+
+  const bankAccNameCheck = await pool.query(`SELECT key, value FROM settings WHERE key = $1`, [
     "deposit_account_name",
   ]);
   if (bankAccNameCheck.rows.length === 0) {
     await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
       "deposit_account_name",
-      "Gotrade Indonesia Official",
+      "AKSAY S.PUTRA",
+    ]);
+  } else if (
+    bankAccNameCheck.rows[0].value === "Gotrade Indonesia Official" ||
+    !bankAccNameCheck.rows[0].value
+  ) {
+    await pool.query(`UPDATE settings SET value = $1 WHERE key = $2`, [
+      "AKSAY S.PUTRA",
+      "deposit_account_name",
+    ]);
+  }
+
+  // Seed default payment sources (Rekening / E-Wallet Sumber Dana) if not present
+  const sourcesCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "deposit_payment_sources",
+  ]);
+  if (sourcesCheck.rows.length === 0) {
+    const defaultSources = [
+      { id: "bca", label: "Bank BCA", category: "Bank", active: true },
+      { id: "mandiri", label: "Bank Mandiri", category: "Bank", active: true },
+      { id: "bri", label: "Bank BRI", category: "Bank", active: true },
+      { id: "bni", label: "Bank BNI", category: "Bank", active: true },
+      { id: "cimb", label: "Bank CIMB Niaga", category: "Bank", active: true },
+      { id: "permata", label: "Bank Permata", category: "Bank", active: true },
+      { id: "gopay", label: "GoPay", category: "E-Wallet", active: true },
+      { id: "ovo", label: "OVO", category: "E-Wallet", active: true },
+      { id: "dana", label: "DANA", category: "E-Wallet", active: true },
+      { id: "shopeepay", label: "ShopeePay", category: "E-Wallet", active: true },
+    ];
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "deposit_payment_sources",
+      JSON.stringify(defaultSources),
     ]);
   }
 

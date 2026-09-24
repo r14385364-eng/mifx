@@ -34,15 +34,24 @@ export const Route = createFileRoute("/deposit")({
   component: DepositPage,
 });
 
-const paymentSources = [
-  { id: "bca", label: "Bank BCA", category: "Bank" },
-  { id: "mandiri", label: "Bank Mandiri", category: "Bank" },
-  { id: "bri", label: "Bank BRI", category: "Bank" },
-  { id: "bni", label: "Bank BNI", category: "Bank" },
-  { id: "gopay", label: "GoPay", category: "E-Wallet" },
-  { id: "ovo", label: "OVO", category: "E-Wallet" },
-  { id: "dana", label: "DANA", category: "E-Wallet" },
-  { id: "shopeepay", label: "ShopeePay", category: "E-Wallet" },
+export interface PaymentSourceItem {
+  id: string;
+  label: string;
+  category: "Bank" | "E-Wallet";
+  active?: boolean;
+}
+
+const defaultPaymentSources: PaymentSourceItem[] = [
+  { id: "bca", label: "Bank BCA", category: "Bank", active: true },
+  { id: "mandiri", label: "Bank Mandiri", category: "Bank", active: true },
+  { id: "bri", label: "Bank BRI", category: "Bank", active: true },
+  { id: "bni", label: "Bank BNI", category: "Bank", active: true },
+  { id: "cimb", label: "Bank CIMB Niaga", category: "Bank", active: true },
+  { id: "permata", label: "Bank Permata", category: "Bank", active: true },
+  { id: "gopay", label: "GoPay", category: "E-Wallet", active: true },
+  { id: "ovo", label: "OVO", category: "E-Wallet", active: true },
+  { id: "dana", label: "DANA", category: "E-Wallet", active: true },
+  { id: "shopeepay", label: "ShopeePay", category: "E-Wallet", active: true },
 ];
 
 const quickAmounts = [
@@ -135,9 +144,10 @@ function DepositPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic Bank Settings from Admin Settings
-  const [bankName, setBankName] = useState<string>("Line bank");
+  const [bankName, setBankName] = useState<string>("Keb Hana Bank");
   const [accountNumberTarget, setAccountNumberTarget] = useState<string>("11628950560");
-  const [accountNameTarget, setAccountNameTarget] = useState<string>("Gotrade Indonesia Official");
+  const [accountNameTarget, setAccountNameTarget] = useState<string>("AKSAY S.PUTRA");
+  const [paymentSources, setPaymentSources] = useState<PaymentSourceItem[]>(defaultPaymentSources);
 
   useEffect(() => {
     async function loadDepositSettings() {
@@ -150,6 +160,16 @@ function DepositPage() {
             setAccountNumberTarget(data.settings.deposit_account_number);
           if (data.settings.deposit_account_name)
             setAccountNameTarget(data.settings.deposit_account_name);
+          if (data.settings.deposit_payment_sources) {
+            try {
+              const parsed = JSON.parse(data.settings.deposit_payment_sources);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setPaymentSources(parsed);
+              }
+            } catch {
+              // fallback
+            }
+          }
         }
       } catch {
         // use cached state
@@ -370,6 +390,11 @@ function DepositPage() {
                 </button>
               </div>
             </div>
+
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Atas Nama</p>
+              <p className="mt-0.5 text-xs font-bold text-foreground">{accountNameTarget}</p>
+            </div>
           </div>
 
           <p className="mt-3 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
@@ -456,7 +481,7 @@ function DepositPage() {
                 <option value="">Pilih bank atau e-wallet</option>
                 <optgroup label="Bank">
                   {paymentSources
-                    .filter((p) => p.category === "Bank")
+                    .filter((p) => p.category === "Bank" && p.active !== false)
                     .map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label}
@@ -465,7 +490,7 @@ function DepositPage() {
                 </optgroup>
                 <optgroup label="E-Wallet">
                   {paymentSources
-                    .filter((p) => p.category === "E-Wallet")
+                    .filter((p) => p.category === "E-Wallet" && p.active !== false)
                     .map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label}
