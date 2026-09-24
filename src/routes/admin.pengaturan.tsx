@@ -8,7 +8,7 @@ export const Route = createFileRoute("/admin/pengaturan")({
       { title: "Pengaturan — Gotrade Admin" },
       {
         name: "description",
-        content: "Kelola konfigurasi platform dan upload gambar QRIS deposit Gotrade.",
+        content: "Kelola konfigurasi platform dan rekening bank deposit Gotrade.",
       },
     ],
   }),

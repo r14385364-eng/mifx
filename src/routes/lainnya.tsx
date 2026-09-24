@@ -332,7 +332,7 @@ export function LainnyaPage() {
       toast.error("Mohon isi semua bidang formulir");
       return;
     }
-    toast.success("Laporan masalah berhasil dikirim ke tim dukungan MIRA!");
+    toast.success("Laporan masalah berhasil dikirim ke tim dukungan Gotrade!");
     setIssueSubject("");
     setIssueDetail("");
     setActiveModal(null);
@@ -662,7 +662,7 @@ export function LainnyaPage() {
               >
                 <Settings className="h-5 w-5 text-emerald-600" />
                 <span className="flex-1 text-sm font-semibold">
-                  Pengaturan Admin (QRIS & Profit)
+                  Pengaturan Admin (Rekening Deposit & Profit)
                 </span>
                 <ChevronRight className="h-4 w-4 text-emerald-600" />
               </Link>
@@ -720,23 +720,21 @@ export function LainnyaPage() {
         <div>
           <p className="mb-1.5 px-1 text-xs font-bold text-gray-700">Contact Person Gotrade Anda</p>
           <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-2xs">
-            {/* Header MIRA */}
+            {/* Header AKSAY */}
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#00a651]/20 bg-[#e6f7ef] text-[#00a651]">
                 <Headphones className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-base font-extrabold tracking-wide text-gray-900">MIRA</span>
-                <span className="text-xs text-gray-400">
-                  Gotrade Intelligent Response Assistant
-                </span>
+                <span className="text-base font-extrabold tracking-wide text-gray-900">AKSAY</span>
+                <span className="text-xs text-gray-400">Gotrade Dedicated Account Support</span>
               </div>
             </div>
 
             {/* Contact details */}
             <div className="flex flex-col gap-2.5 border-t border-gray-100 pt-3">
               <a
-                href="https://wa.me/6282111781198"
+                href="https://wa.me/6282329157278"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-start gap-3 transition-colors hover:text-[#00a651]"
@@ -744,7 +742,7 @@ export function LainnyaPage() {
                 <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gray-600" />
                 <div className="flex flex-col">
                   <span className="text-xs font-medium text-gray-900">Whatsapp</span>
-                  <span className="text-xs font-medium text-gray-500">6282111781198</span>
+                  <span className="text-xs font-medium text-gray-500">082329157278</span>
                 </div>
               </a>
 

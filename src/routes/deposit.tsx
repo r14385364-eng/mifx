@@ -4,18 +4,16 @@ import {
   CheckCircle2,
   ChevronDown,
   Copy,
-  Download,
   Eye,
   FileCheck2,
   Image as ImageIcon,
   Info,
-  QrCode,
+  Landmark,
   ShieldCheck,
   Trash2,
   UploadCloud,
   X,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,7 +27,7 @@ export const Route = createFileRoute("/deposit")({
       {
         name: "description",
         content:
-          "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui QRIS, transfer bank, atau e-wallet.",
+          "Isi saldo akun trading Gotrade Anda dengan cepat dan aman melalui transfer bank atau e-wallet.",
       },
     ],
   }),
@@ -136,28 +134,28 @@ function DepositPage() {
   const [showProofPreview, setShowProofPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Dynamic QRIS from Admin Settings
-  const [qrisImage, setQrisImage] = useState<string>("");
-  const [merchantName, setMerchantName] = useState<string>("Gotrade Indonesia Official");
-  const [qrisPayload, setQrisPayload] = useState<string>(
-    "00020101021226590014ID.LINKAJA.WWW01189360091100223030310215GOTRADEINDONESIA5204581253033605802ID5914GOTRADE INDONESIA6007JAKARTA61051234062070703A016304",
-  );
+  // Dynamic Bank Settings from Admin Settings
+  const [bankName, setBankName] = useState<string>("Line bank");
+  const [accountNumberTarget, setAccountNumberTarget] = useState<string>("11628950560");
+  const [accountNameTarget, setAccountNameTarget] = useState<string>("Gotrade Indonesia Official");
 
   useEffect(() => {
-    async function loadQrisSettings() {
+    async function loadDepositSettings() {
       try {
         const res = await fetch("/api/settings");
         const data = await res.json();
         if (res.ok && data.success && data.settings) {
-          if (data.settings.qris_image !== undefined) setQrisImage(data.settings.qris_image);
-          if (data.settings.qris_merchant_name) setMerchantName(data.settings.qris_merchant_name);
-          if (data.settings.qris_payload) setQrisPayload(data.settings.qris_payload);
+          if (data.settings.deposit_bank_name) setBankName(data.settings.deposit_bank_name);
+          if (data.settings.deposit_account_number)
+            setAccountNumberTarget(data.settings.deposit_account_number);
+          if (data.settings.deposit_account_name)
+            setAccountNameTarget(data.settings.deposit_account_name);
         }
       } catch {
         // use cached state
       }
     }
-    void loadQrisSettings();
+    void loadDepositSettings();
   }, []);
 
   const handleFileSelect = async (file: File) => {
@@ -248,38 +246,11 @@ function DepositPage() {
     }
   };
 
-  const copyQris = () => {
-    const textToCopy =
-      qrisPayload || `GOTRADE-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`;
+  const copyAccountNumberTarget = () => {
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(textToCopy).catch(() => {});
+      navigator.clipboard.writeText(accountNumberTarget).catch(() => {});
     }
-    toast.success("Kode QRIS berhasil disalin!");
-  };
-
-  const downloadQris = () => {
-    if (qrisImage) {
-      const a = document.createElement("a");
-      a.href = qrisImage;
-      a.download = "gotrade-qris-official.png";
-      a.click();
-      toast.success("Gambar QRIS berhasil diunduh");
-    } else {
-      const svg = document.getElementById("qris-svg");
-      if (svg) {
-        const svgData = new XMLSerializer().serializeToString(svg);
-        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-        const svgUrl = URL.createObjectURL(svgBlob);
-        const a = document.createElement("a");
-        a.href = svgUrl;
-        a.download = "gotrade-qris.svg";
-        a.click();
-        URL.revokeObjectURL(svgUrl);
-        toast.success("QRIS berhasil diunduh");
-      } else {
-        toast.info("QRIS siap digunakan");
-      }
-    }
+    toast.success("Nomor rekening berhasil disalin!");
   };
 
   if (submitted) {
@@ -356,67 +327,59 @@ function DepositPage() {
           </div>
         </div>
 
-        {/* QRIS card */}
-        <section className="rounded-xl border bg-card p-4 text-center shadow-sm">
-          <div className="flex items-center justify-center gap-1.5">
-            <QrCode className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Scan QRIS untuk Deposit</h2>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Mendukung semua aplikasi bank & e-wallet (BCA, Mandiri, BRI, GoPay, OVO, DANA)
-          </p>
-          <div className="mt-2 inline-flex items-center justify-center rounded-full bg-primary/10 px-3 py-0.5 text-[11px] font-semibold text-primary">
-            {merchantName}
+        {/* Rekening Tujuan Deposit Card */}
+        <section className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Landmark className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Rekening Tujuan Deposit</h2>
+                <p className="text-[11px] text-muted-foreground">
+                  Transfer via ATM, Mobile Banking, atau Internet Banking
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+              Resmi
+            </span>
           </div>
 
-          <div className="mx-auto mt-3 flex w-fit items-center justify-center overflow-hidden rounded-xl border bg-white p-3 shadow-sm">
-            {qrisImage ? (
-              <img
-                src={qrisImage}
-                alt="QRIS Deposit"
-                className="max-h-48 max-w-48 object-contain"
-              />
-            ) : (
-              <QRCodeSVG
-                id="qris-svg"
-                value={
-                  qrisPayload ||
-                  `Gotrade-QRIS|amount=${numericAmount || 0}|name=${accountName || "-"}`
-                }
-                size={180}
-                level="M"
-                includeMargin={false}
-              />
-            )}
-          </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {numericAmount > 0
-              ? formatRupiah(numericAmount)
-              : "Nominal mengikuti jumlah yang Anda bayar"}
-          </p>
+          <div className="mt-3.5 space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Nama Bank</p>
+              <p className="mt-0.5 text-base font-extrabold tracking-wide text-foreground">
+                {bankName}
+              </p>
+            </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={copyQris}
-              className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Salin Kode
-            </button>
-            <button
-              type="button"
-              onClick={downloadQris}
-              className="flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Unduh QRIS
-            </button>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Nomor Rekening</p>
+              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2">
+                <span className="font-mono text-base font-extrabold tracking-wider text-foreground">
+                  {accountNumberTarget}
+                </span>
+                <button
+                  type="button"
+                  onClick={copyAccountNumberTarget}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 active:scale-95"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Salin Rekening
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Atas Nama Rekening</p>
+              <p className="mt-0.5 text-xs font-bold text-foreground">{accountNameTarget}</p>
+            </div>
           </div>
 
           <p className="mt-3 flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            Transaksi aman & terverifikasi otomatis
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+            Transfer dana hanya ke rekening resmi tertera di atas
           </p>
         </section>
 

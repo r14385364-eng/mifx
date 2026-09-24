@@ -551,7 +551,9 @@ export function PengaturanPage() {
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   <div>
                     <p className="text-xs font-bold text-emerald-700">Pengaturan Sistem Admin</p>
-                    <p className="text-[11px] text-emerald-600/80">Kelola QRIS & Profit Harian</p>
+                    <p className="text-[11px] text-emerald-600/80">
+                      Kelola Rekening Deposit & Profit Harian
+                    </p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-emerald-600" />

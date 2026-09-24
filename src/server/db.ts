@@ -852,6 +852,35 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     console.log("[PostgreSQL] Seeded 7 default Gotrade Rewards catalog items");
   }
 
+  // Seed default bank account deposit settings if not present
+  const bankNameCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "deposit_bank_name",
+  ]);
+  if (bankNameCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "deposit_bank_name",
+      "Line bank",
+    ]);
+  }
+  const bankAccCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "deposit_account_number",
+  ]);
+  if (bankAccCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "deposit_account_number",
+      "11628950560",
+    ]);
+  }
+  const bankAccNameCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "deposit_account_name",
+  ]);
+  if (bankAccNameCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "deposit_account_name",
+      "Gotrade Indonesia Official",
+    ]);
+  }
+
   // Seed default QRIS and profit settings if not present
   const qrisCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, ["qris_image"]);
   if (qrisCheck.rows.length === 0) {
