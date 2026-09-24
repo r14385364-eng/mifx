@@ -14,7 +14,8 @@ export const Route = createFileRoute("/order")({
       { title: "Menu Transaksi — Gotrade" },
       {
         name: "description",
-        content: "Akses menu Deposit dan Withdraw akun Gotrade Anda secara cepat dan aman.",
+        content:
+          "Akses menu Deposit, Withdraw, dan Riwayat Transaksi akun Gotrade Anda secara cepat dan aman.",
       },
     ],
   }),
@@ -121,6 +122,16 @@ function OrderPage() {
               <ArrowDownToLine className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               <span className="flex-1 text-sm font-medium text-gray-900 dark:text-foreground">
                 Withdraw
+              </span>
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
+            </Link>
+            <Link
+              to="/riwayat"
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/50"
+            >
+              <History className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <span className="flex-1 text-sm font-medium text-gray-900 dark:text-foreground">
+                Riwayat
               </span>
               <ChevronRight className="h-4 w-4 text-gray-400 dark:text-muted-foreground" />
             </Link>
