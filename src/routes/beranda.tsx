@@ -95,8 +95,14 @@ function Logo() {
 
 function AccountCard() {
   const { user } = useAuth();
-  const rawBalance = user?.balance != null ? user.balance : 0;
+  const rawBalance = user?.balance != null ? Number(user.balance) : 0;
+  const rawProfit = user?.profit != null ? Number(user.profit) : 0;
+  const rawEquity = Math.max(0, rawBalance + rawProfit);
   const formattedBalance = `$${rawBalance.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const formattedEquity = `$${rawEquity.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -111,7 +117,7 @@ function AccountCard() {
             <p className="text-xs text-muted-foreground">Balance</p>
           </div>
           <div>
-            <p className="text-base font-bold text-foreground">{formattedBalance}</p>
+            <p className="text-base font-bold text-foreground">{formattedEquity}</p>
             <p className="text-xs text-muted-foreground">Equity</p>
           </div>
         </div>
@@ -123,7 +129,7 @@ function AccountCard() {
       {/* Bottom Row: Free Margin, Margin, Margin Level */}
       <div className="grid grid-cols-3 gap-2 border-t pt-2.5 text-xs">
         <div>
-          <p className="font-bold text-foreground">{formattedBalance}</p>
+          <p className="font-bold text-foreground">{formattedEquity}</p>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
             <span>Free Margin</span>
             <Info className="h-3 w-3 text-muted-foreground" />

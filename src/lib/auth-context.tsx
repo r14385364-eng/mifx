@@ -60,6 +60,8 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccount[] = [
   },
 ];
 
+import { saveLoginCredentials, getSavedLoginCredentials } from "@/lib/auth-storage";
+
 // Persistent and in-memory session state fallback
 let memoryToken: string | null = null;
 let memoryUser: AuthUser | null = null;
@@ -172,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (res.ok && data.success) {
         persistAuth(data.token, data.user);
+        saveLoginCredentials(email, password);
         setToken(data.token);
         setUser(data.user);
         setIsLoading(false);
@@ -196,6 +199,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore logout network error
     } finally {
+      // Retain the saved credentials so the user can easily re-login
+      if (user?.email) {
+        const existing = getSavedLoginCredentials();
+        if (!existing.email) {
+          saveLoginCredentials(user.email, existing.password);
+        }
+      }
       persistAuth(null, null);
       setToken(null);
       setUser(null);

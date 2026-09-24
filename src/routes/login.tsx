@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, HelpCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth-context";
+import { getSavedLoginCredentials, saveLoginCredentials } from "@/lib/auth-storage";
 import { toast } from "sonner";
 import { AppLogo } from "@/components/AppLogo";
 
@@ -24,16 +25,23 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(() => getSavedLoginCredentials().email);
+  const [password, setPassword] = useState(() => getSavedLoginCredentials().password);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Sync saved credentials upon component mount or redirection
+  useEffect(() => {
+    const saved = getSavedLoginCredentials();
+    if (saved.email) setEmail(saved.email);
+    if (saved.password) setPassword(saved.password);
+  }, []);
 
   const handleLogin = async (e?: React.FormEvent, customEmail?: string, customPass?: string) => {
     if (e) e.preventDefault();
     setErrorMessage("");
 
-    const targetEmail = customEmail || email;
+    const targetEmail = (customEmail || email).trim();
     const targetPass = customPass || password;
 
     if (!targetEmail || !targetPass) {
@@ -43,6 +51,7 @@ export function LoginPage() {
 
     const res = await login(targetEmail, targetPass);
     if (res.success) {
+      saveLoginCredentials(targetEmail, targetPass);
       toast.success("Berhasil masuk!", {
         description: `Selamat datang di Gotrade (${targetEmail})`,
       });

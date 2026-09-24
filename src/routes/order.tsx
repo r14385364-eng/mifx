@@ -27,10 +27,12 @@ function OrderPage() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const { unreadCount } = useNotifications();
 
-  const balance =
-    user?.balance != null
-      ? `${user.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : "$0.00";
+  const rawBalance = user?.balance != null ? Number(user.balance) : 0;
+  const rawProfit = user?.profit != null ? Number(user.profit) : 0;
+  const rawEquity = Math.max(0, rawBalance + rawProfit);
+  const balance = `$${rawBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const equity = `$${rawEquity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const totalProfitLoss = `${rawProfit >= 0 ? "+$" : "-$"}${Math.abs(rawProfit).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-background">
@@ -91,13 +93,17 @@ function OrderPage() {
               <p className="text-xs text-muted-foreground">Balance</p>
             </div>
             <div className="text-right">
-              <p className="text-base font-bold tabular-nums">{balance}</p>
+              <p className="text-base font-bold tabular-nums">{equity}</p>
               <p className="text-xs text-muted-foreground">Equity</p>
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm">
             <span className="text-muted-foreground">Total Profit / Loss</span>
-            <span className="font-semibold tabular-nums text-blue-600">$0.00</span>
+            <span
+              className={`font-semibold tabular-nums ${rawProfit > 0 ? "text-emerald-600" : rawProfit < 0 ? "text-rose-600" : "text-muted-foreground"}`}
+            >
+              {rawProfit !== 0 ? totalProfitLoss : "$0.00"}
+            </span>
           </div>
         </div>
 

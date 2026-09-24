@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { AppLogo } from "@/components/AppLogo";
+import { saveLoginCredentials } from "@/lib/auth-storage";
 
 export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -90,8 +91,11 @@ function RegisterPage() {
       setIsSubmitting(false);
 
       if (res.ok && data.success) {
+        // Automatically save registered email & password so login page is prefilled
+        saveLoginCredentials(email.trim(), password);
+
         toast.success("Pendaftaran Berhasil!", {
-          description: `Selamat datang di Gotrade, ${data.user.name} (@${data.user.username || username.trim()})`,
+          description: `Selamat datang di Gotrade, ${data.user.name} (@${data.user.username || username.trim()}). Mengalihkan ke halaman login...`,
         });
         void navigate({ to: "/login" });
       } else {

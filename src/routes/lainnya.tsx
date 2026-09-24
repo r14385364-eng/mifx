@@ -339,13 +339,36 @@ export function LainnyaPage() {
   };
 
   const displayName = user?.name || user?.email?.split("@")[0] || "testing";
-  const formattedBalance = `$${demoBalance.toLocaleString("en-US", {
+
+  const currentBalance = Number(user?.balance ?? demoBalance ?? 0);
+  const currentProfit = Number(user?.profit ?? 0);
+  const currentEquity = Math.max(0, currentBalance + currentProfit);
+  const hasFunds = currentBalance > 0 || currentEquity > 0;
+
+  const formattedBalance = `$${currentBalance.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
-  // Deterministic account simulation metrics (distinct per user account)
+  const formattedEquity = `$${currentEquity.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+  // Deterministic account simulation metrics: Inactive when user balance & equity are $0.00
   const accountSimulation = useMemo(() => {
+    if (!hasFunds) {
+      return {
+        isActive: false,
+        margin: 0,
+        freeMargin: 0,
+        marginLevel: 0,
+        credits: 0,
+        floatingPL: 0,
+        winRate: 0,
+      };
+    }
+
     const accountIdentifier = String(user?.accountNumber || user?.id || user?.email || "88910243");
     let h = 2166136261;
     for (let i = 0; i < accountIdentifier.length; i++) {
@@ -355,7 +378,6 @@ export function LainnyaPage() {
     const seed = Math.abs(h);
 
     const r1 = (seed % 1000) / 1000;
-    const r2 = (Math.floor(seed / 1000) % 1000) / 1000;
     const r3 = (Math.floor(seed / 1000000) % 1000) / 1000;
     const r4 = ((((seed >> 3) ^ 0x5bf03635) >>> 0) % 1000) / 1000;
 
@@ -363,7 +385,7 @@ export function LainnyaPage() {
     const creditTiers = [50, 100, 150, 200, 250];
     const credits = creditTiers[seed % creditTiers.length];
 
-    const effectiveBase = demoBalance > 0 ? demoBalance : 2500 + Math.round(r2 * 7500);
+    const effectiveBase = currentBalance > 0 ? currentBalance : currentEquity;
     const marginRatio = 0.025 + r3 * 0.03;
     const margin = Math.round(effectiveBase * marginRatio * 100) / 100;
     const floatingPL = Math.round((25 + r4 * 140) * 100) / 100;
@@ -372,6 +394,7 @@ export function LainnyaPage() {
       margin > 0 ? Math.round(((effectiveBase + floatingPL) / margin) * 10000) / 100 : 0;
 
     return {
+      isActive: true,
       margin,
       freeMargin,
       marginLevel,
@@ -379,7 +402,7 @@ export function LainnyaPage() {
       floatingPL,
       winRate,
     };
-  }, [user?.accountNumber, user?.id, user?.email, demoBalance]);
+  }, [user?.accountNumber, user?.id, user?.email, currentBalance, currentEquity, hasFunds]);
 
   const handleUpdateBalance = (amount: number) => {
     setDemoBalance(amount);
@@ -471,7 +494,7 @@ export function LainnyaPage() {
             </div>
             <div>
               <p className="tabular-nums text-lg font-bold tracking-tight text-gray-900">
-                {formattedBalance}
+                {formattedEquity}
               </p>
               <p className="text-xs font-normal text-gray-400">Equity</p>
             </div>
@@ -551,7 +574,11 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="tabular-nums font-bold text-emerald-600">
+              <span
+                className={`tabular-nums font-bold ${
+                  accountSimulation.marginLevel > 0 ? "text-emerald-600" : "text-gray-900"
+                }`}
+              >
                 {accountSimulation.marginLevel.toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -589,9 +616,17 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="tabular-nums font-bold text-emerald-600">
-                +$
-                {accountSimulation.floatingPL.toLocaleString("en-US", {
+              <span
+                className={`tabular-nums font-bold ${
+                  accountSimulation.floatingPL > 0
+                    ? "text-emerald-600"
+                    : accountSimulation.floatingPL < 0
+                      ? "text-rose-600"
+                      : "text-gray-900"
+                }`}
+              >
+                {accountSimulation.floatingPL > 0 ? "+$" : "$"}
+                {Math.abs(accountSimulation.floatingPL).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
@@ -622,7 +657,11 @@ export function LainnyaPage() {
                     style={{ width: `${accountSimulation.winRate}%` }}
                   />
                 </div>
-                <span className="tabular-nums font-bold text-[#0088cc]">
+                <span
+                  className={`tabular-nums font-bold ${
+                    accountSimulation.winRate > 0 ? "text-[#0088cc]" : "text-gray-400"
+                  }`}
+                >
                   {accountSimulation.winRate}%
                 </span>
               </div>
