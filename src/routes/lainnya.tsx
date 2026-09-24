@@ -30,7 +30,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -272,6 +272,43 @@ export function LainnyaPage() {
     maximumFractionDigits: 2,
   })}`;
 
+  // Deterministic account simulation metrics (distinct per user account)
+  const accountSimulation = useMemo(() => {
+    const accountIdentifier = String(user?.accountNumber || user?.id || user?.email || "88910243");
+    let h = 2166136261;
+    for (let i = 0; i < accountIdentifier.length; i++) {
+      h ^= accountIdentifier.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const seed = Math.abs(h);
+
+    const r1 = (seed % 1000) / 1000;
+    const r2 = (Math.floor(seed / 1000) % 1000) / 1000;
+    const r3 = (Math.floor(seed / 1000000) % 1000) / 1000;
+    const r4 = ((((seed >> 3) ^ 0x5bf03635) >>> 0) % 1000) / 1000;
+
+    const winRate = Math.round(64 + r1 * 22);
+    const creditTiers = [50, 100, 150, 200, 250];
+    const credits = creditTiers[seed % creditTiers.length];
+
+    const effectiveBase = demoBalance > 0 ? demoBalance : 2500 + Math.round(r2 * 7500);
+    const marginRatio = 0.025 + r3 * 0.03;
+    const margin = Math.round(effectiveBase * marginRatio * 100) / 100;
+    const floatingPL = Math.round((25 + r4 * 140) * 100) / 100;
+    const freeMargin = Math.max(0, Math.round((effectiveBase + floatingPL - margin) * 100) / 100);
+    const marginLevel =
+      margin > 0 ? Math.round(((effectiveBase + floatingPL) / margin) * 10000) / 100 : 0;
+
+    return {
+      margin,
+      freeMargin,
+      marginLevel,
+      credits,
+      floatingPL,
+      winRate,
+    };
+  }, [user?.accountNumber, user?.id, user?.email, demoBalance]);
+
   const handleUpdateBalance = (amount: number) => {
     setDemoBalance(amount);
     toast.success(`Balance Akun Demo berhasil diubah menjadi $${amount.toLocaleString()}`);
@@ -390,7 +427,13 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="font-bold text-gray-900">$0.00</span>
+              <span className="tabular-nums font-bold text-gray-900">
+                $
+                {accountSimulation.margin.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
 
             {/* Free Margin */}
@@ -410,7 +453,13 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="font-bold text-gray-900">{formattedBalance}</span>
+              <span className="tabular-nums font-bold text-gray-900">
+                $
+                {accountSimulation.freeMargin.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
 
             {/* Margin Level */}
@@ -430,13 +479,25 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="font-bold text-gray-900">0.00%</span>
+              <span className="tabular-nums font-bold text-emerald-600">
+                {accountSimulation.marginLevel.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                %
+              </span>
             </div>
 
             {/* Credits */}
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Credits</span>
-              <span className="font-bold text-gray-900">$0.00</span>
+              <span className="tabular-nums font-bold text-gray-900">
+                $
+                {accountSimulation.credits.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
 
             {/* Floating P/L */}
@@ -456,7 +517,13 @@ export function LainnyaPage() {
                   <Info className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className="font-bold text-gray-900">$0.00</span>
+              <span className="tabular-nums font-bold text-emerald-600">
+                +$
+                {accountSimulation.floatingPL.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
 
             {/* Win Rate */}
@@ -478,9 +545,14 @@ export function LainnyaPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2.5 w-28 overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-full w-0 rounded-full bg-[#d93856]" />
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${accountSimulation.winRate}%` }}
+                  />
                 </div>
-                <span className="font-bold text-[#0088cc]">0%</span>
+                <span className="tabular-nums font-bold text-[#0088cc]">
+                  {accountSimulation.winRate}%
+                </span>
               </div>
             </div>
           </div>
