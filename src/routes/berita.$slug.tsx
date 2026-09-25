@@ -2,11 +2,11 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { getArticleBySlug, newsArticles } from "@/lib/news-data";
+import { fetchArticleBySlug, useNewsArticles } from "@/lib/news-data";
 
 export const Route = createFileRoute("/berita/$slug")({
-  loader: ({ params }) => {
-    const article = getArticleBySlug(params.slug);
+  loader: async ({ params }) => {
+    const article = await fetchArticleBySlug(params.slug);
     if (!article) throw notFound();
     return { article };
   },
@@ -32,7 +32,8 @@ export const Route = createFileRoute("/berita/$slug")({
 
 function BeritaDetailPage() {
   const { article } = Route.useLoaderData();
-  const related = newsArticles.filter((a) => a.slug !== article.slug).slice(0, 3);
+  const allArticles = useNewsArticles();
+  const related = allArticles.filter((a) => a.slug !== article.slug).slice(0, 3);
 
   const share = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";

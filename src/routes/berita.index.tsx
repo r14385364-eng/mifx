@@ -3,7 +3,7 @@ import { Clock, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
-import { newsArticles } from "@/lib/news-data";
+import { useNewsArticles } from "@/lib/news-data";
 
 export const Route = createFileRoute("/berita/")({
   head: () => ({
@@ -24,14 +24,15 @@ const categories = ["Semua", "Special Article", "Technical Overview", "Market Ne
 function BeritaPage() {
   const [category, setCategory] = useState<(typeof categories)[number]>("Semua");
   const [query, setQuery] = useState("");
+  const newsArticlesList = useNewsArticles();
 
   const list = useMemo(() => {
-    return newsArticles.filter((a) => {
+    return newsArticlesList.filter((a) => {
       const matchCategory = category === "Semua" || a.category === category;
       const matchQuery = a.title.toLowerCase().includes(query.trim().toLowerCase());
       return matchCategory && matchQuery;
     });
-  }, [category, query]);
+  }, [newsArticlesList, category, query]);
 
   const [featured, ...rest] = list;
 

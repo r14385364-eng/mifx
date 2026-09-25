@@ -680,6 +680,57 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     }
   }
 
+  // Seed default News if table is empty
+  const newsCount = await pool.query<{ count: string }>("SELECT COUNT(*) as count FROM news");
+  if (parseInt(newsCount.rows[0]?.count || "0", 10) === 0) {
+    const seedNews = [
+      {
+        slug: "apa-itu-gotrade-kelebihannya",
+        title: "Apa Itu Gotrade ? Simak Kelebihannya Dibanding yang lain!",
+        category: "Market News",
+        excerpt: "Pengaruh global Gotrade di pasar saham dan keunggulan eksekusi trading modern.",
+        body: "Gotrade adalah platform trading online modern yang memudahkan pengguna berinvestasi dan trading di instrumen global dengan spread terendah dan keamanan tingkat tinggi.\n\nDengan sistem akun terintegrasi, pengguna dapat menikmati kemudahan deposit instan, eksekusi pasar tanpa requote, serta reward eksklusif setiap aktivitas trading.",
+        date: "24 September 2026",
+        read_minutes: 3,
+        status: "Terbit",
+        image_url:
+          "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80",
+      },
+      {
+        slug: "the-fed-suku-bunga-gold",
+        title: "The Fed Umumkan Suku Bunga, Gold akan Terbang atau Tenggelam?",
+        category: "Special Article",
+        excerpt:
+          "Pasar menanti keputusan suku bunga The Fed malam ini. Begini skenario pergerakan Gold untuk kedua hasilnya.",
+        body: "Pasar global malam ini memusatkan perhatian pada pengumuman kebijakan suku bunga The Federal Reserve. Konsensus memperkirakan volatilitas tinggi pada komoditas Emas (XAUUSD).",
+        date: "24 September 2026",
+        read_minutes: 4,
+        status: "Terbit",
+        image_url:
+          "https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=800&q=80",
+      },
+    ];
+
+    for (const n of seedNews) {
+      await pool.query(
+        `INSERT INTO news (slug, title, category, excerpt, body, date, read_minutes, status, image_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          n.slug,
+          n.title,
+          n.category,
+          n.excerpt,
+          n.body,
+          n.date,
+          n.read_minutes,
+          n.status,
+          n.image_url,
+        ],
+      );
+    }
+    console.log("[PostgreSQL] Seeded default news articles");
+  }
+
   // Seed default notifications if table is empty
   const notifCount = await pool.query<{ count: string }>(
     "SELECT COUNT(*) as count FROM notifications",

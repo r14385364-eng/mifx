@@ -22,9 +22,9 @@ import {
 import { BottomNav } from "@/components/BottomNav";
 import { ShortcutMenu, type ShortcutItem } from "@/components/ShortcutMenu";
 import { SymbolIcon } from "@/components/SymbolIcon";
-import { newsArticles } from "@/lib/news-data";
 import { usePopularInstruments } from "@/lib/popular-market";
 import { defaultSignals, useHomeSignals, type TradingSignal } from "@/lib/signals-data";
+import { useNewsArticles } from "@/lib/news-data";
 import { useAuth } from "@/lib/auth-context";
 import { AppLogo } from "@/components/AppLogo";
 import { NotificationModal } from "@/components/NotificationModal";
@@ -88,8 +88,6 @@ const events = [
     previous: "56",
   },
 ];
-
-const news = newsArticles.slice(0, 4);
 
 /** Data standar yang selalu tampil jika belum ada sinyal yang diatur admin. */
 const fallbackSignals = defaultSignals.filter((signal) => signal.showOnHome);
@@ -439,6 +437,9 @@ function EventSection() {
 }
 
 function NewsSection() {
+  const articles = useNewsArticles();
+  const displayNews = articles.slice(0, 4);
+
   return (
     <section>
       <h2 className="text-base font-semibold text-foreground">Berita Terkini</h2>
@@ -447,7 +448,7 @@ function NewsSection() {
         kondisi pasar saat ini.
       </p>
       <div className="mt-3 flex flex-col gap-3">
-        {news.map((item) => (
+        {displayNews.map((item) => (
           <Link
             key={item.slug}
             to="/berita/$slug"

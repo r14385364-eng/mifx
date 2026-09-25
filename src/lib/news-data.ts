@@ -1,3 +1,4 @@
+import { useEffect, useSyncExternalStore } from "react";
 import imgFedGold from "@/assets/news/the-fed-suku-bunga-gold.jpg";
 import imgNasdaq from "@/assets/news/nasdaq-buyer-dominan-30030.jpg";
 import imgUsdjpy from "@/assets/news/usdjpy-resistance-158455.jpg";
@@ -6,11 +7,13 @@ import imgOil from "@/assets/news/oil-merosot-stok-as.jpg";
 import imgEuro from "@/assets/news/euro-tertekan-data-pmi.jpg";
 import imgPerak from "@/assets/news/perak-ikut-menguat.jpg";
 import imgNikkei from "@/assets/news/nikkei-rekor-baru.jpg";
+import { secureFetch } from "./api-client";
 
 export type NewsArticle = {
+  id?: number;
   slug: string;
   tag: string;
-  category: "Special Article" | "Technical Overview" | "Market News";
+  category: "Special Article" | "Technical Overview" | "Market News" | string;
   title: string;
   excerpt: string;
   image: string;
@@ -19,10 +22,12 @@ export type NewsArticle = {
   readMinutes: number;
   tickers: { label: string; change: string; up: boolean }[];
   body: string[];
+  status?: "Terbit" | "Draf";
 };
 
-export const newsArticles: NewsArticle[] = [
+export const defaultNewsArticles: NewsArticle[] = [
   {
+    id: 1,
     slug: "the-fed-suku-bunga-gold",
     image: imgFedGold,
     tag: "Special Article",
@@ -43,8 +48,10 @@ export const newsArticles: NewsArticle[] = [
       "Sebaliknya, bila The Fed menegaskan sikap hawkish karena inflasi yang masih membandel, imbal hasil obligasi AS berisiko naik dan menekan harga emas kembali ke zona support 4342. Level ini menjadi pertahanan penting buyer dalam dua pekan terakhir.",
       "Bagi trader, volatilitas biasanya melonjak tajam sesaat setelah pengumuman. Pertimbangkan untuk memperkecil ukuran posisi, memperlebar toleransi stop loss, atau menunggu 15–30 menit pertama hingga arah pasar lebih jelas sebelum masuk.",
     ],
+    status: "Terbit",
   },
   {
+    id: 2,
     slug: "nasdaq-buyer-dominan-30030",
     image: imgNasdaq,
     tag: "Technical Overview",
@@ -62,8 +69,10 @@ export const newsArticles: NewsArticle[] = [
       "Skenario bullish ini akan batal jika harga menembus ke bawah support 29.720 dengan penutupan harian. Dalam kondisi tersebut, potensi koreksi menuju 29.500 perlu diwaspadai.",
       "Selalu gunakan manajemen risiko. Tentukan batas kerugian maksimal per posisi sebelum masuk pasar.",
     ],
+    status: "Terbit",
   },
   {
+    id: 3,
     slug: "usdjpy-resistance-158455",
     image: imgUsdjpy,
     tag: "Technical Overview",
@@ -80,8 +89,10 @@ export const newsArticles: NewsArticle[] = [
       "Trader perlu mewaspadai risiko intervensi dari otoritas Jepang bila pelemahan yen dinilai terlalu cepat. Pernyataan pejabat Kementerian Keuangan Jepang kerap memicu koreksi tajam dalam hitungan menit.",
       "Support terdekat berada di 157.900. Selama harga bertahan di atas level tersebut, bias bullish masih valid.",
     ],
+    status: "Terbit",
   },
   {
+    id: 4,
     slug: "gbpusd-masih-bearish",
     image: imgGbpusd,
     tag: "Technical Overview",
@@ -99,8 +110,10 @@ export const newsArticles: NewsArticle[] = [
       "Target penurunan berikutnya berada di support 1.3320, disusul 1.3280 jika tekanan jual berlanjut. Data inflasi Inggris pekan depan berpotensi menjadi katalis penggerak berikutnya.",
       "Perhatikan risk management: pasang stop loss di atas resistance terdekat untuk mengantisipasi false breakout.",
     ],
+    status: "Terbit",
   },
   {
+    id: 5,
     slug: "oil-merosot-stok-as",
     image: imgOil,
     tag: "Market News",
@@ -118,8 +131,10 @@ export const newsArticles: NewsArticle[] = [
       "Ke depan, pasar akan mencermati hasil pertemuan OPEC+ bulan depan. Sinyal pemangkasan produksi tambahan dapat menjadi penopang harga, sementara keputusan mempertahankan kuota berisiko memperpanjang tren turun.",
       "Support kunci berikutnya berada di area 97.80, dengan resistance di 101.20.",
     ],
+    status: "Terbit",
   },
   {
+    id: 6,
     slug: "euro-tertekan-data-pmi",
     image: imgEuro,
     tag: "Market News",
@@ -136,8 +151,10 @@ export const newsArticles: NewsArticle[] = [
       "Perhatian pasar berikutnya tertuju pada data inflasi Jerman dan pidato Presiden ECB akhir pekan ini. Nada dovish berpotensi menekan euro lebih dalam menuju support 1.1420.",
       "Resistance terdekat berada di 1.1510. Penembusan di atas level ini dapat memicu rebound jangka pendek.",
     ],
+    status: "Terbit",
   },
   {
+    id: 7,
     slug: "perak-ikut-menguat",
     image: imgPerak,
     tag: "Market News",
@@ -154,8 +171,10 @@ export const newsArticles: NewsArticle[] = [
       "Secara teknikal, penembusan di atas resistance 48.80 membuka peluang uji level 50.00. Namun bila dolar AS menguat tajam pasca pengumuman The Fed, koreksi ke 47.50 tetap mungkin terjadi.",
       "Trader disarankan memantau korelasi pergerakan perak dengan emas dan indeks dolar AS.",
     ],
+    status: "Terbit",
   },
   {
+    id: 8,
     slug: "nikkei-rekor-baru",
     image: imgNikkei,
     tag: "Special Article",
@@ -173,9 +192,129 @@ export const newsArticles: NewsArticle[] = [
       "Meski demikian, valuasi indeks kini berada di atas rata-rata historisnya. Beberapa analis mengingatkan potensi profit-taking jika yen tiba-tiba menguat karena intervensi atau perubahan sikap BoJ.",
       "Level support terdekat berada di 64.200, sementara target kenaikan berikutnya di kisaran 65.500.",
     ],
+    status: "Terbit",
   },
 ];
 
-export function getArticleBySlug(slug: string) {
-  return newsArticles.find((a) => a.slug === slug);
+export const newsArticles = defaultNewsArticles;
+
+const defaultImages = [
+  imgFedGold,
+  imgNasdaq,
+  imgUsdjpy,
+  imgGbpusd,
+  imgOil,
+  imgEuro,
+  imgPerak,
+  imgNikkei,
+];
+
+export function mapDbNewsToArticles(dbRows: unknown[]): NewsArticle[] {
+  if (!Array.isArray(dbRows) || dbRows.length === 0) {
+    return defaultNewsArticles;
+  }
+
+  type DbNewsRow = {
+    id: number;
+    slug?: string;
+    title: string;
+    category?: string;
+    excerpt?: string;
+    body?: string | string[];
+    date?: string;
+    read_minutes?: number;
+    status?: string;
+    image_url?: string;
+    created_at?: string;
+  };
+
+  return (dbRows as DbNewsRow[])
+    .filter((r) => r.status !== "Draf")
+    .map((r, index) => {
+      const img =
+        r.image_url && r.image_url.trim().length > 5
+          ? r.image_url
+          : defaultImages[index % defaultImages.length];
+
+      let paragraphs: string[] = [];
+      if (Array.isArray(r.body)) {
+        paragraphs = r.body;
+      } else if (typeof r.body === "string" && r.body.trim().length > 0) {
+        paragraphs = r.body.split("\n\n").filter(Boolean);
+      } else {
+        paragraphs = [r.excerpt || r.title];
+      }
+
+      const category = (r.category as NewsArticle["category"]) || "Market News";
+      const tag = category;
+      const slug = r.slug || `article-${r.id}`;
+
+      return {
+        id: r.id,
+        slug,
+        title: r.title,
+        category,
+        tag,
+        excerpt: r.excerpt || r.title,
+        image: img,
+        time: r.created_at ? "Baru saja" : "2 hari lalu",
+        date: r.date || "24 September 2026",
+        readMinutes: r.read_minutes || 3,
+        tickers: [{ label: "Gotrade", change: "+0.85%", up: true }],
+        body: paragraphs,
+        status: (r.status as "Terbit" | "Draf") || "Terbit",
+      };
+    });
+}
+
+let storeNews: NewsArticle[] = defaultNewsArticles;
+const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
+export async function refreshNewsArticles(): Promise<NewsArticle[]> {
+  try {
+    const res = await secureFetch("/api/news");
+    if (!res.ok) return storeNews;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.news) && data.news.length > 0) {
+      storeNews = mapDbNewsToArticles(data.news);
+      notify();
+      return storeNews;
+    }
+  } catch {
+    // keep current
+  }
+  return storeNews;
+}
+
+export function useNewsArticles(): NewsArticle[] {
+  const articles = useSyncExternalStore(
+    (onStoreChange) => {
+      listeners.add(onStoreChange);
+      return () => listeners.delete(onStoreChange);
+    },
+    () => storeNews,
+    () => defaultNewsArticles,
+  );
+
+  useEffect(() => {
+    void refreshNewsArticles();
+  }, []);
+
+  return articles;
+}
+
+export function getArticleBySlug(slug: string): NewsArticle | undefined {
+  return storeNews.find((a) => a.slug === slug) || defaultNewsArticles.find((a) => a.slug === slug);
+}
+
+export async function fetchArticleBySlug(slug: string): Promise<NewsArticle | undefined> {
+  const inMemory = getArticleBySlug(slug);
+  if (inMemory) return inMemory;
+
+  const fresh = await refreshNewsArticles();
+  return fresh.find((a) => a.slug === slug) || defaultNewsArticles.find((a) => a.slug === slug);
 }

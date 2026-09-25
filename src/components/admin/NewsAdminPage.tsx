@@ -41,7 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { newsArticles } from "@/lib/news-data";
+import { newsArticles, refreshNewsArticles } from "@/lib/news-data";
 
 import { AdminLayout } from "./AdminLayout";
 
@@ -189,20 +189,7 @@ export function NewsAdminPage() {
 
     try {
       if (editingId === null) {
-        const newArt: AdminArticle = {
-          id: Math.max(0, ...articles.map((article) => article.id)) + 1,
-          title: form.title,
-          category: form.category,
-          excerpt: form.excerpt,
-          body,
-          date: "20 September 2026",
-          readMinutes: Math.max(1, Math.ceil(body.join(" ").split(" ").length / 200)),
-          status: form.status,
-          imageUrl: form.imageUrl,
-        };
-        setArticles((current) => [newArt, ...current]);
-
-        secureFetch("/api/news", {
+        const res = await secureFetch("/api/news", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -213,27 +200,14 @@ export function NewsAdminPage() {
             status: form.status,
             imageUrl: form.imageUrl,
           }),
-        }).catch(() => {});
+        });
+        if (!res.ok) throw new Error("Gagal menyimpan ke server");
 
+        await refreshNewsArticles();
+        await fetchNews();
         toast.success("Berita baru berhasil ditambahkan");
       } else {
-        setArticles((current) =>
-          current.map((article) =>
-            article.id === editingId
-              ? {
-                  ...article,
-                  title: form.title,
-                  category: form.category,
-                  excerpt: form.excerpt,
-                  body,
-                  status: form.status,
-                  imageUrl: form.imageUrl,
-                }
-              : article,
-          ),
-        );
-
-        secureFetch("/api/news", {
+        const res = await secureFetch("/api/news", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -245,8 +219,11 @@ export function NewsAdminPage() {
             status: form.status,
             imageUrl: form.imageUrl,
           }),
-        }).catch(() => {});
+        });
+        if (!res.ok) throw new Error("Gagal memperbarui di server");
 
+        await refreshNewsArticles();
+        await fetchNews();
         toast.success("Berita berhasil diperbarui");
       }
     } catch {
@@ -259,13 +236,15 @@ export function NewsAdminPage() {
   const handleDelete = async () => {
     if (!deletingId) return;
     const targetId = deletingId;
-    setArticles((current) => current.filter((article) => article.id !== targetId));
 
     try {
-      await secureFetch(`/api/news?id=${targetId}`, { method: "DELETE" });
+      const res = await secureFetch(`/api/news?id=${targetId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Gagal menghapus");
+      await refreshNewsArticles();
+      await fetchNews();
       toast.success("Berita berhasil dihapus");
     } catch {
-      toast.success("Berita dihapus dari tampilan");
+      toast.error("Gagal menghapus berita");
     } finally {
       setDeletingId(null);
     }
