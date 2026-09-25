@@ -94,7 +94,6 @@ export function SettingsAdminPage() {
   const [bankName, setBankName] = useState<string>("Keb Hana Bank");
   const [accountNumber, setAccountNumber] = useState<string>("11628950560");
   const [accountName, setAccountName] = useState<string>("AKSAY S.PUTRA");
-  const [initialProfitPct, setInitialProfitPct] = useState<string>("10");
   const [paymentSources, setPaymentSources] = useState<PaymentSourceItem[]>(defaultPaymentSources);
 
   // Contact Persons state (AKSAY Dedicated Support)
@@ -138,8 +137,6 @@ export function SettingsAdminPage() {
             setAccountNumber(data.settings.deposit_account_number);
           if (data.settings.deposit_account_name)
             setAccountName(data.settings.deposit_account_name);
-          if (data.settings.initial_profit_percentage)
-            setInitialProfitPct(data.settings.initial_profit_percentage);
 
           if (data.settings.deposit_payment_sources) {
             try {
@@ -208,7 +205,7 @@ export function SettingsAdminPage() {
         deposit_bank_name: bName,
         deposit_account_number: aNum,
         deposit_account_name: aName,
-        initial_profit_percentage: initialProfitPct,
+        initial_profit_percentage: "0",
         deposit_payment_sources: JSON.stringify(sourcesToSave),
         contact_persons_list: JSON.stringify(contactsToSave),
         contact_person_name: contactsToSave[0]?.name || "AKSAY",
@@ -878,50 +875,6 @@ export function SettingsAdminPage() {
                   Hanya sumber dana berstatus <strong>Aktif</strong> yang akan muncul di dropdown
                   pengguna pada saat mengajukan deposit.
                 </p>
-              </CardContent>
-            </Card>
-
-            {/* 4. Profit Mechanism Settings Card */}
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                    %
-                  </span>
-                  Pengaturan Persentase Profit Trading
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Atur persentase profit awal yang diberikan otomatis saat deposit trader disetujui.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="initial-profit-pct" className="text-xs font-semibold">
-                    Persentase Profit Awal saat Deposit Disetujui (%)
-                  </Label>
-                  <div className="relative flex items-center">
-                    <Input
-                      id="initial-profit-pct"
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      value={initialProfitPct}
-                      onChange={(e) => setInitialProfitPct(e.target.value)}
-                      placeholder="Contoh: 10"
-                      className="font-bold"
-                    />
-                    <span className="absolute right-3 text-xs font-bold text-muted-foreground">
-                      %
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Contoh: Jika diset <strong className="text-foreground">10%</strong>, saat user
-                    deposit Rp 10 Juta dan disetujui admin, user otomatis mendapat nominal basis
-                    profit{" "}
-                    <strong className="text-amber-600 dark:text-amber-400">Rp 1.000.000</strong>.
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>

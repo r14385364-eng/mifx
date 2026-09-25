@@ -29,7 +29,7 @@ function OrderPage() {
 
   const rawBalance = user?.balance != null ? Number(user.balance) : 0;
   const rawProfit = user?.profit != null ? Number(user.profit) : 0;
-  const rawEquity = Math.max(0, rawBalance + rawProfit);
+  const rawEquity = rawProfit;
   const balance = `$${rawBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const equity = `$${rawEquity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const totalProfitLoss = `${rawProfit >= 0 ? "+$" : "-$"}${Math.abs(rawProfit).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownToLine,
   Bell,
@@ -12,6 +12,13 @@ import {
   Wallet,
 } from "lucide-react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { BottomNav } from "@/components/BottomNav";
 import { ShortcutMenu, type ShortcutItem } from "@/components/ShortcutMenu";
 import { SymbolIcon } from "@/components/SymbolIcon";
@@ -95,17 +102,39 @@ function Logo() {
 
 function AccountCard() {
   const { user } = useAuth();
-  const rawBalance = user?.balance != null ? Number(user.balance) : 0;
-  const rawProfit = user?.profit != null ? Number(user.profit) : 0;
-  const rawEquity = Math.max(0, rawBalance + rawProfit);
+  const [dailyRate, setDailyRate] = useState<number>(5);
+  const [infoModal, setInfoModal] = useState<{ title: string; desc: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings?.global_daily_profit_rate) {
+          const r = Number(data.settings.global_daily_profit_rate);
+          if (!isNaN(r)) setDailyRate(r);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const rawBalance = user?.balance != null ? Number(user.balance) : 0; // Total Saldo Gabungan
+  const rawProfit = user?.profit != null ? Number(user.profit) : 0; // Akumulasi Profit Total
+  const depositBalance = Math.max(0, rawBalance - rawProfit);
+  const estimatedDailyGain = Math.round(depositBalance * (dailyRate / 100) * 100) / 100; // Estimasi Profit Hari Ini
+
   const formattedBalance = `$${rawBalance.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-  const formattedEquity = `$${rawEquity.toLocaleString("en-US", {
+  const formattedEquity = `$${rawProfit.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+  const formattedFreeMargin = `$${estimatedDailyGain.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const formattedMarginLevel = `${dailyRate.toFixed(2)}%`;
 
   return (
     <section className="rounded-xl border bg-card p-4 shadow-sm space-y-3">
@@ -113,11 +142,11 @@ function AccountCard() {
       <div className="flex items-start justify-between">
         <div className="grid grid-cols-2 gap-4 flex-1">
           <div>
-            <p className="text-base font-bold text-foreground">{formattedBalance}</p>
+            <p className="text-base font-bold text-foreground tabular-nums">{formattedBalance}</p>
             <p className="text-xs text-muted-foreground">Balance</p>
           </div>
           <div>
-            <p className="text-base font-bold text-foreground">{formattedEquity}</p>
+            <p className="text-base font-bold text-foreground tabular-nums">{formattedEquity}</p>
             <p className="text-xs text-muted-foreground">Equity</p>
           </div>
         </div>
@@ -129,27 +158,66 @@ function AccountCard() {
       {/* Bottom Row: Free Margin, Margin, Margin Level */}
       <div className="grid grid-cols-3 gap-2 border-t pt-2.5 text-xs">
         <div>
-          <p className="font-bold text-foreground">{formattedEquity}</p>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+          <p className="font-bold text-foreground tabular-nums">{formattedFreeMargin}</p>
+          <button
+            type="button"
+            onClick={() =>
+              setInfoModal({
+                title: "Free Margin (Estimasi Profit Hari Ini)",
+                desc: `Estimasi pertambahan profit trading hari ini sebesar $${estimatedDailyGain.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} dihitung berdasarkan rate profit harian global (${dailyRate}%).`,
+              })
+            }
+            className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 hover:text-foreground text-left cursor-pointer transition-colors"
+          >
             <span>Free Margin</span>
             <Info className="h-3 w-3 text-muted-foreground" />
-          </div>
+          </button>
         </div>
         <div>
-          <p className="font-bold text-foreground">$0.00</p>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+          <p className="font-bold text-foreground tabular-nums">$0.00</p>
+          <button
+            type="button"
+            onClick={() =>
+              setInfoModal({
+                title: "Margin",
+                desc: "Jumlah jaminan margin dana saat posisi trading sedang aktif terbuka.",
+              })
+            }
+            className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 hover:text-foreground text-left cursor-pointer transition-colors"
+          >
             <span>Margin</span>
             <Info className="h-3 w-3 text-muted-foreground" />
-          </div>
+          </button>
         </div>
         <div>
-          <p className="font-bold text-foreground">0.00%</p>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+          <p className="font-bold text-foreground tabular-nums">{formattedMarginLevel}</p>
+          <button
+            type="button"
+            onClick={() =>
+              setInfoModal({
+                title: "Margin Level (Rate Profit Harian Global)",
+                desc: `Persentase acuan rate profit harian global saat ini (${dailyRate.toFixed(2)}%) dari menu admin/profit untuk seluruh pengguna.`,
+              })
+            }
+            className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 hover:text-foreground text-left cursor-pointer transition-colors"
+          >
             <span>Margin Level</span>
             <Info className="h-3 w-3 text-muted-foreground" />
-          </div>
+          </button>
         </div>
       </div>
+
+      {/* Info Dialog */}
+      <Dialog open={!!infoModal} onOpenChange={(open) => !open && setInfoModal(null)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold">{infoModal?.title}</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1.5 leading-relaxed">
+              {infoModal?.desc}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

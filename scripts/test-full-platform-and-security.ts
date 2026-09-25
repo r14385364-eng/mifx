@@ -405,7 +405,7 @@ async function runFullPlatformAndSecurityTest() {
     if (!topUpTxId) throw new Error("Missing transaction id");
   });
 
-  await test("Admin approves Top Up and triggers 10% Initial Profit auto-grant", async () => {
+  await test("Admin approves Top Up (100% Deposit, 0% Initial Profit)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "PUT",
       headers: {
@@ -420,20 +420,20 @@ async function runFullPlatformAndSecurityTest() {
     if (!res.ok) throw new Error(`Approval failed: ${res.status}`);
   });
 
-  await test("Trader balance correctly updated to $2,200 ($2,000 deposit + $200 initial profit)", async () => {
+  await test("Trader balance correctly updated to $2,000 (100% deposit, $0 profit)", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = await res.json();
-    if (Number(data.user.balance) !== 2200) {
-      throw new Error(`Expected balance $2200, got $${data.user.balance}`);
+    if (Number(data.user.balance) !== 2000) {
+      throw new Error(`Expected balance $2000, got $${data.user.balance}`);
     }
-    if (Number(data.user.profit) !== 200) {
-      throw new Error(`Expected profit $200, got $${data.user.profit}`);
+    if (Number(data.user.profit) !== 0) {
+      throw new Error(`Expected profit $0, got $${data.user.profit}`);
     }
   });
 
-  await test("Admin grants additional $300 profit via /api/admin/profit", async () => {
+  await test("Admin grants additional $500 profit via /api/admin/profit", async () => {
     const res = await fetch(`${baseUrl}/api/admin/profit`, {
       method: "POST",
       headers: {
@@ -442,7 +442,7 @@ async function runFullPlatformAndSecurityTest() {
       },
       body: JSON.stringify({
         userId: testTraderId,
-        amount: 300,
+        amount: 500,
         note: "Audited Trading Profit Session",
       }),
     });

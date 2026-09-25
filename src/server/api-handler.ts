@@ -948,30 +948,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           const rawAmount = Number(tx.amount);
           const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
           if (tx.type === "Top Up") {
-            // Read initial profit percentage setting (default 10%)
-            const settingRows = await query<{ value: string }>(
-              "SELECT value FROM settings WHERE key = 'initial_profit_percentage'",
-            );
-            const initProfitPct = Number(settingRows[0]?.value || "10") || 10;
-            const initialProfitBasisUSD = amountUSD * (initProfitPct / 100);
-
             if (tx.user_id) {
               await query(
                 `UPDATE users
-                 SET balance = balance + $1 + $2,
-                     base_profit = COALESCE(base_profit, 0) + $2,
-                     profit = COALESCE(profit, 0) + $2
-                 WHERE id = $3`,
-                [amountUSD, initialProfitBasisUSD, tx.user_id],
+                 SET balance = balance + $1
+                 WHERE id = $2`,
+                [amountUSD, tx.user_id],
               );
             } else if (tx.account_number) {
               await query(
                 `UPDATE users
-                 SET balance = balance + $1 + $2,
-                     base_profit = COALESCE(base_profit, 0) + $2,
-                     profit = COALESCE(profit, 0) + $2
-                 WHERE account_number = $3`,
-                [amountUSD, initialProfitBasisUSD, tx.account_number],
+                 SET balance = balance + $1
+                 WHERE account_number = $2`,
+                [amountUSD, tx.account_number],
               );
             }
           } else if (tx.type === "Withdraw") {
@@ -992,29 +981,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           const rawAmount = Number(tx.amount);
           const amountUSD = rawAmount >= 10000 ? rawAmount / 16000 : rawAmount;
           if (tx.type === "Top Up") {
-            const settingRows = await query<{ value: string }>(
-              "SELECT value FROM settings WHERE key = 'initial_profit_percentage'",
-            );
-            const initProfitPct = Number(settingRows[0]?.value || "10") || 10;
-            const initialProfitBasisUSD = amountUSD * (initProfitPct / 100);
-
             if (tx.user_id) {
               await query(
                 `UPDATE users
-                 SET balance = GREATEST(0, balance - $1 - $2),
-                     base_profit = GREATEST(0, COALESCE(base_profit, 0) - $2),
-                     profit = GREATEST(0, COALESCE(profit, 0) - $2)
-                 WHERE id = $3`,
-                [amountUSD, initialProfitBasisUSD, tx.user_id],
+                 SET balance = GREATEST(0, balance - $1)
+                 WHERE id = $2`,
+                [amountUSD, tx.user_id],
               );
             } else if (tx.account_number) {
               await query(
                 `UPDATE users
-                 SET balance = GREATEST(0, balance - $1 - $2),
-                     base_profit = GREATEST(0, COALESCE(base_profit, 0) - $2),
-                     profit = GREATEST(0, COALESCE(profit, 0) - $2)
-                 WHERE account_number = $3`,
-                [amountUSD, initialProfitBasisUSD, tx.account_number],
+                 SET balance = GREATEST(0, balance - $1)
+                 WHERE account_number = $2`,
+                [amountUSD, tx.account_number],
               );
             }
           } else if (tx.type === "Withdraw") {
@@ -1210,22 +1189,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
       let affectedCount = 0;
       for (const u of usersToProcess) {
-        const baseProfitVal = Number(u.base_profit) || 0;
-        // If user has no base profit set yet, but has balance, fallback to 10% of deposit balance as basis
-        const effectiveBasis =
-          baseProfitVal > 0
-            ? baseProfitVal
-            : Math.max(0, (Number(u.balance) - (Number(u.profit) || 0)) * 0.1);
+        const totalBal = Number(u.balance) || 0;
+        const profBal = Number(u.profit) || 0;
+        const depositBal = Math.max(0, totalBal - profBal);
 
-        if (effectiveBasis <= 0) continue;
+        if (depositBal <= 0) continue;
 
-        const dailyGain = Math.round(effectiveBasis * (rate / 100) * 100) / 100;
+        const dailyGain = Math.round(depositBal * (rate / 100) * 100) / 100;
         if (dailyGain <= 0) continue;
-
-        // If user's base_profit wasn't stored, update base_profit too
-        if (baseProfitVal <= 0 && effectiveBasis > 0) {
-          await query("UPDATE users SET base_profit = $1 WHERE id = $2", [effectiveBasis, u.id]);
-        }
 
         await query(
           `UPDATE users
@@ -1250,14 +1221,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         userEmail: adminCheck.user.email,
         userRole: adminCheck.user.role,
         action: "GLOBAL_DAILY_PROFIT_APPLIED",
-        details: `Admin menerapkan profit harian ${rate}% (dihitung dari basis nominal profit) ke ${affectedCount} user.`,
+        details: `Admin menerapkan profit harian ${rate}% ke ${affectedCount} user.`,
         ipAddress: clientIp,
         status: "SUCCESS",
       });
 
       return jsonResponse({
         success: true,
-        message: `Berhasil menerapkan profit harian ${rate}% ke ${affectedCount} user! (Berlaku hanya ke nominal basis profit).`,
+        message: `Berhasil menerapkan profit harian ${rate}% ke ${affectedCount} user!`,
         affectedCount,
         rate,
       });

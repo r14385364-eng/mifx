@@ -409,7 +409,7 @@ async function runComprehensiveAudit() {
     depositTxId = data.transaction?.id || "";
   });
 
-  await test("PUT /api/transactions (Admin) approves Top Up with 10% Initial Profit", async () => {
+  await test("PUT /api/transactions (Admin) approves Top Up (100% Deposit, 0% Initial Profit)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "PUT",
       headers: {
@@ -427,13 +427,13 @@ async function runComprehensiveAudit() {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     const meData = await meRes.json();
-    // $2,000 deposit + $200 (10% Initial Profit) = $2,200
-    if (Number(meData.user.balance) !== 2200) {
-      throw new Error(`Expected $2,200, got $${meData.user.balance}`);
+    // $2,000 deposit (pure deposit) = $2,000
+    if (Number(meData.user.balance) !== 2000) {
+      throw new Error(`Expected $2,000, got $${meData.user.balance}`);
     }
   });
 
-  await test("POST /api/admin/profit grants $500 profit to trader ($2,700 total)", async () => {
+  await test("POST /api/admin/profit grants $500 profit to trader ($2,500 total)", async () => {
     if (!traderUser) throw new Error("Trader not created");
     const res = await fetch(`${baseUrl}/api/admin/profit`, {
       method: "POST",
@@ -453,7 +453,7 @@ async function runComprehensiveAudit() {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     const meData = await meRes.json();
-    if (Number(meData.user.balance) !== 2700 || Number(meData.user.profit) !== 700) {
+    if (Number(meData.user.balance) !== 2500 || Number(meData.user.profit) !== 500) {
       throw new Error(
         `Balance mismatch: balance=${meData.user.balance}, profit=${meData.user.profit}`,
       );
@@ -467,14 +467,14 @@ async function runComprehensiveAudit() {
   let chosenReward: RewardItem | null = null;
   let redemptionId = 0;
 
-  await test("Rewards API computes 43 Points from $2,700 USD (Rp 43,200,000)", async () => {
+  await test("Rewards API computes 40 Points from $2,500 USD (Rp 40,000,000)", async () => {
     const res = await fetch(`${baseUrl}/api/rewards`, {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     if (!res.ok) throw new Error(`Rewards fetch failed: ${res.status}`);
     const data = await res.json();
-    if (data.userPoints !== 43) {
-      throw new Error(`Expected 43 points, got ${data.userPoints}`);
+    if (data.userPoints !== 40) {
+      throw new Error(`Expected 40 points, got ${data.userPoints}`);
     }
     if (!Array.isArray(data.rewards) || data.rewards.length < 7) {
       throw new Error("Reward catalog insufficient");
@@ -502,13 +502,13 @@ async function runComprehensiveAudit() {
     redemptionId = data.redemption.id;
   });
 
-  await test("Available points correctly decremented (43 - 8 = 35 Points)", async () => {
+  await test("Available points correctly decremented (40 - 8 = 32 Points)", async () => {
     if (!chosenReward) throw new Error("Reward not found");
     const res = await fetch(`${baseUrl}/api/rewards`, {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     const data = await res.json();
-    const expected = 43 - chosenReward.points_required;
+    const expected = 40 - chosenReward.points_required;
     if (data.availablePoints !== expected) {
       throw new Error(`Expected ${expected} available points, got ${data.availablePoints}`);
     }
@@ -591,9 +591,9 @@ async function runComprehensiveAudit() {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     const meData = await meRes.json();
-    // $2,700 - $500 = $2,200
-    if (Number(meData.user.balance) !== 2200) {
-      throw new Error(`Expected $2,200 balance, got $${meData.user.balance}`);
+    // $2,500 - $500 = $2,000
+    if (Number(meData.user.balance) !== 2000) {
+      throw new Error(`Expected $2,000 balance, got $${meData.user.balance}`);
     }
   });
 

@@ -4,8 +4,6 @@ import {
   ArrowUpRight,
   Coins,
   DollarSign,
-  Edit,
-  Percent,
   PlusCircle,
   RefreshCw,
   Search,
@@ -50,7 +48,6 @@ interface UserProfitData {
   accountNumber: string;
   balance: number;
   profit: number;
-  baseProfit: number;
   depositBalance: number;
 }
 
@@ -89,12 +86,6 @@ export function ProfitAdminPage() {
   const [note, setNote] = useState("");
   const [submittingProfit, setSubmittingProfit] = useState(false);
 
-  // Modal State: Edit Base Profit Basis
-  const [editBaseUser, setEditBaseUser] = useState<UserProfitData | null>(null);
-  const [baseProfitInputUSD, setBaseProfitInputUSD] = useState<string>("");
-  const [baseProfitInputIDR, setBaseProfitInputIDR] = useState<string>("");
-  const [submittingBaseProfit, setSubmittingBaseProfit] = useState(false);
-
   const fetchUsersAndSettings = async () => {
     try {
       setLoading(true);
@@ -119,18 +110,11 @@ export function ProfitAdminPage() {
           account_number: string;
           balance: number | string;
           profit: number | string;
-          base_profit: number | string;
         };
         const mapped: UserProfitData[] = (data.users as ApiUser[]).map((u) => {
           const totalBal = u.balance !== undefined && u.balance !== null ? Number(u.balance) : 0;
           const profBal = Number(u.profit) || 0;
-          let baseProf = Number(u.base_profit) || 0;
           const depBal = Math.max(0, totalBal - profBal);
-
-          // Fallback: If baseProfit is 0 but deposit exists, base profit defaults to 10% of deposit
-          if (baseProf <= 0 && depBal > 0) {
-            baseProf = Math.round(depBal * 0.1 * 100) / 100;
-          }
 
           return {
             id: u.id,
@@ -142,7 +126,6 @@ export function ProfitAdminPage() {
             accountNumber: u.account_number || "1006568912",
             balance: totalBal,
             profit: profBal,
-            baseProfit: baseProf,
             depositBalance: depBal,
           };
         });
@@ -172,7 +155,6 @@ export function ProfitAdminPage() {
 
   const totalUsers = users.length;
   const totalDepositBalance = users.reduce((sum, u) => sum + u.depositBalance, 0);
-  const totalBaseProfitBasis = users.reduce((sum, u) => sum + u.baseProfit, 0);
   const totalProfitDistributed = users.reduce((sum, u) => sum + u.profit, 0);
   const totalOverallBalance = users.reduce((sum, u) => sum + u.balance, 0);
 
@@ -200,9 +182,6 @@ export function ProfitAdminPage() {
         toast.success(
           data.message ||
             `Profit harian ${rateNum}% berhasil diterapkan ke ${data.affectedCount || "semua"} user!`,
-          {
-            description: "Persentase harian hanya dihitung terhadap nominal basis profit.",
-          },
         );
         void fetchUsersAndSettings();
       } else {
@@ -212,42 +191,6 @@ export function ProfitAdminPage() {
       toast.error("Terjadi kesalahan sistem saat menerapkan profit harian");
     } finally {
       setApplyingRate(false);
-    }
-  };
-
-  // Submit Base Profit Basis Edit
-  const handleSaveBaseProfit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editBaseUser) return;
-    const baseValUSD = parseFloat(baseProfitInputUSD);
-    if (isNaN(baseValUSD) || baseValUSD < 0) {
-      toast.error("Nominal basis profit tidak valid");
-      return;
-    }
-
-    setSubmittingBaseProfit(true);
-    try {
-      const res = await secureFetch("/api/admin/profit/update-base-profit", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editBaseUser.id,
-          baseProfit: baseValUSD,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        toast.success(data.message || "Basis profit berhasil diperbarui!");
-        setEditBaseUser(null);
-        void fetchUsersAndSettings();
-      } else {
-        toast.error(data.message || "Gagal memperbarui basis profit");
-      }
-    } catch {
-      toast.error("Terjadi kesalahan jaringan");
-    } finally {
-      setSubmittingBaseProfit(false);
     }
   };
 
@@ -295,11 +238,11 @@ export function ProfitAdminPage() {
   return (
     <AdminLayout
       title="Kelola Profit Trading User"
-      subtitle="Atur persentase profit harian global, nominal basis profit, dan penyaluran profit instan"
+      subtitle="Atur persentase profit harian global dan penyaluran profit instan ke trader"
     >
       <div className="flex flex-col gap-6">
         {/* Metric Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold text-muted-foreground">
@@ -330,25 +273,6 @@ export function ProfitAdminPage() {
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 ~ {formatRupiah(totalDepositBalance)}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-amber-500/30 bg-amber-500/5 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                Nominal Basis Profit (10%)
-              </CardTitle>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                <Percent className="h-4 w-4" />
-              </span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
-                {formatUSD(totalBaseProfitBasis)}
-              </div>
-              <p className="mt-1 text-[11px] font-medium text-amber-700/80 dark:text-amber-400/80">
-                ~ {formatRupiah(totalBaseProfitBasis)}
               </p>
             </CardContent>
           </Card>
@@ -425,13 +349,9 @@ export function ProfitAdminPage() {
                   Ketentuan Perhitungan Profit Harian:
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Ketika user deposit <strong>Rp 1.000.000</strong> dan disetujui, user langsung
-                  mendapatkan nominal basis profit 10% = <strong>Rp 100.000</strong>. Persentase
-                  profit harian di bawah ini (misal 5% atau 15%){" "}
-                  <strong className="text-amber-600 dark:text-amber-400 underline">
-                    HANYA dihitung dari nominal profit basis Rp 100.000 tersebut
-                  </strong>
-                  , BUKAN dari nominal deposit Rp 1 Juta.
+                  Persentase profit harian di bawah ini (misal 5% atau 15%) dihitung langsung dari
+                  saldo deposit pokok aktif trader. Deposit yang disetujui masuk murni sebagai saldo
+                  deposit pokok tanpa profit instan di awal.
                 </p>
               </div>
             </div>
@@ -557,11 +477,6 @@ export function ProfitAdminPage() {
                       <TableHead className="w-[90px]">ID User</TableHead>
                       <TableHead>Trader / Akun</TableHead>
                       <TableHead className="text-right">Saldo Deposit Utama</TableHead>
-                      <TableHead className="text-right bg-amber-500/5">
-                        <div className="flex items-center justify-end gap-1 text-amber-700 dark:text-amber-400">
-                          <span>Basis Profit Nominal (10%)</span>
-                        </div>
-                      </TableHead>
                       <TableHead className="text-right">
                         Estimasi Profit Hari Ini ({currentRateNum}%)
                       </TableHead>
@@ -573,7 +488,7 @@ export function ProfitAdminPage() {
                   <TableBody>
                     {filteredUsers.map((user) => {
                       const estimatedDailyGainUSD =
-                        Math.round(user.baseProfit * (currentRateNum / 100) * 100) / 100;
+                        Math.round(user.depositBalance * (currentRateNum / 100) * 100) / 100;
                       return (
                         <TableRow key={user.id} className="hover:bg-muted/30">
                           <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
@@ -593,29 +508,6 @@ export function ProfitAdminPage() {
                             <div>{formatUSD(user.depositBalance)}</div>
                             <div className="text-[10px] text-muted-foreground">
                               {formatRupiah(user.depositBalance)}
-                            </div>
-                          </TableCell>
-
-                          {/* Basis Profit Basis Column */}
-                          <TableCell className="text-right font-bold text-amber-600 dark:text-amber-400 bg-amber-500/5 text-sm">
-                            <div className="flex items-center justify-end gap-1">
-                              <span>{formatUSD(user.baseProfit)}</span>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditBaseUser(user);
-                                  setBaseProfitInputUSD(String(user.baseProfit));
-                                  setBaseProfitInputIDR(String(user.baseProfit * 16000));
-                                }}
-                                className="h-6 w-6 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                                title="Ubah Nominal Basis Profit User Ini"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="text-[10px] font-normal text-muted-foreground">
-                              {formatRupiah(user.baseProfit)}
                             </div>
                           </TableCell>
 
@@ -678,95 +570,6 @@ export function ProfitAdminPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Modal 1: Edit Base Profit Basis */}
-        <Dialog open={!!editBaseUser} onOpenChange={(open) => !open && setEditBaseUser(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Edit className="h-4 w-4" />
-                </span>
-                <div>
-                  <DialogTitle className="text-base font-bold">
-                    Ubah Nominal Basis Profit
-                  </DialogTitle>
-                  <DialogDescription className="text-xs">
-                    Persentase profit harian (misal 5%) akan dihitung dari nominal basis ini
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            {editBaseUser && (
-              <form onSubmit={handleSaveBaseProfit} className="flex flex-col gap-4 py-2">
-                <div className="rounded-xl border border-border/80 bg-muted/40 p-3 text-xs flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Trader:</span>
-                    <span className="font-bold text-foreground text-sm">{editBaseUser.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Saldo Deposit Utama:</span>
-                    <span className="font-semibold text-foreground">
-                      {formatUSD(editBaseUser.depositBalance)} (
-                      {formatRupiah(editBaseUser.depositBalance)})
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="baseUSD" className="text-xs font-semibold text-foreground">
-                    Nominal Basis Profit Baru ($ USD)
-                  </label>
-                  <div className="relative flex items-center">
-                    <DollarSign className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="baseUSD"
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={baseProfitInputUSD}
-                      onChange={(e) => {
-                        setBaseProfitInputUSD(e.target.value);
-                        const valNum = parseFloat(e.target.value) || 0;
-                        setBaseProfitInputIDR(String(valNum * 16000));
-                      }}
-                      className="pl-9 font-bold text-base"
-                      required
-                    />
-                  </div>
-                  {parseFloat(baseProfitInputUSD) >= 0 && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                      Setara {formatRupiah(parseFloat(baseProfitInputUSD) || 0)} IDR
-                    </p>
-                  )}
-                </div>
-
-                <DialogFooter className="mt-2 gap-2 sm:gap-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setEditBaseUser(null)}
-                    disabled={submittingBaseProfit}
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={submittingBaseProfit}
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold gap-1"
-                  >
-                    {submittingBaseProfit ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      "Simpan Basis Profit"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
 
         {/* Modal 2: Inject Custom Profit */}
         <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
