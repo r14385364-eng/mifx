@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Camera,
   Mail,
-  Phone,
   ShieldCheck,
   User,
   LogOut,
@@ -29,7 +28,7 @@ export const Route = createFileRoute("/profil")({
       { title: "Profil — Gotrade" },
       {
         name: "description",
-        content: "Kelola data diri, email, nomor handphone, dan keamanan akun Gotrade Anda.",
+        content: "Kelola data diri, email, dan keamanan akun Gotrade Anda.",
       },
     ],
   }),
@@ -87,7 +86,6 @@ function ProfilePage() {
 
   const displayName = user?.name || "Pengguna Gotrade";
   const displayEmail = user?.email || "Belum masuk akun";
-  const displayPhone = user?.phone || "+62 821-1178-1198";
   const displayAccountNumber = user?.accountNumber || "1006568912";
   const displayBalance =
     user?.balance != null
@@ -197,7 +195,6 @@ function ProfilePage() {
         <Section title="Informasi Akun">
           <FieldRow icon={User} label="Nama Lengkap" value={displayName} editable />
           <FieldRow icon={Mail} label="Email Terdaftar" value={displayEmail} editable />
-          <FieldRow icon={Phone} label="Nomor Handphone" value={displayPhone} editable />
         </Section>
 
         <Section title="Keamanan & Status">
