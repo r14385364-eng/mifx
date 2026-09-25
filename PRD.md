@@ -50,7 +50,9 @@ Aplikasi ini dirancang dengan antarmuka yang sangat responsif, intuitif, serta d
 - **RESTful Endpoints** terproteksi menggunakan token sesi berbasis `Authorization: Bearer <token>` dan HttpOnly session cookies (`gotrade_session`).
 - **Security Headers & Defense-in-Depth**: Perlindungan terhadap sniffing (`X-Content-Type-Options: nosniff`), proteksi framing (`X-Frame-Options: SAMEORIGIN`), isolasi origin (`Referrer-Policy: strict-origin-when-cross-origin`), sanitasi payload, serta pembatasan laju permintaan (_Rate Limiting_).
 - **Audit Logs Table**: Pencatatan riwayat setiap aksi administratif dan kejadian keamanan sistem ke tabel `audit_logs`.
-- **Database Engine**: Driver `pg` (PostgreSQL) dengan sistem **Seamless Fallback** ke **In-Memory PostgreSQL Engine (`pg-mem`)** dan disk store JSON (`/.data/db_store.json`) untuk menjamin ketersediaan server 100% tanpa hambatan konektivitas lokal/remote.
+- **Database Engine & Seeders**: Driver `pg` (PostgreSQL) dengan sistem **Seamless Fallback** ke **In-Memory PostgreSQL Engine (`pg-mem`)** dan disk store JSON (`/.data/db_store.json`). Dilengkapi skrip seeding data mandiri:
+  - `npm run db:seed`: Seeding akun pengguna trader (`user@gotrade.com`) & super administrator (`admin@gotrade.com`).
+  - `npm run seed:news`: Seeding 9 artikel berita hardcoded lengkap (`scripts/seed-news.ts`) ke database dan disk store.
 
 ---
 
@@ -485,6 +487,7 @@ Semua fitur, menu, halaman, dan sistem keamanan platform Gotrade telah diverifik
 6. **Rekening Tujuan Deposit Dinamis**: Rekening resmi **Keb Hana Bank**, No Rekening: `11628950560`, a/n **AKSAY S.PUTRA** telah terintegrasi di halaman `/deposit` dan dapat di-CRUD secara dinamis oleh Administrator pada menu `/admin/pengaturan`.
 7. **CRUD Sumber Dana Deposit**: Pilihan Rekening / E-Wallet Sumber Dana Deposit pada halaman `/deposit` telah dapat di-CRUD (tambah, edit, status aktif, hapus) di panel pengaturan admin.
 8. **CRUD Contact Person AKSAY**: Komponen Gotrade Dedicated Account Support atas nama **AKSAY** dengan nomor WhatsApp `082329157278` telah terhubung dinamis di halaman `/lainnya` dan dapat di-CRUD secara penuh di `/admin/pengaturan`.
-9. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (270+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
+9. **Seeder Berita Mandiri (`npm run seed:news`)**: 9 artikel berita hardcoded lengkap telah diabadikan dalam `scripts/seed-news.ts` dan dapat di-seed kapan pun ke database server maupun disk store melalui perintah `npm run seed:news`.
+10. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (270+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
 
 Aplikasi Gotrade dinyatakan berada dalam status **Production-Ready** dengan integritas fungsional, performa tinggi, dan tingkat keamanan enterprise.
