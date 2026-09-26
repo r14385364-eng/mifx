@@ -409,6 +409,17 @@ async function runMasterTestSuite() {
       throw new Error("Reward catalog insufficient");
     }
     chosenReward = data.rewards.find((r) => r.points_required === 8) || data.rewards[0];
+    if (chosenReward.stock <= 0) {
+      await fetch(`${baseUrl}/api/admin/rewards`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({ id: chosenReward.id, stock: 20 }),
+      });
+      chosenReward.stock = 20;
+    }
   });
 
   await test("User redeems Apple Watch Series 10 (8 Points)", async () => {
@@ -425,7 +436,10 @@ async function runMasterTestSuite() {
         notes: "Mohon kirimkan warna Jet Black",
       }),
     });
-    if (!res.ok) throw new Error(`Redeem failed: ${res.status}`);
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error(`Redeem failed: ${res.status} - ${errBody}`);
+    }
     const data = (await res.json()) as {
       success?: boolean;
       message?: string;

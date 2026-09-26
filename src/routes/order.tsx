@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowDownToLine, Bell, ChevronRight, History, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AppLogo } from "@/components/AppLogo";
