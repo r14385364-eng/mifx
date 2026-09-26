@@ -23,9 +23,13 @@ export const Route = createFileRoute("/order")({
 });
 
 function OrderPage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const { unreadCount } = useNotifications();
+
+  useEffect(() => {
+    void refreshProfile?.();
+  }, [refreshProfile]);
 
   const rawBalance = user?.balance != null ? Number(user.balance) : 0;
   const rawProfit = user?.profit != null ? Number(user.profit) : 0;

@@ -160,6 +160,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initialToken = getInitialToken();
     void fetchProfile(initialToken);
+
+    const onFocus = () => {
+      const curToken = getInitialToken();
+      if (curToken) {
+        void fetchProfile(curToken);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [fetchProfile]);
 
   const login = async (email: string, password: string) => {

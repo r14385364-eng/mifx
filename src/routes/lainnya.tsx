@@ -116,10 +116,14 @@ function HeaderLogo() {
 
 export function LainnyaPage() {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, refreshProfile } = useAuth();
 
   // Dynamic user data & states
   const [demoBalance, setDemoBalance] = useState<number>(user?.balance ?? 0);
+
+  useEffect(() => {
+    void refreshProfile?.();
+  }, [refreshProfile]);
 
   useEffect(() => {
     if (user?.balance !== undefined && user?.balance !== null) {
@@ -342,8 +346,8 @@ export function LainnyaPage() {
 
   const currentBalance = Number(user?.balance ?? demoBalance ?? 0);
   const currentProfit = Number(user?.profit ?? 0);
-  const currentEquity = Math.max(0, currentBalance + currentProfit);
-  const hasFunds = currentBalance > 0 || currentEquity > 0;
+  const currentEquity = currentProfit;
+  const hasFunds = currentBalance > 0 || currentProfit > 0;
 
   const formattedBalance = `$${currentBalance.toLocaleString("en-US", {
     minimumFractionDigits: 2,

@@ -99,9 +99,20 @@ function Logo() {
 }
 
 function AccountCard() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [dailyRate, setDailyRate] = useState<number>(5);
   const [infoModal, setInfoModal] = useState<{ title: string; desc: string } | null>(null);
+
+  useEffect(() => {
+    void refreshProfile?.();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshProfile?.();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refreshProfile]);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -115,9 +126,9 @@ function AccountCard() {
       .catch(() => {});
   }, []);
 
-  const rawBalance = user?.balance != null ? Number(user.balance) : 0; // Total Saldo Gabungan
+  const rawBalance = user?.balance != null ? Number(user.balance) : 0; // Total Saldo Gabungan (Deposit + Profit)
   const rawProfit = user?.profit != null ? Number(user.profit) : 0; // Akumulasi Profit Total
-  const depositBalance = Math.max(0, rawBalance - rawProfit);
+  const depositBalance = Math.max(0, rawBalance - rawProfit); // Saldo Deposit Utama
   const estimatedDailyGain = Math.round(depositBalance * (dailyRate / 100) * 100) / 100; // Estimasi Profit Hari Ini
 
   const formattedBalance = `$${rawBalance.toLocaleString("en-US", {
@@ -128,7 +139,11 @@ function AccountCard() {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-  const formattedFreeMargin = `$${estimatedDailyGain.toLocaleString("en-US", {
+  const formattedFreeMargin = `$${depositBalance.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const formattedMargin = `$${estimatedDailyGain.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -161,8 +176,8 @@ function AccountCard() {
             type="button"
             onClick={() =>
               setInfoModal({
-                title: "Free Margin (Estimasi Profit Hari Ini)",
-                desc: `Estimasi pertambahan profit trading hari ini sebesar $${estimatedDailyGain.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} dihitung berdasarkan rate profit harian global (${dailyRate}%).`,
+                title: "Free Margin (Saldo Deposit Utama)",
+                desc: `Saldo modal deposit pokok aktif yang telah disetujui sebesar $${depositBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
               })
             }
             className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 hover:text-foreground text-left cursor-pointer transition-colors"
@@ -172,13 +187,13 @@ function AccountCard() {
           </button>
         </div>
         <div>
-          <p className="font-bold text-foreground tabular-nums">$0.00</p>
+          <p className="font-bold text-foreground tabular-nums">{formattedMargin}</p>
           <button
             type="button"
             onClick={() =>
               setInfoModal({
-                title: "Margin",
-                desc: "Jumlah jaminan margin dana saat posisi trading sedang aktif terbuka.",
+                title: `Margin (Estimasi Profit Hari Ini ${dailyRate}%)`,
+                desc: `Estimasi pertambahan profit trading hari ini sebesar $${estimatedDailyGain.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} dihitung berdasarkan rate profit harian (${dailyRate}%).`,
               })
             }
             className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 hover:text-foreground text-left cursor-pointer transition-colors"

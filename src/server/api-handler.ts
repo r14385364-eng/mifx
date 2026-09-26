@@ -2605,7 +2605,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           "SELECT * FROM user_bank_accounts WHERE user_id = $1 ORDER BY is_primary DESC, id ASC",
           [user.id],
         );
-        return jsonResponse({ success: true, bankAccounts });
+        return jsonResponse({ success: true, bankAccounts, accounts: bankAccounts });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error fetching bank accounts";
         return jsonResponse({ success: false, message }, 500);
@@ -2671,6 +2671,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           success: true,
           message: "Rekening bank berhasil ditambahkan.",
           bankAccount: inserted[0],
+          account: inserted[0],
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error adding bank account";
@@ -2737,13 +2738,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
            SET bank_name = $1, account_number = $2, account_holder = $3, is_primary = $4, updated_at = CURRENT_TIMESTAMP
            WHERE id = $5 AND user_id = $6
            RETURNING *`,
-          [bankName, accountNumber, accountHolder, isPrimary, body.id, user.id],
+          [bankName, accountNumber, accountHolder, isPrimary, targetId, user.id],
         );
 
         return jsonResponse({
           success: true,
           message: "Rekening bank berhasil diperbarui.",
           bankAccount: updated[0],
+          account: updated[0],
         });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Error updating bank account";
@@ -2754,7 +2756,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // DELETE: Delete a bank account
     if (request.method === "DELETE") {
       try {
-        const urlObj = new URL(request.url);
+        const urlObj = new URL(request.url, "http://localhost:3000");
         const idParam = urlObj.searchParams.get("id");
         let id = idParam ? parseInt(idParam, 10) : null;
         if (!id) {

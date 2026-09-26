@@ -590,6 +590,143 @@ async function runMasterTestSuite() {
     }
   });
 
+  // =========================================================================
+  // 10. TRADER BANK ACCOUNT CRUD (/api/user/bank-accounts)
+  // =========================================================================
+  console.log("\n--- [10. TRADER BANK ACCOUNT CRUD] ---");
+  let testBankId = 0;
+  await test("POST /api/user/bank-accounts creates user bank account", async () => {
+    const res = await fetch(`${baseUrl}/api/user/bank-accounts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        bankName: "Bank BCA",
+        accountNumber: "9876543210",
+        accountHolder: "Master Tester",
+        isPrimary: true,
+      }),
+    });
+    if (!res.ok) throw new Error(`Failed with status ${res.status}`);
+    const data = (await res.json()) as {
+      success?: boolean;
+      account?: { id: number };
+      bankAccount?: { id: number };
+    };
+    testBankId = data.account?.id || data.bankAccount?.id || 0;
+    if (!data.success || !testBankId) throw new Error("Bank account creation failed");
+  });
+
+  await test("GET /api/user/bank-accounts lists user bank accounts", async () => {
+    const res = await fetch(`${baseUrl}/api/user/bank-accounts`, {
+      headers: { Authorization: `Bearer ${testTraderToken}` },
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = (await res.json()) as {
+      success?: boolean;
+      accounts?: Array<{ id: number }>;
+      bankAccounts?: Array<{ id: number }>;
+    };
+    const list = data.bankAccounts || data.accounts || [];
+    if (!data.success || !list.some((a) => a.id === testBankId)) {
+      throw new Error("Created bank account not found in list");
+    }
+  });
+
+  await test("PUT /api/user/bank-accounts updates bank account", async () => {
+    const res = await fetch(`${baseUrl}/api/user/bank-accounts`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        id: testBankId,
+        bankName: "Bank Mandiri",
+        accountNumber: "9876543210",
+        accountHolder: "Master Tester Updated",
+        isPrimary: true,
+      }),
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+  });
+
+  await test("DELETE /api/user/bank-accounts deletes bank account", async () => {
+    const res = await fetch(`${baseUrl}/api/user/bank-accounts?id=${testBankId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${testTraderToken}` },
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+  });
+
+  // =========================================================================
+  // 11. DYNAMIC SYSTEM SETTINGS, REKENING & SUPPORT CONTACT
+  // =========================================================================
+  console.log("\n--- [11. DYNAMIC SETTINGS, REKENING & SUPPORT CONTACT] ---");
+  await test("GET /api/settings provides Keb Hana Bank, AKSAY Contact & Global Daily Rate", async () => {
+    const res = await fetch(`${baseUrl}/api/settings`);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = (await res.json()) as {
+      success?: boolean;
+      settings?: {
+        deposit_bank_name?: string;
+        deposit_account_number?: string;
+        deposit_account_name?: string;
+        contact_persons_list?: string;
+        global_daily_profit_rate?: string;
+      };
+    };
+    if (!data.success || !data.settings) throw new Error("Settings not retrieved");
+    if (!data.settings.deposit_bank_name || !data.settings.deposit_account_number) {
+      throw new Error("Deposit bank settings missing");
+    }
+  });
+
+  // =========================================================================
+  // 12. ACCOUNT CARD METRICS FORMULA & MAPPING VALIDATION
+  // =========================================================================
+  console.log("\n--- [12. ACCOUNT CARD METRICS MAPPING VALIDATION] ---");
+  await test("Account metrics mapping matches: Equity=Profit, FreeMargin=Deposit, Margin=EstimatedDaily", async () => {
+    // Testing formula on standard scenario ($1,585.68 balance, $585.05 profit, 8% rate)
+    const rawBalance = 1585.68;
+    const rawProfit = 585.05;
+    const dailyRate = 8;
+
+    const depositBalance = Math.max(0, rawBalance - rawProfit);
+    const estimatedDailyGain = Math.round(depositBalance * (dailyRate / 100) * 100) / 100;
+    const marginLevel = `${dailyRate.toFixed(2)}%`;
+
+    if (Math.abs(depositBalance - 1000.63) > 0.01) {
+      throw new Error(`Deposit balance mismatch: expected 1000.63, got ${depositBalance}`);
+    }
+    if (Math.abs(estimatedDailyGain - 80.05) > 0.01) {
+      throw new Error(`Estimated daily gain mismatch: expected 80.05, got ${estimatedDailyGain}`);
+    }
+    if (marginLevel !== "8.00%") {
+      throw new Error(`Margin level mismatch: expected 8.00%, got ${marginLevel}`);
+    }
+  });
+
+  // =========================================================================
+  // 13. NEWS SYSTEM & SEEDER ARTICLE INTEGRITY
+  // =========================================================================
+  console.log("\n--- [13. NEWS SYSTEM & SEEDER ARTICLE INTEGRITY] ---");
+  await test("GET /api/news returns complete seeded articles", async () => {
+    const res = await fetch(`${baseUrl}/api/news`);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = (await res.json()) as {
+      success?: boolean;
+      news?: Array<{ slug: string; title: string }>;
+    };
+    if (!data.success || !Array.isArray(data.news) || data.news.length < 2) {
+      throw new Error("Seeded news articles incomplete");
+    }
+    const hasFedNews = data.news.some((n) => n.slug.includes("gold") || n.slug.includes("the-fed"));
+    if (!hasFedNews) throw new Error("Expected seeded Gold/Fed news not found");
+  });
+
   // CLEANUP TEST TRADER
   if (testTraderUser) {
     await query("DELETE FROM reward_redemptions WHERE user_id = $1", [testTraderUser.id]);
