@@ -203,7 +203,7 @@ function DepositPage() {
       try {
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch("/api/user/withdrawal-limit", { headers });
+        const res = await fetch("/api/user/withdrawal-limit", { headers, credentials: "include" });
         const data = await res.json();
         if (res.ok && data.success && data.limit) {
           setWithdrawalInfo(data.limit);

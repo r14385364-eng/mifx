@@ -42,7 +42,7 @@ function formatRupiah(value: number) {
 }
 
 function WithdrawPage() {
-  const { user, token } = useAuth();
+  const { user, token, refreshProfile } = useAuth();
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [destination, setDestination] = useState("");
@@ -77,7 +77,12 @@ function WithdrawPage() {
   } | null>(null);
 
   useEffect(() => {
-    fetch("/api/user/bank-accounts")
+    void refreshProfile();
+
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    fetch("/api/user/bank-accounts", { headers, credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.bankAccounts) && data.bankAccounts.length > 0) {
@@ -104,9 +109,7 @@ function WithdrawPage() {
       .catch(() => {});
 
     // Fetch withdrawal limit & daily quota status
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    fetch("/api/user/withdrawal-limit", { headers })
+    fetch("/api/user/withdrawal-limit", { headers, credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.limit) {
@@ -114,7 +117,7 @@ function WithdrawPage() {
         }
       })
       .catch(() => {});
-  }, [token]);
+  }, [token, refreshProfile]);
 
   const handleBankSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
