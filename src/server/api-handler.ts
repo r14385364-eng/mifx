@@ -920,11 +920,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         const totalBalanceUSD = Number(user.balance || 0);
         const totalBalanceIDR = totalBalanceUSD * 16000;
-        const rawProfitUSD = Number(user.profit || 0);
-        const profitUSD = rawProfitUSD > 0 ? rawProfitUSD : totalBalanceUSD;
+        const profitUSD = Number(user.profit || 0); // Strictly Akumulasi Profit Total (/admin/profit)
         const profitIDR = profitUSD * 16000;
 
-        // 10% dari Akumulasi Profit Total (jika ada profit, basis profit; jika belum ada profit, basis saldo)
+        // 10% dari Akumulasi Profit Total pada data /admin/profit
         const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
         const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
         const minWithdrawalIDR = 100000;
@@ -1166,7 +1165,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // Balance & Profit Validation for Withdrawal (Maks. 10% dari Akumulasi Profit Total, Maks 1x/hari)
+          // Balance & Profit Validation for Withdrawal (Maks. 10% dari Akumulasi Profit Total pada data /admin/profit, Maks 1x/hari)
           const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
             currentUser.id,
           ]);
@@ -1174,15 +1173,24 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             freshUserRows.length > 0
               ? Number(freshUserRows[0].balance || 0)
               : Number(currentUser.balance || 0);
-          const rawProfitUSD =
+          const profitUSD =
             freshUserRows.length > 0
               ? Number(freshUserRows[0].profit || 0)
               : Number(currentUser.profit || 0);
-
-          const effectiveProfitUSD = rawProfitUSD > 0 ? rawProfitUSD : userBalanceUSD;
-          const effectiveProfitIDR = effectiveProfitUSD * 16000;
+          const profitIDR = profitUSD * 16000;
 
           const amountUSD = numericAmount / 16000;
+
+          if (profitUSD <= 0) {
+            return jsonResponse(
+              {
+                success: false,
+                message:
+                  "Penarikan gagal. Anda belum memiliki Akumulasi Profit Total di akun trading Anda. Penarikan dana hanya dapat dilakukan dari data Akumulasi Profit Total pada halaman /admin/profit (maksimal 10% per hari).",
+              },
+              400,
+            );
+          }
 
           if (userBalanceUSD <= 0 || numericAmount <= 0) {
             return jsonResponse(
@@ -1227,17 +1235,16 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // 2. RULE: Penarikan hanya bisa maksimal 10% dari Akumulasi Profit Total
-          // (Contoh: jika akumulasi profit/saldo 1 juta maka hanya bisa tarik maksimal 100 ribu)
-          const maxWithdrawableUSD = Math.round(effectiveProfitUSD * 0.1 * 100) / 100;
-          const maxWithdrawableIDR = Math.floor(effectiveProfitIDR * 0.1);
+          // 2. RULE: Penarikan hanya bisa maksimal 10% dari Akumulasi Profit Total pada data /admin/profit
+          const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
+          const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
 
           // Berikan toleransi pembulatan $0.05 USD (~Rp 800) untuk konversi kurs
           if (amountUSD > maxWithdrawableUSD + 0.05) {
             return jsonResponse(
               {
                 success: false,
-                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari akumulasi profit akun Anda per hari (contoh: jika saldo 1 juta maka hanya bisa tarik maksimal 100 ribu). Akumulasi profit Anda saat ini: Rp${effectiveProfitIDR.toLocaleString("id-ID")} ($${effectiveProfitUSD.toFixed(2)} USD). Batas penarikan maksimal hari ini: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
+                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari Akumulasi Profit Total akun Anda per hari (data di /admin/profit). Akumulasi Profit Total Anda saat ini: Rp${profitIDR.toLocaleString("id-ID")} ($${profitUSD.toFixed(2)} USD). Batas penarikan maksimal hari ini: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
               },
               400,
             );

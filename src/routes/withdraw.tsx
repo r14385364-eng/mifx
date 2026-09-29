@@ -134,9 +134,7 @@ function WithdrawPage() {
   };
 
   const totalBalanceUSD = user?.balance ?? 0;
-  const rawProfitUSD = Number(user?.profit ?? 0);
-  const profitUSD =
-    withdrawalLimit?.profitUSD ?? (rawProfitUSD > 0 ? rawProfitUSD : totalBalanceUSD);
+  const profitUSD = withdrawalLimit?.profitUSD ?? Number(user?.profit || 0);
   const profitRupiah = withdrawalLimit?.profitIDR ?? profitUSD * 16000;
   const maxWithdrawableUSD =
     withdrawalLimit?.maxWithdrawableUSD ?? Math.round(profitUSD * 0.1 * 100) / 100;
@@ -151,12 +149,13 @@ function WithdrawPage() {
       next["amount"] =
         "Batas penarikan 1 kali sehari. Anda sudah mengajukan penarikan hari ini (kuota di-reset pukul 00:00 WIB).";
     } else if (profitUSD <= 0) {
-      next["amount"] = "Akumulasi profit Anda belum mencukupi untuk melakukan penarikan dana.";
+      next["amount"] =
+        "Anda belum memiliki Akumulasi Profit Total di halaman /admin/profit untuk ditarik.";
     } else if (!numericAmount || numericAmount < 100000) {
       next["amount"] = "Minimal penarikan Rp100.000 IDR (setara $6.25 USD)";
     } else if (numericAmount > maxWithdrawableRupiah) {
       next["amount"] =
-        `Penarikan melebihi batas maksimal 10% dari akumulasi profit (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
+        `Penarikan melebihi batas maksimal 10% dari Akumulasi Profit Total (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
     }
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
@@ -295,42 +294,18 @@ function WithdrawPage() {
 
             <button
               type="button"
-              onClick={() => setAmount(String(maxWithdrawableRupiah))}
+              onClick={() => {
+                setAmount(String(maxWithdrawableRupiah));
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy["amount"];
+                  return copy;
+                });
+              }}
               disabled={maxWithdrawableRupiah <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
               className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Tarik Maks. 10%
-            </button>
-          </div>
-
-          {/* Quick Amount Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-            <span className="text-[11px] text-muted-foreground font-medium mr-1">
-              Pilihan Cepat:
-            </span>
-            <button
-              type="button"
-              onClick={() => setAmount(String(maxWithdrawableRupiah))}
-              disabled={maxWithdrawableRupiah <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
-              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
-            >
-              10% (Maksimal)
-            </button>
-            <button
-              type="button"
-              onClick={() => setAmount(String(Math.floor(profitRupiah * 0.05)))}
-              disabled={profitRupiah * 0.05 < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
-              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
-            >
-              5% Profit
-            </button>
-            <button
-              type="button"
-              onClick={() => setAmount("100000")}
-              disabled={maxWithdrawableRupiah < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
-              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
-            >
-              Min. Rp 100 Rb
             </button>
           </div>
         </section>
@@ -390,17 +365,50 @@ function WithdrawPage() {
 
           {/* Nominal */}
           <div>
-            <label htmlFor="amount" className="text-xs font-medium text-foreground">
-              Jumlah Penarikan (IDR)
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="amount" className="text-xs font-medium text-foreground">
+                Jumlah Penarikan (IDR)
+              </label>
+              <span className="text-[11px] text-muted-foreground font-medium">
+                Maks. 10%:{" "}
+                <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
+                  {formatRupiah(maxWithdrawableRupiah)}
+                </strong>
+              </span>
+            </div>
             <div className="mt-1.5 flex items-center rounded-lg border bg-background px-3 focus-within:border-primary">
               <span className="text-sm font-semibold text-muted-foreground">Rp</span>
               <input
                 id="amount"
                 inputMode="numeric"
-                placeholder="0"
+                placeholder={
+                  maxWithdrawableRupiah > 0 ? maxWithdrawableRupiah.toLocaleString("id-ID") : "0"
+                }
                 value={amount ? Number(amount).toLocaleString("id-ID") : ""}
-                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => {
+                  const rawVal = e.target.value.replace(/\D/g, "");
+                  const numVal = Number(rawVal);
+                  if (maxWithdrawableRupiah > 0 && numVal > maxWithdrawableRupiah) {
+                    setAmount(String(maxWithdrawableRupiah));
+                    setErrors((prev) => {
+                      const copy = { ...prev };
+                      delete copy["amount"];
+                      return copy;
+                    });
+                    toast.warning(
+                      `Nominal otomatis dibatasi maksimal 10% dari Akumulasi Profit Total (${formatRupiah(maxWithdrawableRupiah)})`,
+                    );
+                  } else {
+                    setAmount(rawVal);
+                    if (errors["amount"]) {
+                      setErrors((prev) => {
+                        const copy = { ...prev };
+                        delete copy["amount"];
+                        return copy;
+                      });
+                    }
+                  }
+                }}
                 className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -508,6 +516,7 @@ function WithdrawPage() {
             disabled={
               isSubmitting ||
               withdrawalLimit?.alreadyWithdrawnToday ||
+              profitUSD <= 0 ||
               maxWithdrawableRupiah < 100000
             }
             className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -516,9 +525,11 @@ function WithdrawPage() {
               ? "Memproses Penarikan..."
               : withdrawalLimit?.alreadyWithdrawnToday
                 ? "Kuota Penarikan Hari Ini Sudah Digunakan (Maks 1x/Hari)"
-                : maxWithdrawableRupiah < 100000
-                  ? "Profit Belum Mencukupi Min. Rp100.000 (10%)"
-                  : "Ajukan Penarikan"}
+                : profitUSD <= 0
+                  ? "Belum Ada Akumulasi Profit Total untuk Ditarik"
+                  : maxWithdrawableRupiah < 100000
+                    ? "Profit Belum Mencukupi Min. Rp100.000 (10%)"
+                    : "Ajukan Penarikan"}
           </button>
         </form>
       </main>
