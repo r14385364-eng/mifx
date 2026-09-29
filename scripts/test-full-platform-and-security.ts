@@ -535,7 +535,7 @@ async function runFullPlatformAndSecurityTest() {
     if (res.ok) throw new Error("Withdrawal below minimum should be rejected");
   });
 
-  await test("Reject withdrawal exceeding profit balance ($600 > $500 profit)", async () => {
+  await test("Reject withdrawal exceeding balance ($3000 > $2500 balance)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -544,15 +544,15 @@ async function runFullPlatformAndSecurityTest() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 9600000, // $600 USD (exceeds $500 profit)
+        amount: 48000000, // $3000 USD (exceeds $2500 balance)
         channel: "Bank Mandiri",
         destination: "1122334455",
       }),
     });
-    if (res.ok) throw new Error("Withdrawal exceeding profit must be rejected");
+    if (res.ok) throw new Error("Withdrawal exceeding balance must be rejected");
   });
 
-  await test("Reject withdrawal exceeding 10% profit limit ($300 > $50 limit)", async () => {
+  await test("Reject withdrawal exceeding 10% balance limit ($500 > $250 limit)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -561,16 +561,16 @@ async function runFullPlatformAndSecurityTest() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 4800000, // $300 (exceeds $50 limit)
+        amount: 8000000, // $500 (exceeds $250 limit)
         channel: "Bank Mandiri",
         destination: "1122334455",
       }),
     });
-    if (res.ok) throw new Error("Withdrawal exceeding 10% profit must be rejected");
+    if (res.ok) throw new Error("Withdrawal exceeding 10% limit must be rejected");
   });
 
   let withdrawTxId = "";
-  await test("Submit valid Withdrawal within 10% profit limit (Rp 800,000 IDR = $50 USD)", async () => {
+  await test("Submit valid Withdrawal within 10% balance limit (Rp 800,000 IDR = $50 USD)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -579,7 +579,7 @@ async function runFullPlatformAndSecurityTest() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 800000, // $50 (10% of $500 profit)
+        amount: 800000, // $50 (within $250 limit)
         channel: "Bank Mandiri",
         destination: "1122334455 (Audit Trader Mandiri)",
       }),

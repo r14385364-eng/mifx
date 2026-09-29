@@ -762,7 +762,7 @@ function DepositPage() {
               </div>
             </div>
 
-            {/* Rule 2: Maksimal 10% Profit */}
+            {/* Rule 2: Maksimal 10% Akumulasi Profit */}
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-1.5">
@@ -771,22 +771,23 @@ function DepositPage() {
                 </div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
                   Pencairan dana dibatasi maksimal{" "}
-                  <strong className="text-foreground">10% dari total Akumulasi Profit</strong> Anda
-                  pada setiap pengajuan penarikan.
+                  <strong className="text-foreground">10% dari akumulasi profit</strong> akun Anda
+                  (contoh: jika saldo/profit Rp 1.000.000 maka hanya bisa tarik maksimal Rp
+                  100.000).
                 </p>
               </div>
             </div>
 
-            {/* Rule 3: 100% Modal Pokok Terlindungi */}
+            {/* Rule 3: Keamanan Likuiditas & Modal */}
             <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 mb-1.5">
                   <Wallet className="h-4 w-4 shrink-0" />
-                  <span className="text-xs font-bold">100% Modal Pokok</span>
+                  <span className="text-xs font-bold">Keamanan Modal</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Deposit 100% utuh sebagai modal pokok aktif (Free Margin). Penarikan dana diambil
-                  murni dari akumulasi profit harian.
+                  Menjaga ketahanan modal akun dan likuiditas trading tetap stabil serta terlindungi
+                  secara terukur setiap hari.
                 </p>
               </div>
             </div>
@@ -825,13 +826,14 @@ function DepositPage() {
                   {withdrawalInfo ? formatRupiah(withdrawalInfo.profitIDR) : "Rp 0"}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  (${withdrawalInfo?.profitUSD ? withdrawalInfo.profitUSD.toFixed(2) : "0.00"} USD)
+                  ($
+                  {withdrawalInfo?.profitUSD ? withdrawalInfo.profitUSD.toFixed(2) : "0.00"} USD)
                 </span>
               </div>
 
               <div className="rounded-lg bg-background border p-2.5">
                 <span className="text-[10px] text-muted-foreground block">
-                  Batas Tarik Hari Ini (10%)
+                  Batas Tarik Hari Ini (10% Profit)
                 </span>
                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm block mt-0.5">
                   {withdrawalInfo ? formatRupiah(withdrawalInfo.maxWithdrawableIDR) : "Rp 0"}

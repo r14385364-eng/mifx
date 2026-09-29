@@ -883,7 +883,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   }
 
   // ==========================================
-  // /api/user/withdrawal-limit (Daily withdrawal status & 10% limit)
+  // /api/user/withdrawal-limit (Daily withdrawal status & 10% total balance limit)
   // ==========================================
   if (url.pathname === "/api/user/withdrawal-limit") {
     if (request.method === "GET") {
@@ -893,6 +893,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         return jsonResponse({
           success: true,
           limit: {
+            totalBalanceUSD: 0,
+            totalBalanceIDR: 0,
             profitUSD: 0,
             profitIDR: 0,
             maxWithdrawalPercent: 10,
@@ -916,8 +918,13 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         ]);
         const user = freshUserRows.length > 0 ? freshUserRows[0] : currentUser;
 
-        const profitUSD = Number(user.profit || 0);
+        const totalBalanceUSD = Number(user.balance || 0);
+        const totalBalanceIDR = totalBalanceUSD * 16000;
+        const rawProfitUSD = Number(user.profit || 0);
+        const profitUSD = rawProfitUSD > 0 ? rawProfitUSD : totalBalanceUSD;
         const profitIDR = profitUSD * 16000;
+
+        // 10% dari Akumulasi Profit Total (jika ada profit, basis profit; jika belum ada profit, basis saldo)
         const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
         const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
         const minWithdrawalIDR = 100000;
@@ -946,6 +953,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         return jsonResponse({
           success: true,
           limit: {
+            totalBalanceUSD,
+            totalBalanceIDR,
             profitUSD,
             profitIDR,
             maxWithdrawalPercent: 10,
@@ -1157,24 +1166,30 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // Balance & Profit Validation for Withdrawal
+          // Balance & Profit Validation for Withdrawal (Maks. 10% dari Akumulasi Profit Total, Maks 1x/hari)
           const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
             currentUser.id,
           ]);
-          const userProfitUSD =
+          const userBalanceUSD =
+            freshUserRows.length > 0
+              ? Number(freshUserRows[0].balance || 0)
+              : Number(currentUser.balance || 0);
+          const rawProfitUSD =
             freshUserRows.length > 0
               ? Number(freshUserRows[0].profit || 0)
               : Number(currentUser.profit || 0);
 
-          const amountUSD = numericAmount / 16000;
-          const userProfitIDR = userProfitUSD * 16000;
+          const effectiveProfitUSD = rawProfitUSD > 0 ? rawProfitUSD : userBalanceUSD;
+          const effectiveProfitIDR = effectiveProfitUSD * 16000;
 
-          if (userProfitUSD <= 0) {
+          const amountUSD = numericAmount / 16000;
+
+          if (userBalanceUSD <= 0 || numericAmount <= 0) {
             return jsonResponse(
               {
                 success: false,
                 message:
-                  "Penarikan gagal. Anda belum memiliki Akumulasi Profit yang dapat ditarik. Sesuai aturan platform Gotrade, penarikan hanya dapat dilakukan dari saldo profit. Saldo deposit pokok tidak dapat ditarik.",
+                  "Penarikan gagal. Saldo akun Anda tidak mencukupi untuk melakukan penarikan dana.",
               },
               400,
             );
@@ -1212,26 +1227,27 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // 2. RULE: Penarikan hanya bisa maksimal 10% dari total Akumulasi Profit Totalnya
-          const maxWithdrawableUSD = Math.round(userProfitUSD * 0.1 * 100) / 100;
-          const maxWithdrawableIDR = Math.floor(userProfitIDR * 0.1);
+          // 2. RULE: Penarikan hanya bisa maksimal 10% dari Akumulasi Profit Total
+          // (Contoh: jika akumulasi profit/saldo 1 juta maka hanya bisa tarik maksimal 100 ribu)
+          const maxWithdrawableUSD = Math.round(effectiveProfitUSD * 0.1 * 100) / 100;
+          const maxWithdrawableIDR = Math.floor(effectiveProfitIDR * 0.1);
 
           // Berikan toleransi pembulatan $0.05 USD (~Rp 800) untuk konversi kurs
           if (amountUSD > maxWithdrawableUSD + 0.05) {
             return jsonResponse(
               {
                 success: false,
-                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari total Akumulasi Profit Anda per hari. Total profit Anda saat ini: Rp${userProfitIDR.toLocaleString("id-ID")} ($${userProfitUSD.toFixed(2)} USD). Batas penarikan maksimal: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
+                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari akumulasi profit akun Anda per hari (contoh: jika saldo 1 juta maka hanya bisa tarik maksimal 100 ribu). Akumulasi profit Anda saat ini: Rp${effectiveProfitIDR.toLocaleString("id-ID")} ($${effectiveProfitUSD.toFixed(2)} USD). Batas penarikan maksimal hari ini: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
               },
               400,
             );
           }
 
-          if (userProfitUSD < amountUSD) {
+          if (userBalanceUSD < amountUSD) {
             return jsonResponse(
               {
                 success: false,
-                message: `Penarikan gagal. Sesuai aturan, penarikan (withdraw) hanya dapat dilakukan dari saldo Profit. Saldo profit Anda saat ini: Rp${userProfitIDR.toLocaleString("id-ID")} ($${userProfitUSD.toFixed(2)} USD). Saldo deposit awal/top-up tidak dapat ditarik.`,
+                message: `Penarikan gagal. Saldo akun Anda tidak mencukupi untuk penarikan sebesar Rp${numericAmount.toLocaleString("id-ID")}.`,
               },
               400,
             );

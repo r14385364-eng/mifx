@@ -554,7 +554,7 @@ async function runComprehensiveAudit() {
   });
 
   let wdTxId = "";
-  await test("POST /api/transactions rejects withdrawal exceeding 10% of profit (Rp 8,000,000 > Rp 800,000)", async () => {
+  await test("POST /api/transactions rejects withdrawal exceeding 10% limit (Rp 8,000,000 > Rp 4,000,000)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -563,17 +563,17 @@ async function runComprehensiveAudit() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 8000000, // exceeds 10%
+        amount: 8000000, // exceeds 10% limit of $250 / Rp 4,000,000
         channel: "Bank Mandiri",
         destination: "1234567890123 (Bank Mandiri - Overdraw)",
       }),
     });
     if (res.status !== 400) {
-      throw new Error(`Expected 400 rejection for exceeding 10% profit, got ${res.status}`);
+      throw new Error(`Expected 400 rejection for exceeding 10% limit, got ${res.status}`);
     }
   });
 
-  await test("POST /api/transactions submits valid Withdrawal within 10% profit limit (Rp 800,000 = $50 USD)", async () => {
+  await test("POST /api/transactions submits valid Withdrawal within 10% limit (Rp 800,000 = $50 USD)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {

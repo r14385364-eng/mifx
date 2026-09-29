@@ -133,10 +133,15 @@ function WithdrawPage() {
     }
   };
 
-  const profitUSD = user?.profit ?? 0;
-  const totalProfitRupiah = profitUSD * 16000;
-  const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
-  const maxWithdrawableRupiah = Math.floor(totalProfitRupiah * 0.1);
+  const totalBalanceUSD = user?.balance ?? 0;
+  const rawProfitUSD = Number(user?.profit ?? 0);
+  const profitUSD =
+    withdrawalLimit?.profitUSD ?? (rawProfitUSD > 0 ? rawProfitUSD : totalBalanceUSD);
+  const profitRupiah = withdrawalLimit?.profitIDR ?? profitUSD * 16000;
+  const maxWithdrawableUSD =
+    withdrawalLimit?.maxWithdrawableUSD ?? Math.round(profitUSD * 0.1 * 100) / 100;
+  const maxWithdrawableRupiah =
+    withdrawalLimit?.maxWithdrawableIDR ?? Math.floor(profitRupiah * 0.1);
 
   const numericAmount = Number(amount.replace(/\D/g, ""));
 
@@ -146,13 +151,12 @@ function WithdrawPage() {
       next["amount"] =
         "Batas penarikan 1 kali sehari. Anda sudah mengajukan penarikan hari ini (kuota di-reset pukul 00:00 WIB).";
     } else if (profitUSD <= 0) {
-      next["amount"] =
-        "Anda belum memiliki Akumulasi Profit yang dapat ditarik. Saldo deposit utama tidak dapat ditarik.";
+      next["amount"] = "Akumulasi profit Anda belum mencukupi untuk melakukan penarikan dana.";
     } else if (!numericAmount || numericAmount < 100000) {
       next["amount"] = "Minimal penarikan Rp100.000 IDR (setara $6.25 USD)";
     } else if (numericAmount > maxWithdrawableRupiah) {
       next["amount"] =
-        `Penarikan melebihi batas maksimal 10% dari Akumulasi Profit (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
+        `Penarikan melebihi batas maksimal 10% dari akumulasi profit (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
     }
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
@@ -245,7 +249,7 @@ function WithdrawPage() {
       </header>
 
       <main className="flex flex-col gap-5 px-4 py-4 pb-6">
-        {/* Status Kuota Harian & Aturan 10% Profit Card */}
+        {/* Status Kuota Harian & Aturan 10% Akumulasi Profit Card */}
         <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between border-b pb-3">
             <div className="flex items-center gap-2">
@@ -253,10 +257,8 @@ function WithdrawPage() {
                 <ArrowDownToLine className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-xs text-muted-foreground">Akumulasi Profit Total</p>
-                <p className="text-lg font-bold text-foreground">
-                  {formatRupiah(totalProfitRupiah)}
-                </p>
+                <p className="text-xs text-muted-foreground font-medium">Akumulasi Profit Total</p>
+                <p className="text-lg font-bold text-foreground">{formatRupiah(profitRupiah)}</p>
                 <p className="text-[11px] text-muted-foreground font-medium">
                   setara ${profitUSD.toFixed(2)} USD
                 </p>
@@ -316,8 +318,8 @@ function WithdrawPage() {
             </button>
             <button
               type="button"
-              onClick={() => setAmount(String(Math.floor(totalProfitRupiah * 0.05)))}
-              disabled={totalProfitRupiah * 0.05 < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
+              onClick={() => setAmount(String(Math.floor(profitRupiah * 0.05)))}
+              disabled={profitRupiah * 0.05 < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
               className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
             >
               5% Profit
