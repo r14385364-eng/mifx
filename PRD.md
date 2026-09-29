@@ -278,11 +278,15 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
   - **Pembersihan Komponen**: Komponen statis "Atas Nama Rekening" yang kosong telah dihapus sepenuhnya sehingga form deposit menjadi bersih dan ergonomis.
   - Batas **Minimal Deposit**: **$1,000 USD** (setara Rp 16.000.000 IDR).
   - Fitur Unggah Bukti Transfer dengan pratinjau thumbnail, perbesar layar penuh, dan kompresi client-side.
+  - **Komponen Kebijakan & Ketentuan Penarikan Resmi**: Menampilkan kartu ketentuan penarikan platform secara terperinci (Aturan penarikan maksimal 1x sehari, batas pencairan maksimal 10% dari Akumulasi Profit total, 100% deposit utuh sebagai modal pokok aktif, serta kotak status kuota penarikan akun real-time dilengkapi tautan cepat ke `/withdraw`).
 - **Withdraw / Penarikan (`/withdraw`)**:
   - Formulir penarikan dana ke rekening bank / e-wallet terdaftar milik user.
   - Pilihan dropdown otomatis dari daftar rekening bank yang disimpan di menu Informasi Bank.
   - Batas **Minimal Penarikan (WD)**: **Rp 100.000 IDR** (setara $6.25 USD).
-  - **Aturan Khusus Penarikan**: Penarikan **HANYA dapat dilakukan dari Saldo Profit**. Saldo deposit awal/pokok tidak dapat ditarik.
+  - **Aturan Frekuensi Penarikan 1x Sehari**: Penarikan dibatasi maksimal **1 kali per hari** (WIB). Kuota penarikan di-reset secara otomatis setiap hari pada pukul **00:00 WIB**.
+  - **Aturan Batas Maksimal 10% Akumulasi Profit**: Nominal penarikan dibatasi maksimal **10% dari total Akumulasi Profit Total** (`user.profit`) yang dimiliki trader saat pengajuan.
+  - **Aturan Penarikan Hanya dari Saldo Profit**: Penarikan **HANYA dapat dilakukan dari Saldo Profit**. Saldo deposit awal/pokok tidak dapat ditarik demi kepatuhan regulasi dan manajemen risiko platform.
+  - **Fitur Status Kuota & Pilihan Cepat**: Kartu status kuota hari ini (Tersedia / Terpakai), tombol 1-klik "Tarik Maks. 10%", serta chip preset ("10% Maksimal", "5% Profit", "Min. Rp 100 Rb") dengan perlindungan formulir terkunci otomatis jika kuota harian telah terpakai.
 - **Gotrade Rewards (`/rewards`)**:
   - Katalog produk reward (iPhone 16 Pro, MacBook Pro, Emas Antam, E-Wallet) dengan tema visual putih-hijau resmi Gotrade.
   - Kalkulasi otomatis poin user berdasarkan saldo akun (1 Poin = Rp 1.000.000 saldo).

@@ -552,8 +552,7 @@ async function runFullPlatformAndSecurityTest() {
     if (res.ok) throw new Error("Withdrawal exceeding profit must be rejected");
   });
 
-  let withdrawTxId = "";
-  await test("Submit valid Withdrawal from profit (Rp 4,800,000 IDR = $300 USD)", async () => {
+  await test("Reject withdrawal exceeding 10% profit limit ($300 > $50 limit)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -562,7 +561,25 @@ async function runFullPlatformAndSecurityTest() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 4800000, // $300
+        amount: 4800000, // $300 (exceeds $50 limit)
+        channel: "Bank Mandiri",
+        destination: "1122334455",
+      }),
+    });
+    if (res.ok) throw new Error("Withdrawal exceeding 10% profit must be rejected");
+  });
+
+  let withdrawTxId = "";
+  await test("Submit valid Withdrawal within 10% profit limit (Rp 800,000 IDR = $50 USD)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 800000, // $50 (10% of $500 profit)
         channel: "Bank Mandiri",
         destination: "1122334455 (Audit Trader Mandiri)",
       }),
@@ -571,6 +588,23 @@ async function runFullPlatformAndSecurityTest() {
     const data = await res.json();
     withdrawTxId = data.transaction?.id || "";
     if (!withdrawTxId) throw new Error("Missing withdraw transaction id");
+  });
+
+  await test("Reject second withdrawal on the same day (1x per day limit)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 200000,
+        channel: "Bank Mandiri",
+        destination: "1122334455 (Second Attempt)",
+      }),
+    });
+    if (res.ok) throw new Error("Second withdrawal in same day must be rejected");
   });
 
   await test("Admin approves Withdrawal and decrements profit and balance", async () => {
@@ -588,16 +622,16 @@ async function runFullPlatformAndSecurityTest() {
     if (!res.ok) throw new Error(`Approve withdraw failed: ${res.status}`);
   });
 
-  await test("Trader balance decremented from $2,500 to $2,200 ($200 profit remaining)", async () => {
+  await test("Trader balance decremented from $2,500 to $2,450 ($450 profit remaining)", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = await res.json();
-    if (Number(data.user.balance) !== 2200) {
-      throw new Error(`Expected balance $2200, got $${data.user.balance}`);
+    if (Number(data.user.balance) !== 2450) {
+      throw new Error(`Expected balance $2450, got $${data.user.balance}`);
     }
-    if (Number(data.user.profit) !== 200) {
-      throw new Error(`Expected profit $200, got $${data.user.profit}`);
+    if (Number(data.user.profit) !== 450) {
+      throw new Error(`Expected profit $450, got $${data.user.profit}`);
     }
   });
 

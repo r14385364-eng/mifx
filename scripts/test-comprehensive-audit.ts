@@ -554,7 +554,7 @@ async function runComprehensiveAudit() {
   });
 
   let wdTxId = "";
-  await test("POST /api/transactions submits valid Withdrawal (Rp 8,000,000 = $500 USD)", async () => {
+  await test("POST /api/transactions rejects withdrawal exceeding 10% of profit (Rp 8,000,000 > Rp 800,000)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -563,7 +563,26 @@ async function runComprehensiveAudit() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 8000000,
+        amount: 8000000, // exceeds 10%
+        channel: "Bank Mandiri",
+        destination: "1234567890123 (Bank Mandiri - Overdraw)",
+      }),
+    });
+    if (res.status !== 400) {
+      throw new Error(`Expected 400 rejection for exceeding 10% profit, got ${res.status}`);
+    }
+  });
+
+  await test("POST /api/transactions submits valid Withdrawal within 10% profit limit (Rp 800,000 = $50 USD)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${traderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 800000, // 10% of $500
         channel: "Bank Mandiri",
         destination: "1234567890123 (Bank Mandiri - Audit Trader)",
       }),
@@ -571,6 +590,25 @@ async function runComprehensiveAudit() {
     if (!res.ok) throw new Error(`Withdrawal submission failed: ${res.status}`);
     const data = await res.json();
     wdTxId = data.transaction?.id || "";
+  });
+
+  await test("POST /api/transactions rejects second withdrawal on the same day (1x per day limit)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${traderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 200000,
+        channel: "Bank Mandiri",
+        destination: "1234567890123 (Bank Mandiri - Second Attempt)",
+      }),
+    });
+    if (res.status !== 400) {
+      throw new Error(`Expected 400 rejection for second daily withdrawal, got ${res.status}`);
+    }
   });
 
   await test("PUT /api/transactions (Admin) approves Withdrawal and debits balance", async () => {
@@ -591,9 +629,9 @@ async function runComprehensiveAudit() {
       headers: { Authorization: `Bearer ${traderToken}` },
     });
     const meData = await meRes.json();
-    // $2,500 - $500 = $2,000
-    if (Number(meData.user.balance) !== 2000) {
-      throw new Error(`Expected $2,000 balance, got $${meData.user.balance}`);
+    // $2,500 - $50 = $2,450
+    if (Number(meData.user.balance) !== 2450) {
+      throw new Error(`Expected $2,450 balance, got $${meData.user.balance}`);
     }
   });
 

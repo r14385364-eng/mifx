@@ -1,5 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowDownToLine, Building2, CheckCircle2, Clock, Info } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDownToLine,
+  ArrowLeft,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Info,
+  Percent,
+  ShieldCheck,
+  Sparkles,
+  Wallet,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
@@ -48,6 +61,21 @@ function WithdrawPage() {
   >([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("manual");
 
+  // Daily Withdrawal Limit & 10% Profit Info
+  const [withdrawalLimit, setWithdrawalLimit] = useState<{
+    profitUSD: number;
+    profitIDR: number;
+    maxWithdrawalPercent: number;
+    maxWithdrawableUSD: number;
+    maxWithdrawableIDR: number;
+    minWithdrawalIDR: number;
+    alreadyWithdrawnToday: boolean;
+    canWithdrawToday: boolean;
+    todayWithdrawalCount: number;
+    maxPerDay: number;
+    resetTime: string;
+  } | null>(null);
+
   useEffect(() => {
     fetch("/api/user/bank-accounts")
       .then((res) => res.json())
@@ -74,7 +102,19 @@ function WithdrawPage() {
         }
       })
       .catch(() => {});
-  }, []);
+
+    // Fetch withdrawal limit & daily quota status
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    fetch("/api/user/withdrawal-limit", { headers })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.limit) {
+          setWithdrawalLimit(data.limit);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   const handleBankSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -94,21 +134,26 @@ function WithdrawPage() {
   };
 
   const profitUSD = user?.profit ?? 0;
-  const availableProfitRupiah = profitUSD * 16000;
-
-  const totalBalanceUSD = user?.balance ?? 0;
-  const depositBalanceUSD = Math.max(0, totalBalanceUSD - profitUSD);
-  const depositBalanceRupiah = depositBalanceUSD * 16000;
+  const totalProfitRupiah = profitUSD * 16000;
+  const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
+  const maxWithdrawableRupiah = Math.floor(totalProfitRupiah * 0.1);
 
   const numericAmount = Number(amount.replace(/\D/g, ""));
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!numericAmount || numericAmount < 100000)
-      next["amount"] = "Minimal penarikan Rp100.000 IDR (setara $6.25 USD)";
-    else if (numericAmount > availableProfitRupiah)
+    if (withdrawalLimit?.alreadyWithdrawnToday) {
       next["amount"] =
-        "Penarikan melebihi saldo profit yang tersedia. Saldo deposit utama tidak dapat ditarik.";
+        "Batas penarikan 1 kali sehari. Anda sudah mengajukan penarikan hari ini (kuota di-reset pukul 00:00 WIB).";
+    } else if (profitUSD <= 0) {
+      next["amount"] =
+        "Anda belum memiliki Akumulasi Profit yang dapat ditarik. Saldo deposit utama tidak dapat ditarik.";
+    } else if (!numericAmount || numericAmount < 100000) {
+      next["amount"] = "Minimal penarikan Rp100.000 IDR (setara $6.25 USD)";
+    } else if (numericAmount > maxWithdrawableRupiah) {
+      next["amount"] =
+        `Penarikan melebihi batas maksimal 10% dari Akumulasi Profit (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
+    }
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
     if (accountNumber.trim().length < 5)
@@ -200,31 +245,109 @@ function WithdrawPage() {
       </header>
 
       <main className="flex flex-col gap-5 px-4 py-4 pb-6">
-        {/* Saldo Profit (Withdrawable) Card */}
-        <section className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-              <ArrowDownToLine className="h-5 w-5 text-primary" />
-            </span>
+        {/* Status Kuota Harian & Aturan 10% Profit Card */}
+        <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ArrowDownToLine className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs text-muted-foreground">Akumulasi Profit Total</p>
+                <p className="text-lg font-bold text-foreground">
+                  {formatRupiah(totalProfitRupiah)}
+                </p>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  setara ${profitUSD.toFixed(2)} USD
+                </p>
+              </div>
+            </div>
+
+            {withdrawalLimit?.alreadyWithdrawnToday ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 border border-red-500/20">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                Kuota Terpakai
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Kuota Tersedia (1x)
+              </span>
+            )}
+          </div>
+
+          {/* Batas Maksimal 10% Box */}
+          <div className="flex items-center justify-between rounded-xl bg-muted/40 border border-border/80 p-3">
             <div>
-              <p className="text-xs text-muted-foreground">Saldo Tersedia</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatRupiah(availableProfitRupiah)}
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                <Percent className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                Maksimal Tarik Hari Ini (10% Profit)
               </p>
-              <p className="text-[11px] text-muted-foreground font-medium">
-                setara ${profitUSD.toFixed(2)} USD
+              <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {formatRupiah(maxWithdrawableRupiah)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                setara ${maxWithdrawableUSD.toFixed(2)} USD
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAmount(String(maxWithdrawableRupiah))}
+              disabled={maxWithdrawableRupiah <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
+              className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Tarik Maks. 10%
+            </button>
+          </div>
+
+          {/* Quick Amount Chips */}
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            <span className="text-[11px] text-muted-foreground font-medium mr-1">
+              Pilihan Cepat:
+            </span>
+            <button
+              type="button"
+              onClick={() => setAmount(String(maxWithdrawableRupiah))}
+              disabled={maxWithdrawableRupiah <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
+              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
+            >
+              10% (Maksimal)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAmount(String(Math.floor(totalProfitRupiah * 0.05)))}
+              disabled={totalProfitRupiah * 0.05 < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
+              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
+            >
+              5% Profit
+            </button>
+            <button
+              type="button"
+              onClick={() => setAmount("100000")}
+              disabled={maxWithdrawableRupiah < 100000 || withdrawalLimit?.alreadyWithdrawnToday}
+              className="rounded-lg border px-2.5 py-1 text-[11px] font-semibold bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
+            >
+              Min. Rp 100 Rb
+            </button>
+          </div>
+        </section>
+
+        {/* Warning if already withdrawn today */}
+        {withdrawalLimit?.alreadyWithdrawnToday && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-800 dark:text-red-300 flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">Batas Penarikan Harian Tercapai (1x Sehari)</p>
+              <p className="text-[11px] leading-relaxed text-red-700/90 dark:text-red-300/90">
+                Anda telah mengajukan penarikan pada hari ini. Sesuai kebijakan keamanan dan
+                likuiditas platform, penarikan dana dibatasi maksimal 1 kali per hari. Kuota
+                penarikan Anda akan di-reset kembali secara otomatis besok pukul{" "}
+                <strong>00:00 WIB</strong>.
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setAmount(String(availableProfitRupiah))}
-            disabled={availableProfitRupiah <= 0}
-            className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
-          >
-            Tarik Semua
-          </button>
-        </section>
+        )}
 
         {/* Form */}
         <form
@@ -342,7 +465,7 @@ function WithdrawPage() {
           </div>
 
           {/* Ringkasan */}
-          {numericAmount >= 100000 && numericAmount <= availableProfitRupiah && (
+          {numericAmount >= 100000 && numericAmount <= maxWithdrawableRupiah && (
             <div className="rounded-lg bg-muted p-3 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Jumlah Penarikan</span>
@@ -374,15 +497,26 @@ function WithdrawPage() {
 
           <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Penarikan diproses pada hari kerja (Senin–Jumat, 08.00–17.00 WIB). Pastikan nama pemilik
-            rekening sesuai dengan data akun Anda.
+            Penarikan diproses pada hari kerja (Senin–Jumat, 08.00–17.00 WIB). Batas penarikan:
+            maksimal 1 kali per hari dan maksimal 10% dari akumulasi profit.
           </p>
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            disabled={
+              isSubmitting ||
+              withdrawalLimit?.alreadyWithdrawnToday ||
+              maxWithdrawableRupiah < 100000
+            }
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Ajukan Penarikan
+            {isSubmitting
+              ? "Memproses Penarikan..."
+              : withdrawalLimit?.alreadyWithdrawnToday
+                ? "Kuota Penarikan Hari Ini Sudah Digunakan (Maks 1x/Hari)"
+                : maxWithdrawableRupiah < 100000
+                  ? "Profit Belum Mencukupi Min. Rp100.000 (10%)"
+                  : "Ajukan Penarikan"}
           </button>
         </form>
       </main>

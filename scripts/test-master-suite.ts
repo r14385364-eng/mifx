@@ -507,7 +507,7 @@ async function runMasterTestSuite() {
   });
 
   let wdTxId = "";
-  await test("POST /api/transactions submits valid Withdrawal (Rp 8,000,000 = $500 USD)", async () => {
+  await test("POST /api/transactions rejects withdrawal exceeding 10% of profit (Rp 8,000,000 > Rp 800,000)", async () => {
     const res = await fetch(`${baseUrl}/api/transactions`, {
       method: "POST",
       headers: {
@@ -516,7 +516,26 @@ async function runMasterTestSuite() {
       },
       body: JSON.stringify({
         type: "Withdraw",
-        amount: 8000000,
+        amount: 8000000, // $500 USD (100% of profit, exceeds 10% limit)
+        channel: "Bank BCA",
+        destination: "1234567890 (BCA - Overdraw)",
+      }),
+    });
+    if (res.status !== 400) {
+      throw new Error(`Expected 400 rejection for exceeding 10% profit, got ${res.status}`);
+    }
+  });
+
+  await test("POST /api/transactions submits valid Withdrawal within 10% profit limit (Rp 800,000 = $50 USD)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 800000, // $50 USD (10% of $500 profit)
         channel: "Bank BCA",
         destination: "1234567890 (BCA - Master Tester)",
       }),
@@ -524,6 +543,25 @@ async function runMasterTestSuite() {
     if (!res.ok) throw new Error(`Withdrawal request failed: ${res.status}`);
     const data = (await res.json()) as { transaction?: { id: string } };
     wdTxId = data.transaction?.id || "";
+  });
+
+  await test("POST /api/transactions rejects second withdrawal on the same day (1x per day limit)", async () => {
+    const res = await fetch(`${baseUrl}/api/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${testTraderToken}`,
+      },
+      body: JSON.stringify({
+        type: "Withdraw",
+        amount: 200000,
+        channel: "Bank BCA",
+        destination: "1234567890 (BCA - Second Attempt)",
+      }),
+    });
+    if (res.status !== 400) {
+      throw new Error(`Expected 400 rejection for second daily withdrawal, got ${res.status}`);
+    }
   });
 
   await test("PUT /api/transactions (Admin) approves Withdrawal and debits balance", async () => {
@@ -541,13 +579,16 @@ async function runMasterTestSuite() {
     if (!res.ok) throw new Error(`Approval failed: ${res.status}`);
   });
 
-  await test("User balance accurately debited from $2,500 to $2,000 USD", async () => {
+  await test("User balance accurately debited from $2,500 to $2,450 USD ($50 withdrawal)", async () => {
     const res = await fetch(`${baseUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${testTraderToken}` },
     });
     const data = (await res.json()) as { user: TraderUser };
-    if (Number(data.user.balance) !== 2000) {
-      throw new Error(`Expected $2000, got $${data.user.balance}`);
+    if (Number(data.user.balance) !== 2450) {
+      throw new Error(`Expected $2450, got $${data.user.balance}`);
+    }
+    if (Number(data.user.profit) !== 450) {
+      throw new Error(`Expected profit $450, got $${data.user.profit}`);
     }
   });
 

@@ -1,17 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ArrowUpRight,
+  Calendar,
   CheckCircle2,
   ChevronDown,
+  Clock,
   Copy,
   Eye,
   FileCheck2,
   Image as ImageIcon,
   Info,
   Landmark,
+  Percent,
+  ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UploadCloud,
+  Wallet,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -149,6 +156,22 @@ function DepositPage() {
   const [accountNameTarget, setAccountNameTarget] = useState<string>("AKSAY S.PUTRA");
   const [paymentSources, setPaymentSources] = useState<PaymentSourceItem[]>(defaultPaymentSources);
 
+  // Withdrawal Rules & Daily Limit State (1x Sehari & Maks 10% Profit)
+  const [withdrawalInfo, setWithdrawalInfo] = useState<{
+    profitUSD: number;
+    profitIDR: number;
+    maxWithdrawalPercent: number;
+    maxWithdrawableUSD: number;
+    maxWithdrawableIDR: number;
+    minWithdrawalIDR: number;
+    alreadyWithdrawnToday: boolean;
+    canWithdrawToday: boolean;
+    todayWithdrawalCount: number;
+    maxPerDay: number;
+    resetTime: string;
+    isGuest: boolean;
+  } | null>(null);
+
   useEffect(() => {
     async function loadDepositSettings() {
       try {
@@ -175,8 +198,24 @@ function DepositPage() {
         // use cached state
       }
     }
+
+    async function loadWithdrawalLimit() {
+      try {
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch("/api/user/withdrawal-limit", { headers });
+        const data = await res.json();
+        if (res.ok && data.success && data.limit) {
+          setWithdrawalInfo(data.limit);
+        }
+      } catch {
+        // fallback
+      }
+    }
+
     void loadDepositSettings();
-  }, []);
+    void loadWithdrawalLimit();
+  }, [token]);
 
   const handleFileSelect = async (file: File) => {
     setIsProcessingImage(true);
@@ -681,6 +720,146 @@ function DepositPage() {
             Ajukan Deposit
           </button>
         </form>
+
+        {/* ======================================================== */}
+        {/* KOMPONEN ATURAN & KEBIJAKAN PENARIKAN (WITHDRAWAL POLICY) */}
+        {/* ======================================================== */}
+        <section className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  Ketentuan & Batas Penarikan Dana
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Kebijakan resmi pencairan profit platform Gotrade
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-500/30">
+              <Sparkles className="h-3 w-3" />
+              Aturan Resmi
+            </span>
+          </div>
+
+          {/* 3 Core Rule Cards */}
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            {/* Rule 1: 1x Per Hari */}
+            <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1.5">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-bold">1 Kali Sehari</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Pengajuan penarikan dana dibatasi maksimal{" "}
+                  <strong className="text-foreground">1 kali per hari</strong>. Kuota harian
+                  di-reset otomatis setiap pukul 00:00 WIB.
+                </p>
+              </div>
+            </div>
+
+            {/* Rule 2: Maksimal 10% Profit */}
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 mb-1.5">
+                  <Percent className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-bold">Maks. 10% Profit</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Pencairan dana dibatasi maksimal{" "}
+                  <strong className="text-foreground">10% dari total Akumulasi Profit</strong> Anda
+                  pada setiap pengajuan penarikan.
+                </p>
+              </div>
+            </div>
+
+            {/* Rule 3: 100% Modal Pokok Terlindungi */}
+            <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 p-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 mb-1.5">
+                  <Wallet className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-bold">100% Modal Pokok</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Deposit 100% utuh sebagai modal pokok aktif (Free Margin). Penarikan dana diambil
+                  murni dari akumulasi profit harian.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* User Live Status Card (if logged in) */}
+          <div className="rounded-xl border border-border/80 bg-muted/40 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Wallet className="h-3.5 w-3.5 text-primary" />
+                Status Kuota Penarikan Anda
+              </span>
+              {withdrawalInfo ? (
+                withdrawalInfo.alreadyWithdrawnToday ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400 border border-red-500/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                    Kuota Hari Ini Terpakai
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Kuota Hari Ini Tersedia (1x)
+                  </span>
+                )
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Memuat data kuota...</span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg bg-background border p-2.5">
+                <span className="text-[10px] text-muted-foreground block">
+                  Akumulasi Profit Total
+                </span>
+                <span className="font-extrabold text-foreground text-sm block mt-0.5">
+                  {withdrawalInfo ? formatRupiah(withdrawalInfo.profitIDR) : "Rp 0"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  (${withdrawalInfo?.profitUSD ? withdrawalInfo.profitUSD.toFixed(2) : "0.00"} USD)
+                </span>
+              </div>
+
+              <div className="rounded-lg bg-background border p-2.5">
+                <span className="text-[10px] text-muted-foreground block">
+                  Batas Tarik Hari Ini (10%)
+                </span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm block mt-0.5">
+                  {withdrawalInfo ? formatRupiah(withdrawalInfo.maxWithdrawableIDR) : "Rp 0"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  ($
+                  {withdrawalInfo?.maxWithdrawableUSD
+                    ? withdrawalInfo.maxWithdrawableUSD.toFixed(2)
+                    : "0.00"}{" "}
+                  USD)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-border/50">
+              <p className="text-[11px] text-muted-foreground">
+                Minimal penarikan platform:{" "}
+                <span className="font-semibold text-foreground">Rp100.000</span>
+              </p>
+              <Link
+                to="/withdraw"
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+              >
+                Ke Halaman Withdraw <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Modal Pratinjau Bukti Transfer Penuh */}

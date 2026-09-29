@@ -883,6 +883,92 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   }
 
   // ==========================================
+  // /api/user/withdrawal-limit (Daily withdrawal status & 10% limit)
+  // ==========================================
+  if (url.pathname === "/api/user/withdrawal-limit") {
+    if (request.method === "GET") {
+      const authResult = await requireAuth(request);
+      if ("errorResponse" in authResult) {
+        // Fallback for guests: return default platform policies
+        return jsonResponse({
+          success: true,
+          limit: {
+            profitUSD: 0,
+            profitIDR: 0,
+            maxWithdrawalPercent: 10,
+            maxWithdrawableUSD: 0,
+            maxWithdrawableIDR: 0,
+            minWithdrawalIDR: 100000,
+            alreadyWithdrawnToday: false,
+            canWithdrawToday: false,
+            todayWithdrawalCount: 0,
+            maxPerDay: 1,
+            resetTime: "00:00 WIB",
+            isGuest: true,
+          },
+        });
+      }
+
+      try {
+        const currentUser = authResult.user;
+        const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
+          currentUser.id,
+        ]);
+        const user = freshUserRows.length > 0 ? freshUserRows[0] : currentUser;
+
+        const profitUSD = Number(user.profit || 0);
+        const profitIDR = profitUSD * 16000;
+        const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
+        const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
+        const minWithdrawalIDR = 100000;
+
+        const existingWithdrawals = await query<DbTransaction>(
+          "SELECT * FROM transactions WHERE user_id = $1 AND type = 'Withdraw' AND status != 'Ditolak' ORDER BY created_at DESC",
+          [user.id],
+        );
+
+        const getWIBDate = (dateVal: string | Date | undefined) => {
+          if (!dateVal) return "";
+          try {
+            return new Date(dateVal).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+          } catch {
+            return "";
+          }
+        };
+
+        const todayWIB = getWIBDate(new Date());
+        const todayWithdrawals = existingWithdrawals.filter(
+          (tx) => getWIBDate(tx.created_at) === todayWIB,
+        );
+        const alreadyWithdrawnToday = todayWithdrawals.length > 0;
+        const canWithdrawToday = !alreadyWithdrawnToday && maxWithdrawableIDR >= minWithdrawalIDR;
+
+        return jsonResponse({
+          success: true,
+          limit: {
+            profitUSD,
+            profitIDR,
+            maxWithdrawalPercent: 10,
+            maxWithdrawableUSD,
+            maxWithdrawableIDR,
+            minWithdrawalIDR,
+            alreadyWithdrawnToday,
+            canWithdrawToday,
+            todayWithdrawalCount: todayWithdrawals.length,
+            maxPerDay: 1,
+            resetTime: "00:00 WIB",
+            lastWithdrawal: existingWithdrawals.length > 0 ? existingWithdrawals[0] : null,
+            isGuest: false,
+          },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error checking withdrawal limit";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+  }
+
+  // ==========================================
   // /api/transactions (RBAC Protected Data Scoping)
   // ==========================================
   if (url.pathname === "/api/transactions") {
@@ -1081,8 +1167,67 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
               : Number(currentUser.profit || 0);
 
           const amountUSD = numericAmount / 16000;
+          const userProfitIDR = userProfitUSD * 16000;
+
+          if (userProfitUSD <= 0) {
+            return jsonResponse(
+              {
+                success: false,
+                message:
+                  "Penarikan gagal. Anda belum memiliki Akumulasi Profit yang dapat ditarik. Sesuai aturan platform Gotrade, penarikan hanya dapat dilakukan dari saldo profit. Saldo deposit pokok tidak dapat ditarik.",
+              },
+              400,
+            );
+          }
+
+          // 1. RULE: Penarikan hanya 1 kali sehari (1x Per Hari)
+          // Memeriksa riwayat transaksi penarikan user pada hari ini (WIB / UTC+7) yang tidak berstatus 'Ditolak'
+          const existingWithdrawals = await query<DbTransaction>(
+            "SELECT * FROM transactions WHERE user_id = $1 AND type = 'Withdraw' AND status != 'Ditolak' ORDER BY created_at DESC",
+            [currentUser.id],
+          );
+
+          const getWIBDate = (dateVal: string | Date | undefined) => {
+            if (!dateVal) return "";
+            try {
+              return new Date(dateVal).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+            } catch {
+              return "";
+            }
+          };
+
+          const todayWIB = getWIBDate(new Date());
+          const alreadyWithdrawnToday = existingWithdrawals.some(
+            (tx) => getWIBDate(tx.created_at) === todayWIB,
+          );
+
+          if (alreadyWithdrawnToday) {
+            return jsonResponse(
+              {
+                success: false,
+                message:
+                  "Penarikan dana dibatasi maksimal 1 kali sehari. Anda sudah mengajukan penarikan pada hari ini. Kuota penarikan Anda akan diperbarui kembali besok pukul 00:00 WIB.",
+              },
+              400,
+            );
+          }
+
+          // 2. RULE: Penarikan hanya bisa maksimal 10% dari total Akumulasi Profit Totalnya
+          const maxWithdrawableUSD = Math.round(userProfitUSD * 0.1 * 100) / 100;
+          const maxWithdrawableIDR = Math.floor(userProfitIDR * 0.1);
+
+          // Berikan toleransi pembulatan $0.05 USD (~Rp 800) untuk konversi kurs
+          if (amountUSD > maxWithdrawableUSD + 0.05) {
+            return jsonResponse(
+              {
+                success: false,
+                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari total Akumulasi Profit Anda per hari. Total profit Anda saat ini: Rp${userProfitIDR.toLocaleString("id-ID")} ($${userProfitUSD.toFixed(2)} USD). Batas penarikan maksimal: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
+              },
+              400,
+            );
+          }
+
           if (userProfitUSD < amountUSD) {
-            const userProfitIDR = userProfitUSD * 16000;
             return jsonResponse(
               {
                 success: false,
