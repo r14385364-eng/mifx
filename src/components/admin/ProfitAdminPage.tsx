@@ -357,20 +357,25 @@ export function ProfitAdminPage() {
             </div>
 
             {/* Controls */}
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="flex flex-1 items-center gap-2">
-                <div className="relative flex-1 max-w-xs">
+            <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+                <div className="relative w-full sm:w-48">
                   <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    max="100"
+                    id="global-daily-rate-input"
+                    type="text"
+                    inputMode="decimal"
                     value={globalRateInput}
-                    onChange={(e) => setGlobalRateInput(e.target.value)}
-                    placeholder="Persentase harian (misal: 5)"
-                    className="font-bold text-base pr-8 bg-background"
+                    onChange={(e) => {
+                      // Allow numbers and single decimal dot
+                      const cleaned = e.target.value.replace(/[^0-9.]/g, "");
+                      const parts = cleaned.split(".");
+                      if (parts.length > 2) return;
+                      setGlobalRateInput(cleaned);
+                    }}
+                    placeholder="Persentase (misal: 5)"
+                    className="font-bold text-base pr-8 bg-background h-11 w-full"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
                     %
                   </span>
                 </div>
@@ -378,7 +383,7 @@ export function ProfitAdminPage() {
                 <Button
                   onClick={() => handleApplyDailyRate()}
                   disabled={applyingRate}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs gap-1.5 px-4 shadow-sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs gap-1.5 px-4 h-11 shadow-sm w-full sm:w-auto shrink-0"
                 >
                   {applyingRate ? (
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -390,14 +395,14 @@ export function ProfitAdminPage() {
               </div>
 
               {/* Quick Presets */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap pt-1 sm:pt-0">
                 <span className="text-xs text-muted-foreground font-semibold mr-1">Preset:</span>
                 {presetDailyRates.map((rate) => (
                   <button
                     key={rate}
                     type="button"
                     onClick={() => setGlobalRateInput(String(rate))}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                    className={`rounded-lg border px-3 py-2 text-xs font-bold transition-all min-h-[36px] ${
                       globalRateInput === String(rate)
                         ? "border-amber-500 bg-amber-500 text-white shadow-sm"
                         : "border-border/60 bg-background hover:bg-muted text-muted-foreground"
@@ -414,7 +419,7 @@ export function ProfitAdminPage() {
         {/* Search & Action Filter Bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground select-none" />
             <Input
               placeholder="Cari username, email, ID account..."
               value={search}
@@ -614,16 +619,20 @@ export function ProfitAdminPage() {
                     Nominal Profit Injeksi ($ USD)
                   </label>
                   <div className="relative flex items-center">
-                    <DollarSign className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground select-none" />
                     <Input
                       id="profitAmount"
-                      type="number"
-                      step="any"
-                      min="1"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="Contoh: 100"
                       value={profitAmount}
-                      onChange={(e) => setProfitAmount(e.target.value)}
-                      className="pl-9 font-bold text-base"
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^0-9.]/g, "");
+                        const parts = cleaned.split(".");
+                        if (parts.length > 2) return;
+                        setProfitAmount(cleaned);
+                      }}
+                      className="pl-9 font-bold text-base h-11"
                       required
                     />
                   </div>
