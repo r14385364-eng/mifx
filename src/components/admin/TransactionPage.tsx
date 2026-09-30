@@ -335,10 +335,10 @@ export function TransactionPage({
           if (!open) setSelectedProofTx(null);
         }}
       >
-        <DialogContent className="max-w-2xl overflow-hidden p-0 sm:max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[88vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
           {selectedProofTx && (
-            <div className="flex flex-col">
-              <div className="border-b px-6 py-4">
+            <div className="flex flex-col h-full max-h-[88vh] sm:max-h-[90vh]">
+              <div className="border-b px-4 sm:px-6 py-3 shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -363,7 +363,10 @@ export function TransactionPage({
                 </div>
               </div>
 
-              <div className="space-y-4 px-6 py-4">
+              <div
+                className="flex-1 overflow-y-auto overscroll-contain touch-pan-y space-y-4 px-4 sm:px-6 py-4"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 {/* Info Pengguna & Nominal */}
                 <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3 text-xs sm:grid-cols-4">
                   <div>
@@ -398,12 +401,12 @@ export function TransactionPage({
                 </div>
 
                 {/* Tampilan Gambar Resi */}
-                <div className="relative flex max-h-[55vh] items-center justify-center overflow-auto rounded-xl border bg-black/5 p-2 dark:bg-black/50">
+                <div className="relative flex max-h-[50vh] items-center justify-center overflow-auto rounded-xl border bg-black/5 p-2 dark:bg-black/50">
                   {selectedProofTx.proofImage ? (
                     <img
                       src={selectedProofTx.proofImage}
                       alt={`Bukti Transfer ${selectedProofTx.id}`}
-                      className="max-h-[50vh] w-auto max-w-full rounded object-contain shadow-xs"
+                      className="max-h-[45vh] w-auto max-w-full rounded object-contain shadow-xs"
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -417,7 +420,7 @@ export function TransactionPage({
               </div>
 
               {/* Footer Tindakan */}
-              <div className="flex flex-col-reverse gap-2 border-t bg-muted/20 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col-reverse gap-2 border-t bg-muted/20 px-4 sm:px-6 py-3 shrink-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   {selectedProofTx.proofImage && (
                     <a

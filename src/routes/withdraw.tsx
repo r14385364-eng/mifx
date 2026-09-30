@@ -379,13 +379,26 @@ function WithdrawPage() {
                 </strong>
               </span>
             </div>
-            <div className="mt-1.5 flex items-center rounded-lg border bg-background px-3 focus-within:border-primary">
+            <div
+              className={`mt-1.5 flex items-center rounded-lg border bg-background px-3 focus-within:border-primary ${
+                profitUSD <= 0 || withdrawalLimit?.alreadyWithdrawnToday
+                  ? "opacity-60 bg-muted/50 cursor-not-allowed"
+                  : ""
+              }`}
+            >
               <span className="text-sm font-semibold text-muted-foreground">Rp</span>
               <input
                 id="amount"
                 inputMode="numeric"
+                disabled={profitUSD <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
                 placeholder={
-                  maxWithdrawableRupiah > 0 ? maxWithdrawableRupiah.toLocaleString("id-ID") : "0"
+                  withdrawalLimit?.alreadyWithdrawnToday
+                    ? "Batas 1x sehari tercapai"
+                    : profitUSD <= 0
+                      ? "Belum ada profit untuk ditarik"
+                      : maxWithdrawableRupiah > 0
+                        ? maxWithdrawableRupiah.toLocaleString("id-ID")
+                        : "0"
                 }
                 value={amount ? Number(amount).toLocaleString("id-ID") : ""}
                 onChange={(e) => {
@@ -412,7 +425,7 @@ function WithdrawPage() {
                     }
                   }
                 }}
-                className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent px-2 py-2.5 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
               />
             </div>
             {errors["amount"] && (

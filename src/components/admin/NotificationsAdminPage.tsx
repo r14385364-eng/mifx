@@ -663,21 +663,27 @@ export function NotificationsAdminPage() {
 
       {/* CREATE / EDIT NOTIFICATION DIALOG */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <form onSubmit={handleSaveNotification}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-2xl max-h-[88vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <form
+            onSubmit={handleSaveNotification}
+            className="flex flex-col h-full max-h-[88vh] sm:max-h-[90vh]"
+          >
+            <DialogHeader className="p-4 sm:p-6 pb-3 border-b shrink-0 text-left">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Send className="size-5 text-primary" />
                 {editingNotif ? "Ubah Pesan Notifikasi" : "Siarkan Notifikasi Baru ke Pengguna"}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs">
                 {editingNotif
                   ? "Perbarui konten pesan notifikasi yang telah disiarkan sebelumnya."
                   : "Pesan ini akan langsung muncul di panel notifikasi seluruh pengguna aplikasi Gotrade."}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div
+              className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-6 space-y-4"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-xs font-semibold">
@@ -812,7 +818,7 @@ export function NotificationsAdminPage() {
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="p-4 sm:p-6 pt-3 pb-3 border-t bg-background shrink-0 gap-2 flex-row justify-end">
               <Button
                 type="button"
                 variant="outline"
