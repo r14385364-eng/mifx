@@ -10,6 +10,7 @@ import {
   Newspaper,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   TrendingUp,
   Trophy,
   Users,
@@ -45,6 +46,11 @@ import {
 const navigation = [
   { label: "Top Up", to: "/admin/top-up" as const, icon: ArrowDownToLine },
   { label: "Withdraw", to: "/admin/withdraw" as const, icon: ArrowUpFromLine },
+  {
+    label: "Pengaturan Withdraw",
+    to: "/admin/pengaturan-withdraw" as const,
+    icon: SlidersHorizontal,
+  },
 ];
 
 const contentNavigation = [

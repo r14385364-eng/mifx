@@ -7,9 +7,11 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   WalletCards,
   X,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { secureFetch } from "@/lib/api-client";
@@ -186,6 +188,19 @@ export function TransactionPage({
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               </Button>
+              {type === "Withdraw" && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 font-medium"
+                >
+                  <Link to="/admin/pengaturan-withdraw">
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+                    Pengaturan Withdraw
+                  </Link>
+                </Button>
+              )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative sm:w-64">

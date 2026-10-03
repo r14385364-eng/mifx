@@ -80,6 +80,7 @@ async function runMasterTestSuite() {
     "/admin/berita",
     "/admin/top-up",
     "/admin/withdraw",
+    "/admin/pengaturan-withdraw",
     "/admin/rewards",
     "/admin/referral",
     "/admin/audit-logs",
