@@ -61,7 +61,7 @@ function WithdrawPage() {
   >([]);
   const [selectedBankId, setSelectedBankId] = useState<string>("manual");
 
-  // Daily Withdrawal Limit & 10% Profit Info
+  // Daily Withdrawal Limit & Profit Info dynamically configured by Admin
   const [withdrawalLimit, setWithdrawalLimit] = useState<{
     profitUSD: number;
     profitIDR: number;
@@ -69,9 +69,14 @@ function WithdrawPage() {
     maxWithdrawableUSD: number;
     maxWithdrawableIDR: number;
     minWithdrawalIDR: number;
+    adminFeeType?: "free" | "flat" | "percent";
+    adminFeeValue?: number;
+    withdrawalStatus?: "active" | "suspended" | "blocked";
+    withdrawalNote?: string;
     alreadyWithdrawnToday: boolean;
     canWithdrawToday: boolean;
     todayWithdrawalCount: number;
+    remainingQuota?: number;
     maxPerDay: number;
     resetTime: string;
   } | null>(null);
@@ -139,26 +144,48 @@ function WithdrawPage() {
   const totalBalanceUSD = user?.balance ?? 0;
   const profitUSD = withdrawalLimit?.profitUSD ?? Number(user?.profit || 0);
   const profitRupiah = withdrawalLimit?.profitIDR ?? profitUSD * 16000;
+  const maxPercent = withdrawalLimit?.maxWithdrawalPercent ?? 10;
+  const minWithdrawalIDR = withdrawalLimit?.minWithdrawalIDR ?? 100000;
+  const maxPerDay = withdrawalLimit?.maxPerDay ?? 1;
+  const remainingQuota =
+    withdrawalLimit?.remainingQuota ?? (withdrawalLimit?.alreadyWithdrawnToday ? 0 : 1);
+  const withdrawalStatus = withdrawalLimit?.withdrawalStatus ?? "active";
+  const withdrawalNote = withdrawalLimit?.withdrawalNote ?? "";
+
   const maxWithdrawableUSD =
-    withdrawalLimit?.maxWithdrawableUSD ?? Math.round(profitUSD * 0.1 * 100) / 100;
+    withdrawalLimit?.maxWithdrawableUSD ?? Math.round(profitUSD * (maxPercent / 100) * 100) / 100;
   const maxWithdrawableRupiah =
-    withdrawalLimit?.maxWithdrawableIDR ?? Math.floor(profitRupiah * 0.1);
+    withdrawalLimit?.maxWithdrawableIDR ?? Math.floor(profitRupiah * (maxPercent / 100));
 
   const numericAmount = Number(amount.replace(/\D/g, ""));
 
+  // Calculate Admin Fee dynamically
+  let calculatedAdminFee = 0;
+  if (withdrawalLimit?.adminFeeType === "flat") {
+    calculatedAdminFee = withdrawalLimit.adminFeeValue || 0;
+  } else if (withdrawalLimit?.adminFeeType === "percent") {
+    calculatedAdminFee = Math.round(numericAmount * ((withdrawalLimit.adminFeeValue || 0) / 100));
+  }
+  const danaDiterima = Math.max(0, numericAmount - calculatedAdminFee);
+
   const validate = () => {
     const next: Record<string, string> = {};
-    if (withdrawalLimit?.alreadyWithdrawnToday) {
+    if (withdrawalStatus !== "active") {
       next["amount"] =
-        "Batas penarikan 1 kali sehari. Anda sudah mengajukan penarikan hari ini (kuota di-reset pukul 00:00 WIB).";
+        withdrawalNote ||
+        "Layanan penarikan dana akun Anda saat ini sedang dinonaktifkan oleh Administrator.";
+    } else if (withdrawalLimit?.alreadyWithdrawnToday) {
+      next["amount"] =
+        `Batas penarikan ${maxPerDay} kali sehari. Anda sudah mencapai kuota penarikan hari ini (kuota di-reset pukul 00:00 WIB).`;
     } else if (profitUSD <= 0) {
       next["amount"] =
         "Anda belum memiliki Akumulasi Profit Total di halaman /admin/profit untuk ditarik.";
-    } else if (!numericAmount || numericAmount < 100000) {
-      next["amount"] = "Minimal penarikan Rp100.000 IDR (setara $6.25 USD)";
+    } else if (!numericAmount || numericAmount < minWithdrawalIDR) {
+      next["amount"] =
+        `Minimal penarikan Rp${minWithdrawalIDR.toLocaleString("id-ID")} IDR (setara $${(minWithdrawalIDR / 16000).toFixed(2)} USD)`;
     } else if (numericAmount > maxWithdrawableRupiah) {
       next["amount"] =
-        `Penarikan melebihi batas maksimal 10% dari Akumulasi Profit Total (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
+        `Penarikan melebihi batas maksimal ${maxPercent}% dari Akumulasi Profit Total (${formatRupiah(maxWithdrawableRupiah)} / $${maxWithdrawableUSD.toFixed(2)} USD).`;
     }
     if (accountName.trim().length < 3) next["accountName"] = "Nama pemilik minimal 3 karakter";
     if (destination.trim().length < 3) next["destination"] = "Isi nama bank atau e-wallet tujuan";
@@ -275,17 +302,17 @@ function WithdrawPage() {
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Kuota Tersedia (1x)
+                Kuota Tersedia ({remainingQuota}x)
               </span>
             )}
           </div>
 
-          {/* Batas Maksimal 10% Box */}
+          {/* Batas Maksimal Profit Box */}
           <div className="flex items-center justify-between rounded-xl bg-muted/40 border border-border/80 p-3">
             <div>
               <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
                 <Percent className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                Maksimal Tarik Hari Ini (10% Profit)
+                Maksimal Tarik Hari Ini ({maxPercent}% Profit)
               </p>
               <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
                 {formatRupiah(maxWithdrawableRupiah)}
@@ -305,25 +332,41 @@ function WithdrawPage() {
                   return copy;
                 });
               }}
-              disabled={maxWithdrawableRupiah <= 0 || withdrawalLimit?.alreadyWithdrawnToday}
+              disabled={
+                maxWithdrawableRupiah <= 0 ||
+                withdrawalLimit?.alreadyWithdrawnToday ||
+                withdrawalStatus !== "active"
+              }
               className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Tarik Maks. 10%
+              Tarik Maks. {maxPercent}%
             </button>
           </div>
         </section>
 
+        {/* Warning if withdrawal is suspended or blocked by admin */}
+        {withdrawalStatus !== "active" && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold">Layanan Penarikan Ditangguhkan</p>
+              <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+                {withdrawalNote ||
+                  "Layanan penarikan dana akun Anda saat ini sedang dinonaktifkan sementara oleh Administrator. Silakan hubungi tim layanan nasabah Gotrade."}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Warning if already withdrawn today */}
-        {withdrawalLimit?.alreadyWithdrawnToday && (
+        {withdrawalStatus === "active" && withdrawalLimit?.alreadyWithdrawnToday && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-800 dark:text-red-300 flex items-start gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-bold">Batas Penarikan Harian Tercapai (1x Sehari)</p>
+              <p className="font-bold">Batas Penarikan Harian Tercapai ({maxPerDay}x Sehari)</p>
               <p className="text-[11px] leading-relaxed text-red-700/90 dark:text-red-300/90">
-                Anda telah mengajukan penarikan pada hari ini. Sesuai kebijakan keamanan dan
-                likuiditas platform, penarikan dana dibatasi maksimal 1 kali per hari. Kuota
-                penarikan Anda akan di-reset kembali secara otomatis besok pukul{" "}
-                <strong>00:00 WIB</strong>.
+                Anda telah menggunakan kuota penarikan ({maxPerDay}x per hari). Kuota penarikan Anda
+                akan di-reset kembali secara otomatis besok pukul <strong>00:00 WIB</strong>.
               </p>
             </div>
           </div>
@@ -491,7 +534,7 @@ function WithdrawPage() {
           </div>
 
           {/* Ringkasan */}
-          {numericAmount >= 100000 && numericAmount <= maxWithdrawableRupiah && (
+          {numericAmount >= minWithdrawalIDR && numericAmount <= maxWithdrawableRupiah && (
             <div className="rounded-lg bg-muted p-3 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Jumlah Penarikan</span>
@@ -499,7 +542,11 @@ function WithdrawPage() {
               </div>
               <div className="mt-1 flex justify-between">
                 <span className="text-muted-foreground">Biaya Admin</span>
-                <span className="font-semibold text-primary">Gratis</span>
+                <span
+                  className={`font-semibold ${calculatedAdminFee === 0 ? "text-primary font-bold" : "text-foreground"}`}
+                >
+                  {calculatedAdminFee === 0 ? "Gratis (Rp 0)" : formatRupiah(calculatedAdminFee)}
+                </span>
               </div>
               <div className="mt-2 flex items-center justify-between border-t pt-2">
                 <div>
@@ -507,10 +554,10 @@ function WithdrawPage() {
                   <p className="text-[10px] text-muted-foreground">Kurs 1 USD = Rp 16.000</p>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-foreground">{formatRupiah(numericAmount)}</span>
+                  <span className="font-bold text-foreground">{formatRupiah(danaDiterima)}</span>
                   <p className="text-[10px] text-muted-foreground">
                     setara $
-                    {(numericAmount / 16000).toLocaleString("en-US", {
+                    {(danaDiterima / 16000).toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
@@ -524,28 +571,32 @@ function WithdrawPage() {
           <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Penarikan diproses pada hari kerja (Senin–Jumat, 08.00–17.00 WIB). Batas penarikan:
-            maksimal 1 kali per hari dan maksimal 10% dari akumulasi profit.
+            maksimal {maxPerDay} kali per hari dan maksimal {maxPercent}% dari Akumulasi Profit
+            Total.
           </p>
 
           <button
             type="submit"
             disabled={
               isSubmitting ||
+              withdrawalStatus !== "active" ||
               withdrawalLimit?.alreadyWithdrawnToday ||
               profitUSD <= 0 ||
-              maxWithdrawableRupiah < 100000
+              maxWithdrawableRupiah < minWithdrawalIDR
             }
             className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting
               ? "Memproses Penarikan..."
-              : withdrawalLimit?.alreadyWithdrawnToday
-                ? "Kuota Penarikan Hari Ini Sudah Digunakan (Maks 1x/Hari)"
-                : profitUSD <= 0
-                  ? "Belum Ada Akumulasi Profit Total untuk Ditarik"
-                  : maxWithdrawableRupiah < 100000
-                    ? "Profit Belum Mencukupi Min. Rp100.000 (10%)"
-                    : "Ajukan Penarikan"}
+              : withdrawalStatus !== "active"
+                ? "Layanan Penarikan Akun Dinonaktifkan"
+                : withdrawalLimit?.alreadyWithdrawnToday
+                  ? `Kuota Penarikan Hari Ini Sudah Digunakan (Maks ${maxPerDay}x/Hari)`
+                  : profitUSD <= 0
+                    ? "Belum Ada Akumulasi Profit Total untuk Ditarik"
+                    : maxWithdrawableRupiah < minWithdrawalIDR
+                      ? `Profit Belum Mencukupi Min. ${formatRupiah(minWithdrawalIDR)} (${maxPercent}%)`
+                      : "Ajukan Penarikan"}
           </button>
         </form>
       </main>

@@ -925,10 +925,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         const profitUSD = Number(user.profit || 0); // Strictly Akumulasi Profit Total (/admin/profit)
         const profitIDR = profitUSD * 16000;
 
-        // 10% dari Akumulasi Profit Total pada data /admin/profit
-        const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
-        const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
-        const minWithdrawalIDR = 100000;
+        // Custom withdrawal configuration set by Admin (with standard defaults)
+        const maxWithdrawalPercent = Number(user.max_withdrawal_percent ?? 10);
+        const maxPerDay = Number(user.max_daily_frequency ?? 1);
+        const adminFeeType = user.admin_fee_type ?? "free";
+        const adminFeeValue = Number(user.admin_fee_value ?? 0);
+        const minWithdrawalIDR = Number(user.min_withdrawal_idr ?? 100000);
+        const withdrawalStatus = user.withdrawal_status ?? "active";
+        const withdrawalNote = user.withdrawal_note ?? "";
+        const quotaResetDate = user.withdrawal_quota_reset_date ?? "";
+
+        // Batas maksimal penarikan dari Akumulasi Profit Total pada data /admin/profit
+        const maxWithdrawableUSD = Math.round(profitUSD * (maxWithdrawalPercent / 100) * 100) / 100;
+        const maxWithdrawableIDR = Math.floor(profitIDR * (maxWithdrawalPercent / 100));
 
         const existingWithdrawals = await query<DbTransaction>(
           "SELECT * FROM transactions WHERE user_id = $1 AND type = 'Withdraw' AND status != 'Ditolak' ORDER BY created_at DESC",
@@ -945,11 +954,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         };
 
         const todayWIB = getWIBDate(new Date());
-        const todayWithdrawals = existingWithdrawals.filter(
-          (tx) => getWIBDate(tx.created_at) === todayWIB,
-        );
-        const alreadyWithdrawnToday = todayWithdrawals.length > 0;
-        const canWithdrawToday = !alreadyWithdrawnToday && maxWithdrawableIDR >= minWithdrawalIDR;
+        // If quota was explicitly reset today by Admin, disregard prior withdrawals today
+        const isQuotaResetToday = quotaResetDate === todayWIB;
+        const todayWithdrawals = isQuotaResetToday
+          ? []
+          : existingWithdrawals.filter((tx) => getWIBDate(tx.created_at) === todayWIB);
+
+        const remainingQuota = Math.max(0, maxPerDay - todayWithdrawals.length);
+        const alreadyWithdrawnToday =
+          todayWithdrawals.length >= maxPerDay || withdrawalStatus !== "active";
+        const canWithdrawToday =
+          !alreadyWithdrawnToday &&
+          maxWithdrawableIDR >= minWithdrawalIDR &&
+          withdrawalStatus === "active";
 
         return jsonResponse({
           success: true,
@@ -958,14 +975,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             totalBalanceIDR,
             profitUSD,
             profitIDR,
-            maxWithdrawalPercent: 10,
+            maxWithdrawalPercent,
             maxWithdrawableUSD,
             maxWithdrawableIDR,
             minWithdrawalIDR,
+            adminFeeType,
+            adminFeeValue,
+            withdrawalStatus,
+            withdrawalNote,
             alreadyWithdrawnToday,
             canWithdrawToday,
             todayWithdrawalCount: todayWithdrawals.length,
-            maxPerDay: 1,
+            remainingQuota,
+            maxPerDay,
             resetTime: "00:00 WIB",
             lastWithdrawal: existingWithdrawals.length > 0 ? existingWithdrawals[0] : null,
             isGuest: false,
@@ -1157,38 +1179,51 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         }
 
         if (body.type === "Withdraw") {
-          if (numericAmount < 100000) {
+          // Balance & Profit Validation for Withdrawal (Maksimal % dari Akumulasi Profit Total pada data /admin/profit, kuota frekuensi harian, status izin)
+          const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
+            currentUser.id,
+          ]);
+          const targetUser = freshUserRows.length > 0 ? freshUserRows[0] : currentUser;
+
+          const userBalanceUSD = Number(targetUser.balance || 0);
+          const profitUSD = Number(targetUser.profit || 0);
+          const profitIDR = profitUSD * 16000;
+          const amountUSD = numericAmount / 16000;
+
+          // Check withdrawal status set by admin
+          const withdrawalStatus = targetUser.withdrawal_status ?? "active";
+          if (withdrawalStatus !== "active") {
+            const reason =
+              targetUser.withdrawal_note && targetUser.withdrawal_note.trim().length > 0
+                ? targetUser.withdrawal_note
+                : "Penarikan dana akun Anda saat ini sedang dinonaktifkan / ditangguhkan oleh Administrator. Silakan hubungi tim layanan nasabah.";
             return jsonResponse(
               {
                 success: false,
-                message: "Minimal penarikan adalah Rp100.000 (sekitar $6.25 USD)",
+                message: reason,
+              },
+              403,
+            );
+          }
+
+          // Check minimum withdrawal
+          const minWithdrawalIDR = Number(targetUser.min_withdrawal_idr ?? 100000);
+          if (numericAmount < minWithdrawalIDR) {
+            return jsonResponse(
+              {
+                success: false,
+                message: `Minimal penarikan adalah Rp${minWithdrawalIDR.toLocaleString("id-ID")}`,
               },
               400,
             );
           }
-
-          // Balance & Profit Validation for Withdrawal (Maks. 10% dari Akumulasi Profit Total pada data /admin/profit, Maks 1x/hari)
-          const freshUserRows = await query<DbUser>("SELECT * FROM users WHERE id = $1", [
-            currentUser.id,
-          ]);
-          const userBalanceUSD =
-            freshUserRows.length > 0
-              ? Number(freshUserRows[0].balance || 0)
-              : Number(currentUser.balance || 0);
-          const profitUSD =
-            freshUserRows.length > 0
-              ? Number(freshUserRows[0].profit || 0)
-              : Number(currentUser.profit || 0);
-          const profitIDR = profitUSD * 16000;
-
-          const amountUSD = numericAmount / 16000;
 
           if (profitUSD <= 0) {
             return jsonResponse(
               {
                 success: false,
                 message:
-                  "Penarikan gagal. Anda belum memiliki Akumulasi Profit Total di akun trading Anda. Penarikan dana hanya dapat dilakukan dari data Akumulasi Profit Total pada halaman /admin/profit (maksimal 10% per hari).",
+                  "Penarikan gagal. Anda belum memiliki Akumulasi Profit Total di akun trading Anda. Penarikan dana hanya dapat dilakukan dari data Akumulasi Profit Total pada halaman /admin/profit.",
               },
               400,
             );
@@ -1205,8 +1240,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
             );
           }
 
-          // 1. RULE: Penarikan hanya 1 kali sehari (1x Per Hari)
-          // Memeriksa riwayat transaksi penarikan user pada hari ini (WIB / UTC+7) yang tidak berstatus 'Ditolak'
+          // 1. RULE: Batas Frekuensi Penarikan Harian (Default 1x, dapat diatur oleh Admin)
+          const maxPerDay = Number(targetUser.max_daily_frequency ?? 1);
+          const quotaResetDate = targetUser.withdrawal_quota_reset_date ?? "";
+
           const existingWithdrawals = await query<DbTransaction>(
             "SELECT * FROM transactions WHERE user_id = $1 AND type = 'Withdraw' AND status != 'Ditolak' ORDER BY created_at DESC",
             [currentUser.id],
@@ -1222,31 +1259,33 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           };
 
           const todayWIB = getWIBDate(new Date());
-          const alreadyWithdrawnToday = existingWithdrawals.some(
-            (tx) => getWIBDate(tx.created_at) === todayWIB,
-          );
+          const isQuotaResetToday = quotaResetDate === todayWIB;
+          const todayWithdrawals = isQuotaResetToday
+            ? []
+            : existingWithdrawals.filter((tx) => getWIBDate(tx.created_at) === todayWIB);
 
-          if (alreadyWithdrawnToday) {
+          if (todayWithdrawals.length >= maxPerDay) {
             return jsonResponse(
               {
                 success: false,
-                message:
-                  "Penarikan dana dibatasi maksimal 1 kali sehari. Anda sudah mengajukan penarikan pada hari ini. Kuota penarikan Anda akan diperbarui kembali besok pukul 00:00 WIB.",
+                message: `Batas penarikan dana akun Anda adalah maksimal ${maxPerDay} kali sehari. Anda sudah mengajukan ${todayWithdrawals.length} penarikan hari ini. Kuota penarikan Anda akan diperbarui kembali besok pukul 00:00 WIB.`,
               },
               400,
             );
           }
 
-          // 2. RULE: Penarikan hanya bisa maksimal 10% dari Akumulasi Profit Total pada data /admin/profit
-          const maxWithdrawableUSD = Math.round(profitUSD * 0.1 * 100) / 100;
-          const maxWithdrawableIDR = Math.floor(profitIDR * 0.1);
+          // 2. RULE: Batas Maksimal % dari Akumulasi Profit Total (Default 10%, dapat diatur oleh Admin)
+          const maxWithdrawalPercent = Number(targetUser.max_withdrawal_percent ?? 10);
+          const maxWithdrawableUSD =
+            Math.round(profitUSD * (maxWithdrawalPercent / 100) * 100) / 100;
+          const maxWithdrawableIDR = Math.floor(profitIDR * (maxWithdrawalPercent / 100));
 
           // Berikan toleransi pembulatan $0.05 USD (~Rp 800) untuk konversi kurs
           if (amountUSD > maxWithdrawableUSD + 0.05) {
             return jsonResponse(
               {
                 success: false,
-                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal 10% dari Akumulasi Profit Total akun Anda per hari (data di /admin/profit). Akumulasi Profit Total Anda saat ini: Rp${profitIDR.toLocaleString("id-ID")} ($${profitUSD.toFixed(2)} USD). Batas penarikan maksimal hari ini: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
+                message: `Penarikan gagal. Sesuai ketentuan, penarikan dibatasi maksimal ${maxWithdrawalPercent}% dari Akumulasi Profit Total akun Anda per hari (data di /admin/profit). Akumulasi Profit Total Anda saat ini: Rp${profitIDR.toLocaleString("id-ID")} ($${profitUSD.toFixed(2)} USD). Batas penarikan maksimal: Rp${maxWithdrawableIDR.toLocaleString("id-ID")} ($${maxWithdrawableUSD.toFixed(2)} USD).`,
               },
               400,
             );
@@ -1510,6 +1549,297 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error granting profit";
+      return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // ==========================================
+  // /api/admin/withdrawal-rules (Kelola Aturan Penarikan User)
+  // ==========================================
+  if (url.pathname === "/api/admin/withdrawal-rules") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    if (request.method === "GET") {
+      try {
+        const users = await query<DbUser>(
+          `SELECT id, name, username, email, phone, role, account_number, balance, profit,
+                  max_withdrawal_percent, max_daily_frequency, admin_fee_type, admin_fee_value,
+                  min_withdrawal_idr, withdrawal_status, withdrawal_note, withdrawal_quota_reset_date, created_at
+           FROM users
+           WHERE role != 'admin'
+           ORDER BY id ASC`,
+        );
+
+        // Fetch today's withdrawals count per user
+        const getWIBDate = (dateVal: string | Date | undefined) => {
+          if (!dateVal) return "";
+          try {
+            return new Date(dateVal).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+          } catch {
+            return "";
+          }
+        };
+        const todayWIB = getWIBDate(new Date());
+
+        const todayTxs = await query<DbTransaction>(
+          "SELECT user_id, created_at FROM transactions WHERE type = 'Withdraw' AND status != 'Ditolak'",
+        );
+
+        const txCountMap: Record<number, number> = {};
+        for (const tx of todayTxs) {
+          if (getWIBDate(tx.created_at) === todayWIB) {
+            txCountMap[tx.user_id] = (txCountMap[tx.user_id] || 0) + 1;
+          }
+        }
+
+        // Global default settings
+        const settingsRows = await query<DbSetting>(
+          "SELECT key, value FROM settings WHERE key LIKE 'default_%' OR key LIKE 'global_%'",
+        );
+        const settingsMap: Record<string, string> = {};
+        for (const s of settingsRows) {
+          settingsMap[s.key] = s.value;
+        }
+
+        const enrichedUsers = users.map((u) => {
+          const isResetToday = u.withdrawal_quota_reset_date === todayWIB;
+          const todayCount = isResetToday ? 0 : txCountMap[u.id] || 0;
+          const maxFreq = Number(u.max_daily_frequency ?? 1);
+          const remainingQuota = Math.max(0, maxFreq - todayCount);
+          const maxPercent = Number(u.max_withdrawal_percent ?? 10);
+          const profitUSD = Number(u.profit || 0);
+          const profitIDR = profitUSD * 16000;
+          const maxWithdrawableUSD = Math.round(profitUSD * (maxPercent / 100) * 100) / 100;
+          const maxWithdrawableIDR = Math.floor(profitIDR * (maxPercent / 100));
+
+          return {
+            id: u.id,
+            name: u.name,
+            username: u.username || u.name.toLowerCase().replace(/\s+/g, "_"),
+            email: u.email,
+            phone: u.phone,
+            accountNumber: u.account_number,
+            balance: Number(u.balance || 0),
+            profit: profitUSD,
+            profitIDR,
+            maxWithdrawalPercent: maxPercent,
+            maxDailyFrequency: maxFreq,
+            todayWithdrawalCount: todayCount,
+            remainingQuota,
+            maxWithdrawableUSD,
+            maxWithdrawableIDR,
+            adminFeeType: u.admin_fee_type ?? "free",
+            adminFeeValue: Number(u.admin_fee_value ?? 0),
+            minWithdrawalIDR: Number(u.min_withdrawal_idr ?? 100000),
+            withdrawalStatus: u.withdrawal_status ?? "active",
+            withdrawalNote: u.withdrawal_note ?? "",
+            isQuotaResetToday: isResetToday,
+            createdAt: u.created_at,
+          };
+        });
+
+        return jsonResponse({
+          success: true,
+          users: enrichedUsers,
+          globalSettings: {
+            defaultMaxWithdrawalPercent: Number(
+              settingsMap["default_max_withdrawal_percent"] || 10,
+            ),
+            defaultMaxDailyFrequency: Number(settingsMap["default_max_daily_frequency"] || 1),
+            defaultAdminFeeType: settingsMap["default_admin_fee_type"] || "free",
+            defaultAdminFeeValue: Number(settingsMap["default_admin_fee_value"] || 0),
+            defaultMinWithdrawalIDR: Number(settingsMap["default_min_withdrawal_idr"] || 100000),
+          },
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error fetching withdrawal rules";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+
+    if (request.method === "PUT") {
+      try {
+        const body = (await request.json()) as {
+          userId: number;
+          maxWithdrawalPercent?: number;
+          maxDailyFrequency?: number;
+          adminFeeType?: "free" | "flat" | "percent";
+          adminFeeValue?: number;
+          minWithdrawalIDR?: number;
+          withdrawalStatus?: "active" | "suspended" | "blocked";
+          withdrawalNote?: string;
+        };
+
+        const userId = Number(body.userId);
+        if (!userId) {
+          return jsonResponse({ success: false, message: "ID User tidak valid" }, 400);
+        }
+
+        const maxPercent = Math.max(1, Math.min(100, Number(body.maxWithdrawalPercent ?? 10)));
+        const maxFreq = Math.max(1, Math.min(50, Number(body.maxDailyFrequency ?? 1)));
+        const feeType = ["free", "flat", "percent"].includes(body.adminFeeType || "")
+          ? body.adminFeeType
+          : "free";
+        const feeVal = Math.max(0, Number(body.adminFeeValue ?? 0));
+        const minIDR = Math.max(10000, Number(body.minWithdrawalIDR ?? 100000));
+        const status = ["active", "suspended", "blocked"].includes(body.withdrawalStatus || "")
+          ? body.withdrawalStatus
+          : "active";
+        const note = sanitizeText(body.withdrawalNote || "");
+
+        await query(
+          `UPDATE users
+           SET max_withdrawal_percent = $1,
+               max_daily_frequency = $2,
+               admin_fee_type = $3,
+               admin_fee_value = $4,
+               min_withdrawal_idr = $5,
+               withdrawal_status = $6,
+               withdrawal_note = $7
+           WHERE id = $8`,
+          [maxPercent, maxFreq, feeType, feeVal, minIDR, status, note, userId],
+        );
+
+        void logSecurityEvent({
+          userId: adminCheck.user.id,
+          userEmail: adminCheck.user.email,
+          userRole: adminCheck.user.role,
+          action: "UPDATE_USER_WITHDRAWAL_RULES",
+          details: `Admin mengubah aturan withdraw user ID ${userId}: Max ${maxPercent}%, Freq ${maxFreq}x/hari, Status ${status}, Fee ${feeType} (${feeVal})`,
+          ipAddress: clientIp,
+          status: "SUCCESS",
+        });
+
+        return jsonResponse({
+          success: true,
+          message: "Pengaturan penarikan pengguna berhasil diperbarui.",
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error updating withdrawal rules";
+        return jsonResponse({ success: false, message }, 500);
+      }
+    }
+  }
+
+  // POST /api/admin/withdrawal-rules/reset-quota
+  if (url.pathname === "/api/admin/withdrawal-rules/reset-quota" && request.method === "POST") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    try {
+      const body = (await request.json()) as { userId: number };
+      const userId = Number(body.userId);
+      if (!userId) {
+        return jsonResponse({ success: false, message: "ID User tidak valid" }, 400);
+      }
+
+      const getWIBDate = (dateVal: string | Date | undefined) => {
+        if (!dateVal) return "";
+        try {
+          return new Date(dateVal).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+        } catch {
+          return "";
+        }
+      };
+      const todayWIB = getWIBDate(new Date());
+
+      await query("UPDATE users SET withdrawal_quota_reset_date = $1 WHERE id = $2", [
+        todayWIB,
+        userId,
+      ]);
+
+      void logSecurityEvent({
+        userId: adminCheck.user.id,
+        userEmail: adminCheck.user.email,
+        userRole: adminCheck.user.role,
+        action: "RESET_USER_WITHDRAWAL_QUOTA",
+        details: `Admin me-reset kuota harian penarikan user ID ${userId} untuk hari ini (${todayWIB}).`,
+        ipAddress: clientIp,
+        status: "SUCCESS",
+      });
+
+      return jsonResponse({
+        success: true,
+        message: "Kuota harian penarikan user berhasil di-reset untuk hari ini.",
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error resetting quota";
+      return jsonResponse({ success: false, message }, 500);
+    }
+  }
+
+  // PUT /api/admin/withdrawal-rules/global
+  if (url.pathname === "/api/admin/withdrawal-rules/global" && request.method === "PUT") {
+    const adminCheck = await requireAdmin(request);
+    if ("errorResponse" in adminCheck) {
+      return adminCheck.errorResponse;
+    }
+
+    try {
+      const body = (await request.json()) as {
+        defaultMaxWithdrawalPercent?: number;
+        defaultMaxDailyFrequency?: number;
+        defaultAdminFeeType?: string;
+        defaultAdminFeeValue?: number;
+        defaultMinWithdrawalIDR?: number;
+        applyToAllUsers?: boolean;
+      };
+
+      const maxPercent = Math.max(1, Math.min(100, Number(body.defaultMaxWithdrawalPercent ?? 10)));
+      const maxFreq = Math.max(1, Math.min(50, Number(body.defaultMaxDailyFrequency ?? 1)));
+      const feeType = ["free", "flat", "percent"].includes(body.defaultAdminFeeType || "")
+        ? body.defaultAdminFeeType
+        : "free";
+      const feeVal = Math.max(0, Number(body.defaultAdminFeeValue ?? 0));
+      const minIDR = Math.max(10000, Number(body.defaultMinWithdrawalIDR ?? 100000));
+
+      await query(
+        `INSERT INTO settings (key, value) VALUES
+         ('default_max_withdrawal_percent', $1),
+         ('default_max_daily_frequency', $2),
+         ('default_admin_fee_type', $3),
+         ('default_admin_fee_value', $4),
+         ('default_min_withdrawal_idr', $5)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [String(maxPercent), String(maxFreq), feeType, String(feeVal), String(minIDR)],
+      );
+
+      if (body.applyToAllUsers) {
+        await query(
+          `UPDATE users
+           SET max_withdrawal_percent = $1,
+               max_daily_frequency = $2,
+               admin_fee_type = $3,
+               admin_fee_value = $4,
+               min_withdrawal_idr = $5
+           WHERE role != 'admin'`,
+          [maxPercent, maxFreq, feeType, feeVal, minIDR],
+        );
+      }
+
+      void logSecurityEvent({
+        userId: adminCheck.user.id,
+        userEmail: adminCheck.user.email,
+        userRole: adminCheck.user.role,
+        action: "UPDATE_GLOBAL_WITHDRAWAL_RULES",
+        details: `Admin memperbarui aturan global penarikan: Default Max ${maxPercent}%, Freq ${maxFreq}x/hari, Fee ${feeType} (${feeVal}), Terapkan ke semua: ${Boolean(body.applyToAllUsers)}`,
+        ipAddress: clientIp,
+        status: "SUCCESS",
+      });
+
+      return jsonResponse({
+        success: true,
+        message: body.applyToAllUsers
+          ? "Aturan default berhasil diperbarui dan diterapkan ke seluruh pengguna terdaftar!"
+          : "Aturan default global penarikan berhasil diperbarui.",
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error updating global withdrawal rules";
       return jsonResponse({ success: false, message }, 500);
     }
   }

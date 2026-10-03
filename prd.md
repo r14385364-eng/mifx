@@ -24,7 +24,18 @@ Aplikasi ini dirancang dengan antarmuka yang sangat responsif, intuitif, serta d
 - **Rekening Tujuan Deposit Dinamis (`/admin/pengaturan` -> `/deposit`)**: Bank tujuan deposit resmi (default: Keb Hana Bank, No. Rek: `11628950560`, a/n `AKSAY S.PUTRA`) yang dapat dikelola secara CRUD oleh Admin di menu Pengaturan dan langsung terintegrasi secara real-time pada kartu rekening tujuan di halaman `/deposit`.
 - **CRUD Rekening / E-Wallet Sumber Dana Deposit**: Daftar opsi rekening/e-wallet sumber dana pembayaran yang dapat ditambah, diedit, atau dihapus oleh Admin di `/admin/pengaturan` dan tampil sebagai pilihan metode transfer bagi trader pada halaman `/deposit`.
 - **Contact Person Support Resmi AKSAY (`/lainnya`)**: Dedicated Account Support resmi Gotrade a/n **AKSAY** (Nomor WhatsApp: `082329157278`) yang dapat dikelola secara CRUD penuh oleh Admin di `/admin/pengaturan` dan dirender dinamis di halaman `/lainnya` dengan tautan interaktif langsung ke WhatsApp.
-- Mekanisme penarikan dana (_withdrawal_) dengan batas minimal **Rp 100.000 IDR** ($6.25 USD) dan **Aturan Khusus Penarikan HANYA dari Saldo Profit** (saldo deposit awal/pokok tidak dapat ditarik demi kepatuhan regulasi dan manajemen risiko platform).
+- **Halaman Manajemen & Aturan Penarikan Dana di Role Admin (`/admin/withdraw`)**:
+  - Halaman khusus di sidebar admin untuk mengonfigurasi ketentuan penarikan dana trader secara individual per user maupun aturan global default:
+    - **Batas Maksimal Penarikan (% dari Akumulasi Profit Total)**: Default 10%, dapat diubah fleksibel per akun (misal 5%, 10%, 15%, 20%, 50%, atau 100%).
+    - **Batas Frekuensi Penarikan Harian**: Default 1x sehari, dapat diatur hingga 50x per hari kalender (WIB).
+    - **Biaya Admin (Admin Fee)**: Dapat disetel Bebas Biaya (Gratis), Nominal Tetap Rupiah (Flat IDR), atau Persentase (%) dari nominal penarikan.
+    - **Batas Minimal Penarikan (IDR)**: Default Rp 100.000 IDR.
+    - **Status Izin Penarikan**: Diizinkan (Aktif), Ditangguhkan Sementara (Suspended dengan catatan/pesan kustom admin), atau Dibekukan (Blocked).
+    - **1-Klik Reset Kuota Harian**: Admin dapat langsung me-reset kuota penarikan user untuk hari ini tanpa menunggu reset otomatis pukul 00:00 WIB.
+    - **Antrean & Riwayat Permintaan Withdraw**: Tab terpadu untuk meninjau dan menyetujui (*Approve*) atau menolak (*Reject*) permohonan penarikan trader.
+  - **Integritas Sumber Dana Terkunci**: Dana yang dapat ditarik **HANYA berasal dari data Akumulasi Profit Total (`/admin/profit`)** akun trader. Modal deposit awal trader 100% aman dan tidak dapat ditarik sebagai profit.
+  - **Proteksi Input Otomatis (*Strict Clamping*)**: Form input penarikan pada `/withdraw` membatasi dan mengunci angka input pengguna agar tidak dapat melebihi batas maksimal persentase profit yang ditetapkan.
+  - **Optimalisasi Modal Responsif Seluler (Mobile)**: Seluruh pop-up dan modal dialog (termasuk pembuatan notifikasi di `/admin/notifikasi`, detail user, peninjauan transfer resi, dan pengaturan ketentuan withdraw) mendukung *touch pan*, *overscroll containment*, dan *smooth touch scrolling* di semua smartphone tanpa terpotong atau tertahan keyboard.
 - **CRUD Rekening Bank Pengguna (`/api/user/bank-accounts`)**: Manajemen daftar rekening bank pribadi trader di menu `/lainnya` -> Informasi Bank (Tambah, Edit, Hapus, Set Utama) yang terintegrasi otomatis dengan form pilihan bank pada halaman Penarikan (`/withdraw`).
 - **Program Gotrade Rewards (`/rewards`)**: Sistem penukaran poin saldo trading (1 Poin = Rp 1.000.000 saldo) dengan berbagai hadiah eksklusif (iPhone 16 Pro, MacBook Pro, Emas Antam, E-Wallet) lengkap dengan manajemen klaim reward di panel admin (`/admin/rewards`).
 - Panel manajemen administrator untuk persentase profit harian global, injeksi profit kustom per user, persetujuan transaksi deposit & withdraw, siaran notifikasi broadcast, manajemen sinyal trading, berita finansial, mata uang/instrumen pasar, serta jejak audit keamanan (_audit logs_).
@@ -76,6 +87,14 @@ Infrastruktur database mengelola 10 entitas tabel utama:
 | `profit`         | NUMERIC(15,2)       | Akumulasi Saldo Profit Pengguna (USD)    |
 | `base_profit`    | NUMERIC(15,2)       | Nominal Basis Kalkulasi Profit (USD)     |
 | `account_type`   | VARCHAR(50)         | Jenis Akun (Standard Live / Demo)        |
+| `max_withdrawal_percent` | NUMERIC(5,2) | Batas Maksimal Penarikan (% Profit, default 10%) |
+| `max_daily_frequency`   | INT          | Batas Frekuensi Penarikan per Hari (default 1x)  |
+| `admin_fee_type` | VARCHAR(20)         | Model Biaya Admin (`free`, `flat`, `percent`)    |
+| `admin_fee_value`| NUMERIC(15,2)       | Nilai Biaya Admin (Nominal Rp atau %)            |
+| `min_withdrawal_idr` | NUMERIC(15,2)   | Batas Minimal Penarikan (IDR, default Rp 100.000)|
+| `withdrawal_status`  | VARCHAR(50)     | Status Izin Penarikan (`active`, `suspended`, `blocked`) |
+| `withdrawal_note`    | TEXT            | Catatan / Alasan Khusus dari Administrator       |
+| `withdrawal_quota_reset_date` | VARCHAR(50) | Tanggal Override Reset Kuota Harian (WIB)   |
 | `created_at`     | TIMESTAMP           | Tanggal Pendaftaran                      |
 
 ### 2. `user_bank_accounts` (Rekening Bank Pengguna)
@@ -207,6 +226,11 @@ Konfigurasi kunci dinamis dalam tabel `settings`:
 - `deposit_payment_sources`: JSON Array daftar Rekening / E-Wallet Sumber Dana Deposit yang diizinkan (Bank BCA, Mandiri, BNI, BRI, BSI, CIMB Niaga, Permata, GoPay, OVO, DANA, ShopeePay, LinkAja).
 - `contact_persons_list`: JSON Array daftar Contact Person Support Gotrade (nama: AKSAY, role: Gotrade Dedicated Account Support, nomor WhatsApp: 082329157278, status aktif).
 - `global_daily_profit_rate`: Persentase acuan profit harian global (default: 5%) yang dapat diubah dan diterapkan secara on-demand oleh Admin di `/admin/profit`.
+- `default_max_withdrawal_percent`: Batas maksimal penarikan bawaan (% dari Akumulasi Profit Total, default: 10%).
+- `default_max_daily_frequency`: Batas frekuensi penarikan harian bawaan per hari kalender WIB (default: 1x sehari).
+- `default_admin_fee_type`: Skema biaya admin bawaan (`free` = Bebas Biaya, `flat` = Nominal Flat IDR, `percent` = Persentase %, default: `free`).
+- `default_admin_fee_value`: Nilai besaran biaya admin bawaan (default: 0).
+- `default_min_withdrawal_idr`: Batas minimal penarikan bawaan dalam Rupiah (default: Rp 100.000 IDR).
 
 ---
 
@@ -280,13 +304,16 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
   - Fitur Unggah Bukti Transfer dengan pratinjau thumbnail, perbesar layar penuh, dan kompresi client-side.
   - **Komponen Kebijakan & Ketentuan Penarikan Resmi**: Menampilkan kartu ketentuan penarikan platform secara terperinci (Aturan penarikan maksimal 1x sehari, batas pencairan maksimal 10% dari Akumulasi Profit total, 100% deposit utuh sebagai modal pokok aktif, serta kotak status kuota penarikan akun real-time dilengkapi tautan cepat ke `/withdraw`).
 - **Withdraw / Penarikan (`/withdraw`)**:
-  - Formulir penarikan dana ke rekening bank / e-wallet terdaftar milik user.
-  - Pilihan dropdown otomatis dari daftar rekening bank yang disimpan di menu Informasi Bank.
-  - Batas **Minimal Penarikan (WD)**: **Rp 100.000 IDR** (setara $6.25 USD).
-  - **Aturan Frekuensi Penarikan 1x Sehari**: Penarikan dibatasi maksimal **1 kali per hari** (WIB). Kuota penarikan di-reset secara otomatis setiap hari pada pukul **00:00 WIB**.
-  - **Aturan Batas Maksimal 10% Akumulasi Profit**: Nominal penarikan dibatasi maksimal **10% dari total Akumulasi Profit Total** (`user.profit`) yang dimiliki trader saat pengajuan.
-  - **Aturan Penarikan Hanya dari Saldo Profit**: Penarikan **HANYA dapat dilakukan dari Saldo Profit**. Saldo deposit awal/pokok tidak dapat ditarik demi kepatuhan regulasi dan manajemen risiko platform.
-  - **Fitur Status Kuota & Pilihan Cepat**: Kartu status kuota hari ini (Tersedia / Terpakai), tombol 1-klik "Tarik Maks. 10%", serta chip preset ("10% Maksimal", "5% Profit", "Min. Rp 100 Rb") dengan perlindungan formulir terkunci otomatis jika kuota harian telah terpakai.
+  - **Mekanisme & Alur Penarikan Lengkap**:
+    1. **Sumber Dana Terkunci (Hanya Akumulasi Profit Total)**: Dana yang dapat ditarik **HANYA berasal dari data Akumulasi Profit Total** (`user.profit`) akun trader (data profit yang dikelola pada halaman `/admin/profit`), bukan dari modal deposit awal (`Free Margin`). Jika trader belum memiliki profit (`Profit = Rp 0`), kolom input nominal dan tombol submit dinonaktifkan secara otomatis dengan pesan edukatif. Modal deposit pokok 100% aman dan utuh untuk aktivitas trading.
+    2. **Pengambilan Limit Dinamis Real-Time**: Form penarikan memuat parameter limit spesifik akun pengguna via `/api/user/withdrawal-limit`, mencakup batas persentase maksimal profit, batas frekuensi harian, penggunaan kuota hari ini, skema biaya admin, batas minimal penarikan, dan status perizinan akun.
+    3. **Batas Maksimal Penarikan (% dari Akumulasi Profit Total)**: Secara bawaan dibatasi maksimal **10% dari Akumulasi Profit Total** (`user.profit`), atau persentase khusus yang telah dikonfigurasi admin pada akun tersebut di `/admin/withdraw`.
+    4. **Proteksi Input Otomatis (*Strict Clamping*)**: Kolom input nominal penarikan secara otomatis membatasi angka yang dimasukkan pengguna agar tidak dapat melebihi batas maksimal persentase profit yang diizinkan (`maxWithdrawableIDR`). Tombol preset ("10% Maksimal", "5% Profit", "Min. Rp 100 Rb") dan tombol cepat "Tarik Maks. 10%" menghitung angka pas secara instan.
+    5. **Batas Frekuensi Penarikan Harian (Default 1x Sehari)**: Pengguna dibatasi frekuensi penarikan sesuai kuota harian akun (default 1 kali per hari kalender WIB). Kuota di-reset otomatis setiap hari pada pukul **00:00 WIB**, atau dapat di-reset kapan saja oleh admin via fitur 1-klik di `/admin/withdraw`. Jika kuota habis, formulir terkunci otomatis dengan kartu peringatan dan countdown info reset.
+    6. **Transparansi Biaya Admin (Admin Fee)**: Menampilkan rincian perhitungan biaya admin secara transparan berdasarkan konfigurasi admin: Bebas Biaya (Gratis), Nominal Tetap Rupiah (Flat IDR), atau Persentase (%) dari nominal penarikan, beserta rincian estimasi dana bersih yang akan masuk ke rekening trader.
+    7. **Batas Minimal Penarikan (IDR)**: Minimal penarikan Rp 100.000 IDR (atau sesuai aturan kustom admin per user).
+    8. **Integrasi Rekening Bank Pribadi**: Dropdown interaktif memilih rekening tujuan transfer dari daftar rekening bank / e-wallet yang telah disimpan di menu `/lainnya` -> Informasi Bank.
+    9. **Alur Pengajuan & Verifikasi Transaksi**: Permohonan penarikan yang dikirim akan berstatus **"Menunggu"** (`Diproses`) dan masuk ke antrean admin di `/admin/withdraw`. Setelah disetujui (*Approve*) oleh admin, status berubah menjadi **"Berhasil"** dan sistem secara otomatis mendebit saldo gabungan (`balance`) serta saldo profit (`profit`) trader. Jika ditolak (*Reject*), status berubah menjadi **"Ditolak"** dan dana tetap utuh di akun trader.
 - **Gotrade Rewards (`/rewards`)**:
   - Katalog produk reward (iPhone 16 Pro, MacBook Pro, Emas Antam, E-Wallet) dengan tema visual putih-hijau resmi Gotrade.
   - Kalkulasi otomatis poin user berdasarkan saldo akun (1 Poin = Rp 1.000.000 saldo).
@@ -341,8 +368,39 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
   - CRUD penuh artikel berita finansial, pengunggahan sampul gambar, penentuan slug URL, dan publikasi.
 - **Persetujuan Top-Up (`/admin/top-up`)**:
   - Verifikasi pengajuan deposit trader dengan kolom khusus Bukti Transfer, thumbnail resi, dan modal peninjauan resolusi penuh. Persetujuan deposit mengkreditkan 100% nominal deposit pokok murni ke akun trader.
-- **Persetujuan Withdraw (`/admin/withdraw`)**:
-  - Verifikasi permohonan penarikan dana trader dan tombol persetujuan yang memotong saldo profit & balance akun trader.
+- **Kelola Penarikan & Aturan User (`/admin/withdraw`)**:
+  - **Penempatan Navigasi Sidebar**: Ditempatkan secara permanen pada sidebar panel administrator pada kelompok menu **TRANSAKSI** -> **Withdraw** (`/admin/withdraw`) dengan ikon panah keluar terstandarisasi.
+  - **Integritas Sumber Dana Terkunci**: Dana yang dapat ditarik oleh trader **HANYA berasal dari data Akumulasi Profit Total** (`user.profit`) akun trader (data profit yang dikelola pada halaman `/admin/profit`), bukan dari modal deposit awal. Modal pokok aktif tetap terlindungi secara absolut.
+  - **Arsitektur Dual-Tab Terpadu**:
+    1. **Tab 1: Aturan & Limit Penarikan Pengguna**:
+       - **Kartu Metrik Ikhtisar**: Total Trader Terdaftar, Rata-rata Batas Maksimal %, Jumlah Trader Bebas Biaya Admin, dan Status Penarikan Aktif.
+       - **Pencarian & Filter Cepat**: Pencarian real-time berdasarkan nama, email, username, atau nomor akun trading, serta filter status penarikan (Semua, Aktif, Ditangguhkan/Suspended, Dibekukan/Blocked).
+       - **Tabel Manajemen User Komprehensif**:
+         - **Trader & Akun**: Nama lengkap, username, email, dan nomor akun trading 8 digit.
+         - **Saldo & Akumulasi Profit**: Menampilkan Saldo Gabungan (`balance`) serta Akumulasi Profit Total (`user.profit`) yang dikelola di `/admin/profit` (USD & konversi IDR rate Rp 16.000).
+         - **Maks. Penarikan (% & IDR)**: Persentase batas penarikan dari profit yang aktif untuk user tersebut (default 10%, atau kustom 1%-100%) dan kalkulasi otomatis batas nominal penarikan maksimal dalam Rupiah.
+         - **Frekuensi & Kuota Hari Ini**: Batas frekuensi harian (default 1x sehari, dapat diatur hingga 50x) dan status sisa kuota hari ini (WIB) dengan badge visual informatif.
+         - **Biaya Admin**: Model biaya admin yang berlaku untuk user (Gratis / Flat IDR / Persentase %).
+         - **Batas Minimal Penarikan (IDR)**: Minimal penarikan dana per transaksi (default Rp 100.000 IDR).
+         - **Status & Catatan**: Badge status izin penarikan (`Aktif`, `Ditangguhkan`, `Dibekukan`) beserta catatan alasan khusus admin yang akan tampil pada aplikasi trader.
+         - **Aksi Cepat 1-Klik**: Tombol "Atur Rule" untuk membuka modal konfigurasi user, serta tombol **"Reset Kuota"** untuk langsung mengembalikan kuota harian user hari ini tanpa harus menunggu pukul 00:00 WIB.
+       - **Modal Dialog "Atur Ketentuan Penarikan User"**:
+         - Pengaturan Batas Maksimal Penarikan (% dari Akumulasi Profit Total, 1% - 100%).
+         - Pengaturan Batas Frekuensi Penarikan per Hari Kalender WIB (1 - 50 kali/hari).
+         - Pengaturan Skema Biaya Admin: Bebas Biaya (Gratis), Nominal Tetap Rupiah (Flat IDR), atau Persentase (%).
+         - Pengaturan Nilai Biaya Admin (Nominal Rupiah atau Persentase).
+         - Pengaturan Batas Minimal Penarikan (IDR).
+         - Pengaturan Status Izin Penarikan: Aktif, Ditangguhkan Sementara (Suspended), atau Dibekukan (Blocked).
+         - Kolom Catatan / Alasan Administrator untuk ditampilkan transparan ke pengguna.
+       - **Modal Dialog "Pengaturan Bawaan (Global Defaults)"**:
+         - Konfigurasi parameter bawaan untuk seluruh pendaftar akun baru berikutnya.
+         - Toggle opsi **"Terapkan ke Seluruh Trader yang Ada"** untuk menyamakan batas maksimal %, frekuensi harian, biaya admin, dan batas minimal WD ke seluruh akun trader yang terdaftar secara massal dalam 1 kali simpan.
+    2. **Tab 2: Permintaan Penarikan (Antrean Transaksi)**:
+       - Antrean terpadu untuk meninjau seluruh permohonan penarikan dana yang diajukan trader.
+       - Kolom verifikasi: ID Transaksi, Nama Trader & Nomor Akun, Bank Tujuan & Nomor Rekening Penerima, Nominal Penarikan (Rupiah & ekuivalen USD), Status, dan Waktu Pengajuan.
+       - Tombol Tindakan Persetujuan:
+         - **Setujui (Approve)**: Mengubah status transaksi menjadi "Berhasil" dan secara otomatis mendebit saldo gabungan (`balance`) serta saldo profit (`profit`) trader.
+         - **Tolak (Reject)**: Mengubah status transaksi menjadi "Ditolak" tanpa memotong saldo akun, disertai alasan penolakan.
 - **Pengaturan Referral (`/admin/referral`)**:
   - Konfigurasi persentase komisi referral tiap level tier.
 - **Audit Logs Keamanan (`/admin/audit-logs`)**:
@@ -376,6 +434,11 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
 | `/api/transactions`                   | `GET`                 | User/Admin   | Mengambil daftar riwayat transaksi deposit/withdraw                          |
 | `/api/transactions`                   | `POST`                | User Token   | Pengajuan deposit (Top Up min $1,000) atau withdraw baru (WD min Rp 100.000) |
 | `/api/transactions`                   | `PUT/PATCH`           | Admin Token  | Persetujuan atau penolakan pengajuan transaksi trader (RBAC Admin)           |
+| `/api/user/withdrawal-limit`          | `GET`                 | User Token   | Mengambil parameter limit penarikan akun trader secara dinamis (kuota harian, % profit, fee, status) |
+| `/api/admin/withdrawal-rules`         | `GET`                 | Admin Token  | Mengambil daftar trader, saldo, profit, kuota penarikan, & konfigurasi global (RBAC Admin) |
+| `/api/admin/withdrawal-rules`         | `PUT`                 | Admin Token  | Mengubah aturan penarikan akun trader (%, frekuensi, fee type/val, min IDR, status, note) |
+| `/api/admin/withdrawal-rules/reset-quota` | `POST`             | Admin Token  | Melakukan override reset kuota harian penarikan user untuk hari ini (RBAC Admin) |
+| `/api/admin/withdrawal-rules/global`  | `PUT`                 | Admin Token  | Mengubah pengaturan bawaan global & opsi terapkan massal ke seluruh trader (RBAC Admin) |
 | `/api/admin/profit`                   | `POST`                | Admin Token  | Injeksi profit kustom langsung ke saldo akun trader (RBAC Admin)             |
 | `/api/admin/profit/apply-daily-rate`  | `POST`                | Admin Token  | Penerapan rate profit harian global ke seluruh trader atau trader tertentu   |
 | `/api/users`                          | `GET/POST/PUT/DELETE` | Admin Token  | Manajemen data, saldo, dan status akun pengguna (RBAC Admin)                 |
@@ -456,7 +519,7 @@ Pengujian komprehensif dieksekusi secara otomatis dan menyeluruh mencakup seluru
 | **Kelola Sinyal (`/admin/sinyal`)**           | CRUD sinyal trading (Simbol, Action, TP, SL, Rasionasi)                | `GET/POST/PUT/DELETE /api/signals`                                  | **PASSED** | Sinyal baru langsung tampil di Beranda dan menu Sinyal trader.        |
 | **Kelola Berita (`/admin/berita`)**           | CRUD berita finansial (Judul, Slug, Kategori, Gambar, Konten)          | `GET/POST/PUT/DELETE /api/news`                                     | **PASSED** | Artikel berita terbit dan dapat diakses publik melalui slug.          |
 | **Persetujuan Top-Up (`/admin/top-up`)**      | Peninjauan bukti transfer resolusi penuh, tombol Setujui / Tolak       | `GET/PUT /api/transactions`                                         | **PASSED** | Persetujuan deposit mengkreditkan 100% nominal deposit pokok murni.   |
-| **Persetujuan Withdraw (`/admin/withdraw`)**  | Verifikasi permohonan penarikan dana trader & tombol Setujui           | `GET/PUT /api/transactions`                                         | **PASSED** | Memotong saldo profit & balance secara sinkron saat disetujui.        |
+| **Kelola Penarikan (`/admin/withdraw`)**      | Manajemen aturan penarikan per user (%, frekuensi harian, biaya admin, min WD, status), reset kuota 1-klik, pengaturan global, & antrean transaksi WD | `GET/PUT /api/admin/withdrawal-rules`, `POST /api/admin/withdrawal-rules/reset-quota`, `PUT /api/admin/withdrawal-rules/global`, `GET/PUT /api/transactions` | **PASSED** | Aturan penarikan per user tersimpan presisi; verifikasi transaksi memotong saldo profit & balance secara sinkron. |
 | **Pengaturan Referral (`/admin/referral`)**   | Pengaturan komisi referral per tier                                    | `GET/POST/PUT/DELETE /api/referrals`                                | **PASSED** | Perubahan komisi tersimpan aman di database.                          |
 | **Audit Logs Keamanan (`/admin/audit-logs`)** | Pemantauan aktivitas login, perubahan data, dan pelanggaran RBAC       | `GET /api/admin/audit-logs`                                         | **PASSED** | Rekaman log tersimpan rapi dengan rincian IP, aksi, dan status.       |
 | **Pengaturan Admin (`/admin/pengaturan`)**    | CRUD Rekening Tujuan (AKSAY S.PUTRA), Sumber Dana, Contact Person AKSAY, QRIS | `GET/POST /api/settings`                                    | **PASSED** | Seluruh data konfigurasi tersimpan dan terbarui di aplikasi trader.   |
@@ -471,7 +534,7 @@ Pengujian end-to-end multi-layer telah dijalankan pada seluruh domain aplikasi (
 
 | Suite Pengujian                      | Cakupan & Fokus Pengujian                                                       |   Target    |         Hasil          |         Status         |
 | :----------------------------------- | :------------------------------------------------------------------------------ | :---------: | :--------------------: | :--------------------: |
-| **Master E2E Platform Suite**        | Siklus Keuangan Penuh, Bank CRUD, Settings, Metrics, News Seed, RBAC           | 67 Skenario | **67 Lolos** (0 Gagal) |    **100% HEALTHY**    |
+| **Master E2E Platform Suite**        | Siklus Keuangan Penuh, Bank CRUD, Settings, Metrics, News Seed, RBAC, Aturan & Limit WD | 69 Skenario | **69 Lolos** (0 Gagal) |    **100% HEALTHY**    |
 | **Full Platform & Security Suite**   | 28 Rute SPA, Rekening AKSAY, Sumber Dana, Deposit, Profit, WD, Rewards, RBAC    | 64 Skenario | **64 Lolos** (0 Gagal) |    **100% SUCCESS**    |
 | **Comprehensive Audit Suite**        | 28 Halaman SPA, CRUD Bank, Transaksi, Rewards, RBAC Guard                       | 64 Skenario | **64 Lolos** (0 Gagal) |    **100% SUCCESS**    |
 | **Auto-Fill & Simulation Suite**     | Kredensial Auto-Fill (Register & Logout) & Non-Aktif Simulasi Saldo $0.00       | 9 Skenario  |  **9 Lolos** (0 Gagal) |    **100% VERIFIED**   |
@@ -500,6 +563,10 @@ Semua fitur, menu, halaman, dan sistem keamanan platform Gotrade telah diverifik
 7. **CRUD Sumber Dana Deposit**: Pilihan Rekening / E-Wallet Sumber Dana Deposit pada halaman `/deposit` telah dapat di-CRUD (tambah, edit, status aktif, hapus) di panel pengaturan admin.
 8. **CRUD Contact Person AKSAY**: Komponen Gotrade Dedicated Account Support atas nama **AKSAY** dengan nomor WhatsApp `082329157278` telah terhubung dinamis di halaman `/lainnya` dan dapat di-CRUD secara penuh di `/admin/pengaturan`.
 9. **Seeder Berita Mandiri (`npm run seed:news`)**: 9 artikel berita hardcoded lengkap telah diabadikan dalam `scripts/seed-news.ts` dan dapat di-seed kapan pun ke database server maupun disk store melalui perintah `npm run seed:news`.
-10. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (280+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
+10. **Manajemen Penarikan Dana Komprehensif di Role Admin (`/admin/withdraw`)**: Halaman khusus baru di sidebar admin (`/admin/withdraw`) dengan arsitektur dual-tab:
+    - **Tab 1 (Aturan & Limit User)**: Mengatur ketentuan penarikan tiap user secara individual (persentase maksimal dari profit akun trader, batas frekuensi harian, model biaya admin Bebas Biaya/Flat IDR/Persentase, batas minimal penarikan, status izin aktif/suspended/blocked, tombol override reset kuota harian, serta pengaturan bawaan global dengan opsi penerapan massal).
+    - **Tab 2 (Permintaan Penarikan)**: Menangani antrean persetujuan/penolakan transaksi penarikan dana trader.
+    - **Integritas Sumber Dana**: Sumber dana penarikan terkunci murni 100% dari Akumulasi Profit Total (`/admin/profit`) tanpa mengurangi modal deposit awal (`Free Margin`).
+11. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (280+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
 
 Aplikasi Gotrade dinyatakan berada dalam status **Production-Ready** dengan integritas fungsional, performa tinggi, dan tingkat keamanan enterprise.

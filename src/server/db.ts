@@ -24,6 +24,14 @@ export type DbUser = {
   base_profit: number;
   account_type: string;
   referred_by?: string;
+  max_withdrawal_percent?: number;
+  max_daily_frequency?: number;
+  admin_fee_type?: "free" | "flat" | "percent";
+  admin_fee_value?: number;
+  min_withdrawal_idr?: number;
+  withdrawal_status?: "active" | "suspended" | "blocked";
+  withdrawal_note?: string;
+  withdrawal_quota_reset_date?: string;
   created_at: string;
 };
 
@@ -286,6 +294,14 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS base_profit NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS max_withdrawal_percent NUMERIC(5, 2) NOT NULL DEFAULT 10.00;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS max_daily_frequency INT NOT NULL DEFAULT 1;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_fee_type VARCHAR(20) NOT NULL DEFAULT 'free';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_fee_value NUMERIC(15, 2) NOT NULL DEFAULT 0.00;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS min_withdrawal_idr NUMERIC(15, 2) NOT NULL DEFAULT 100000.00;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_status VARCHAR(50) NOT NULL DEFAULT 'active';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_note TEXT DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_quota_reset_date VARCHAR(50) DEFAULT '';
   `);
 
   // Create transactions table
@@ -468,15 +484,23 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       if (Array.isArray(saved.users) && saved.users.length > 0) {
         for (const u of saved.users) {
           await pool.query(
-            `INSERT INTO users (name, email, password, phone, role, account_number, balance, account_type, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO users (name, email, password, phone, role, account_number, balance, profit, account_type, max_withdrawal_percent, max_daily_frequency, admin_fee_type, admin_fee_value, min_withdrawal_idr, withdrawal_status, withdrawal_note, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
              ON CONFLICT (email) DO UPDATE SET
                name = EXCLUDED.name,
                password = EXCLUDED.password,
                phone = EXCLUDED.phone,
                role = EXCLUDED.role,
                balance = EXCLUDED.balance,
-               account_type = EXCLUDED.account_type`,
+               profit = COALESCE(EXCLUDED.profit, users.profit),
+               account_type = EXCLUDED.account_type,
+               max_withdrawal_percent = COALESCE(EXCLUDED.max_withdrawal_percent, users.max_withdrawal_percent),
+               max_daily_frequency = COALESCE(EXCLUDED.max_daily_frequency, users.max_daily_frequency),
+               admin_fee_type = COALESCE(EXCLUDED.admin_fee_type, users.admin_fee_type),
+               admin_fee_value = COALESCE(EXCLUDED.admin_fee_value, users.admin_fee_value),
+               min_withdrawal_idr = COALESCE(EXCLUDED.min_withdrawal_idr, users.min_withdrawal_idr),
+               withdrawal_status = COALESCE(EXCLUDED.withdrawal_status, users.withdrawal_status),
+               withdrawal_note = COALESCE(EXCLUDED.withdrawal_note, users.withdrawal_note)`,
             [
               u.name,
               u.email,
@@ -485,7 +509,15 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
               u.role,
               u.account_number,
               u.balance,
+              u.profit || 0,
               u.account_type,
+              u.max_withdrawal_percent || 10,
+              u.max_daily_frequency || 1,
+              u.admin_fee_type || "free",
+              u.admin_fee_value || 0,
+              u.min_withdrawal_idr || 100000,
+              u.withdrawal_status || "active",
+              u.withdrawal_note || "",
               u.created_at || new Date().toISOString(),
             ],
           );
