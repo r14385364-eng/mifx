@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Coins,
   DollarSign,
+  Percent,
   PlusCircle,
   RefreshCw,
   Search,
@@ -20,6 +21,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -49,9 +51,11 @@ interface UserProfitData {
   balance: number;
   profit: number;
   depositBalance: number;
+  customProfitRate?: number | null;
 }
 
 const presetDailyRates = [3, 5, 8, 10, 12, 15, 20];
+const presetPercentOptions = [1, 2, 3, 5, 8, 10, 15, 20];
 const presetProfits = [50, 100, 250, 500, 1000];
 
 function formatUSD(val: number) {
@@ -82,7 +86,9 @@ export function ProfitAdminPage() {
 
   // Modal State: Custom Profit Injection
   const [selectedUser, setSelectedUser] = useState<UserProfitData | null>(null);
+  const [profitPercent, setProfitPercent] = useState<string>("2");
   const [profitAmount, setProfitAmount] = useState<string>("100");
+  const [saveCustomRate, setSaveCustomRate] = useState<boolean>(true);
   const [note, setNote] = useState("");
   const [submittingProfit, setSubmittingProfit] = useState(false);
 
@@ -110,6 +116,7 @@ export function ProfitAdminPage() {
           account_number: string;
           balance: number | string;
           profit: number | string;
+          custom_profit_rate?: number | string | null;
         };
         const mapped: UserProfitData[] = (data.users as ApiUser[]).map((u) => {
           const totalBal = u.balance !== undefined && u.balance !== null ? Number(u.balance) : 0;
@@ -127,6 +134,10 @@ export function ProfitAdminPage() {
             balance: totalBal,
             profit: profBal,
             depositBalance: depBal,
+            customProfitRate:
+              u.custom_profit_rate !== undefined && u.custom_profit_rate !== null
+                ? Number(u.custom_profit_rate)
+                : null,
           };
         });
         setUsers(mapped.filter((u) => u.role !== "admin"));
@@ -141,6 +152,51 @@ export function ProfitAdminPage() {
   useEffect(() => {
     void fetchUsersAndSettings();
   }, []);
+
+  const openInjectCustomModal = (user: UserProfitData) => {
+    setSelectedUser(user);
+    const initialPercent =
+      user.customProfitRate && user.customProfitRate > 0 ? String(user.customProfitRate) : "2";
+    setProfitPercent(initialPercent);
+    const p = parseFloat(initialPercent);
+    const basis = user.depositBalance > 0 ? user.depositBalance : user.balance;
+    if (!isNaN(p) && basis > 0) {
+      const calcAmount = Math.round(basis * (p / 100) * 100) / 100;
+      setProfitAmount(String(calcAmount));
+    } else {
+      setProfitAmount("100");
+    }
+    setNote("");
+    setSaveCustomRate(true);
+  };
+
+  const handlePercentChange = (val: string) => {
+    const cleaned = val.replace(/[^0-9.]/g, "");
+    setProfitPercent(cleaned);
+    const p = parseFloat(cleaned);
+    if (!isNaN(p) && selectedUser) {
+      const basis =
+        selectedUser.depositBalance > 0 ? selectedUser.depositBalance : selectedUser.balance;
+      if (basis > 0) {
+        const calcAmount = Math.round(basis * (p / 100) * 100) / 100;
+        setProfitAmount(String(calcAmount));
+      }
+    }
+  };
+
+  const handleAmountChange = (val: string) => {
+    const cleaned = val.replace(/[^0-9.]/g, "");
+    setProfitAmount(cleaned);
+    const a = parseFloat(cleaned);
+    if (!isNaN(a) && selectedUser) {
+      const basis =
+        selectedUser.depositBalance > 0 ? selectedUser.depositBalance : selectedUser.balance;
+      if (basis > 0) {
+        const calcPercent = Math.round((a / basis) * 100 * 10) / 10;
+        setProfitPercent(String(calcPercent));
+      }
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     const kw = search.trim().toLowerCase();
@@ -158,10 +214,13 @@ export function ProfitAdminPage() {
   const totalProfitDistributed = users.reduce((sum, u) => sum + u.profit, 0);
   const totalOverallBalance = users.reduce((sum, u) => sum + u.balance, 0);
 
-  // Apply Global Daily Profit Rate (All users or single target)
+  // Apply Daily Profit Rate (All users or single target with custom rate support)
   const handleApplyDailyRate = async (targetUser?: UserProfitData) => {
-    const rateNum = parseFloat(globalRateInput);
-    if (isNaN(rateNum) || rateNum <= 0) {
+    const effectiveRate = targetUser?.customProfitRate
+      ? targetUser.customProfitRate
+      : parseFloat(globalRateInput);
+
+    if (isNaN(effectiveRate) || effectiveRate <= 0) {
       toast.error("Masukkan persentase profit harian yang valid (> 0)");
       return;
     }
@@ -172,7 +231,7 @@ export function ProfitAdminPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dailyRatePercent: rateNum,
+          dailyRatePercent: effectiveRate,
           targetUserId: targetUser ? targetUser.id : undefined,
         }),
       });
@@ -181,7 +240,7 @@ export function ProfitAdminPage() {
       if (res.ok && data.success) {
         toast.success(
           data.message ||
-            `Profit harian ${rateNum}% berhasil diterapkan ke ${data.affectedCount || "semua"} user!`,
+            `Profit harian +${effectiveRate}% berhasil diterapkan ke ${targetUser ? targetUser.name : "seluruh"} user!`,
         );
         void fetchUsersAndSettings();
       } else {
@@ -204,6 +263,8 @@ export function ProfitAdminPage() {
       return;
     }
 
+    const percentNum = parseFloat(profitPercent);
+
     setSubmittingProfit(true);
     try {
       const res = await secureFetch("/api/admin/profit", {
@@ -212,15 +273,25 @@ export function ProfitAdminPage() {
         body: JSON.stringify({
           userId: selectedUser.id,
           amount: amountNum,
-          note: note.trim(),
+          percent: !isNaN(percentNum) && percentNum > 0 ? percentNum : undefined,
+          saveCustomRate,
+          note:
+            note.trim() ||
+            (!isNaN(percentNum) && percentNum > 0
+              ? `Injeksi Profit Kustom (+${percentNum}%)`
+              : undefined),
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(data.message || `Profit ${formatUSD(amountNum)} berhasil ditambahkan!`);
+        toast.success(
+          data.message ||
+            `Profit ${formatUSD(amountNum)}${!isNaN(percentNum) && percentNum > 0 ? ` (+${percentNum}%)` : ""} berhasil ditambahkan ke ${selectedUser.name}!`,
+        );
         setSelectedUser(null);
         setProfitAmount("100");
+        setProfitPercent("2");
         setNote("");
         void fetchUsersAndSettings();
       } else {
@@ -492,8 +563,12 @@ export function ProfitAdminPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map((user) => {
+                      const effectiveRate =
+                        user.customProfitRate && user.customProfitRate > 0
+                          ? user.customProfitRate
+                          : currentRateNum;
                       const estimatedDailyGainUSD =
-                        Math.round(user.depositBalance * (currentRateNum / 100) * 100) / 100;
+                        Math.round(user.depositBalance * (effectiveRate / 100) * 100) / 100;
                       return (
                         <TableRow key={user.id} className="hover:bg-muted/30">
                           <TableCell className="font-mono text-xs font-semibold text-muted-foreground">
@@ -501,9 +576,19 @@ export function ProfitAdminPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-semibold text-foreground text-sm">
-                                {user.name}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-foreground text-sm">
+                                  {user.name}
+                                </span>
+                                {user.customProfitRate && user.customProfitRate > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0"
+                                  >
+                                    Khusus +{user.customProfitRate}%
+                                  </Badge>
+                                )}
+                              </div>
                               <span className="text-[11px] text-muted-foreground">
                                 {user.email} • Akun: {user.accountNumber}
                               </span>
@@ -520,7 +605,9 @@ export function ProfitAdminPage() {
                           <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400 text-sm">
                             <div>+{formatUSD(estimatedDailyGainUSD)}</div>
                             <div className="text-[10px] font-normal text-muted-foreground">
-                              +{formatRupiah(estimatedDailyGainUSD)}
+                              {user.customProfitRate && user.customProfitRate > 0
+                                ? `(+${user.customProfitRate}% khusus)`
+                                : `(+${currentRateNum}% global)`}
                             </div>
                           </TableCell>
 
@@ -548,18 +635,23 @@ export function ProfitAdminPage() {
                                 variant="outline"
                                 onClick={() => handleApplyDailyRate(user)}
                                 disabled={applyingRate}
-                                className="h-7 text-[11px] font-semibold border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
-                                title="Terapkan Profit Harian Hari Ini Hanya ke User Ini"
+                                className={`h-7 text-[11px] font-semibold border-amber-500/40 hover:bg-amber-500/10 ${
+                                  user.customProfitRate
+                                    ? "border-amber-500 text-amber-800 dark:text-amber-200 bg-amber-500/10 font-bold"
+                                    : "text-amber-700 dark:text-amber-300"
+                                }`}
+                                title={
+                                  user.customProfitRate
+                                    ? `Terapkan Profit Harian Khusus (+${user.customProfitRate}%) ke User Ini`
+                                    : `Terapkan Profit Harian (+${currentRateNum}%) ke User Ini`
+                                }
                               >
-                                +{currentRateNum}%
+                                +{effectiveRate}%
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setProfitAmount("100");
-                                }}
-                                className="h-7 bg-amber-500 hover:bg-amber-600 text-white gap-1 text-[11px] font-semibold px-2.5"
+                                onClick={() => openInjectCustomModal(user)}
+                                className="h-7 bg-amber-500 hover:bg-amber-600 text-white gap-1 text-[11px] font-semibold px-2.5 shadow-sm"
                               >
                                 <PlusCircle className="h-3 w-3" />
                                 Inject Custom
@@ -578,7 +670,7 @@ export function ProfitAdminPage() {
 
         {/* Modal 2: Inject Custom Profit */}
         <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -597,6 +689,7 @@ export function ProfitAdminPage() {
 
             {selectedUser && (
               <form onSubmit={handleGrantProfit} className="flex flex-col gap-4 py-2">
+                {/* User Info Overview */}
                 <div className="rounded-xl border border-border/80 bg-muted/40 p-3 text-xs flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Username:</span>
@@ -606,14 +699,102 @@ export function ProfitAdminPage() {
                     <span className="text-muted-foreground">Email:</span>
                     <span className="font-medium text-foreground">{selectedUser.email}</span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Saldo Deposit Pokok:</span>
+                    <span className="font-semibold text-foreground">
+                      {formatUSD(selectedUser.depositBalance)}
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center pt-1 border-t border-border/60">
                     <span className="text-muted-foreground">Profit Akumulasi Saat Ini:</span>
                     <span className="font-extrabold text-amber-600 dark:text-amber-400">
                       {formatUSD(selectedUser.profit)}
                     </span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Rate Khusus Saat Ini:</span>
+                    {selectedUser.customProfitRate && selectedUser.customProfitRate > 0 ? (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold text-[10px] px-1.5 py-0"
+                      >
+                        +{selectedUser.customProfitRate}% (Khusus)
+                      </Badge>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        Belum Diatur (Ikut Global +{currentRateNum}%)
+                      </span>
+                    )}
+                  </div>
                 </div>
 
+                {/* Input 1: Atur Persentase Profit Kustom (+%) */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="profitPercent"
+                      className="text-xs font-semibold text-foreground flex items-center gap-1"
+                    >
+                      <Percent className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      Atur Persentase Profit User (+%)
+                    </label>
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                      Bisa beda tiap user (contoh: +2%)
+                    </span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="pointer-events-none absolute left-3 text-base font-bold text-amber-600 dark:text-amber-400 select-none">
+                      +
+                    </span>
+                    <Input
+                      id="profitPercent"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Contoh: 2"
+                      value={profitPercent}
+                      onChange={(e) => handlePercentChange(e.target.value)}
+                      className="pl-7 pr-8 font-bold text-base h-11 border-amber-500/40 focus-visible:ring-amber-500"
+                      required
+                    />
+                    <span className="pointer-events-none absolute right-3 text-xs font-bold text-muted-foreground select-none">
+                      %
+                    </span>
+                  </div>
+
+                  {/* Calculation Helper info */}
+                  {selectedUser.depositBalance > 0 && parseFloat(profitPercent) > 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Kalkulasi: +{profitPercent}% dari modal deposit (
+                      {formatUSD(selectedUser.depositBalance)}) ={" "}
+                      <span className="font-bold text-foreground">
+                        {formatUSD(parseFloat(profitAmount) || 0)}
+                      </span>
+                    </p>
+                  )}
+
+                  {/* Preset Percent Quick Options */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span className="text-[11px] text-muted-foreground font-semibold">
+                      Pilih Cepat:
+                    </span>
+                    {presetPercentOptions.map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => handlePercentChange(String(pct))}
+                        className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                          profitPercent === String(pct)
+                            ? "border-amber-500 bg-amber-500 text-white shadow-sm"
+                            : "border-border/60 bg-background hover:bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        +{pct}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Input 2: Nominal Profit Injeksi ($ USD) */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="profitAmount" className="text-xs font-semibold text-foreground">
                     Nominal Profit Injeksi ($ USD)
@@ -626,12 +807,7 @@ export function ProfitAdminPage() {
                       inputMode="decimal"
                       placeholder="Contoh: 100"
                       value={profitAmount}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/[^0-9.]/g, "");
-                        const parts = cleaned.split(".");
-                        if (parts.length > 2) return;
-                        setProfitAmount(cleaned);
-                      }}
+                      onChange={(e) => handleAmountChange(e.target.value)}
                       className="pl-9 font-bold text-base h-11"
                       required
                     />
@@ -642,15 +818,15 @@ export function ProfitAdminPage() {
                     </p>
                   )}
 
-                  <div className="grid grid-cols-3 gap-2 mt-1">
+                  <div className="grid grid-cols-5 gap-1.5 mt-0.5">
                     {presetProfits.map((val) => (
                       <button
                         key={val}
                         type="button"
-                        onClick={() => setProfitAmount(String(val))}
+                        onClick={() => handleAmountChange(String(val))}
                         className={`rounded-lg border py-1.5 text-xs font-semibold transition-all ${
                           profitAmount === String(val)
-                            ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold"
                             : "border-border/60 bg-background hover:bg-muted text-muted-foreground"
                         }`}
                       >
@@ -660,6 +836,33 @@ export function ProfitAdminPage() {
                   </div>
                 </div>
 
+                {/* Option: Simpan Sebagai Rate Kustom User */}
+                <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs">
+                  <Checkbox
+                    id="saveCustomRate"
+                    checked={saveCustomRate}
+                    onCheckedChange={(checked) => setSaveCustomRate(!!checked)}
+                    className="mt-0.5 border-amber-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                  />
+                  <div
+                    className="flex flex-col gap-0.5 cursor-pointer select-none"
+                    onClick={() => setSaveCustomRate(!saveCustomRate)}
+                  >
+                    <label
+                      htmlFor="saveCustomRate"
+                      className="font-bold text-foreground cursor-pointer"
+                    >
+                      Simpan persentase (+{profitPercent || "0"}%) sebagai rate profit kustom user
+                      ini
+                    </label>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      Setiap user dapat memiliki persentase profit berbeda yang disimpan permanen
+                      oleh admin.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Input 3: Catatan / Alasan */}
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="note" className="text-xs font-medium text-foreground">
                     Catatan / Alasan (Opsional)
@@ -685,7 +888,7 @@ export function ProfitAdminPage() {
                   <Button
                     type="submit"
                     disabled={submittingProfit}
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold gap-1"
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold gap-1 shadow-sm"
                   >
                     {submittingProfit ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

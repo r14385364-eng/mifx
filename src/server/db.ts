@@ -32,6 +32,7 @@ export type DbUser = {
   withdrawal_status?: "active" | "suspended" | "blocked";
   withdrawal_note?: string;
   withdrawal_quota_reset_date?: string;
+  custom_profit_rate?: number | null;
   created_at: string;
 };
 
@@ -302,6 +303,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_status VARCHAR(50) NOT NULL DEFAULT 'active';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_note TEXT DEFAULT '';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS withdrawal_quota_reset_date VARCHAR(50) DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_profit_rate NUMERIC(5, 2) DEFAULT NULL;
   `);
 
   // Create transactions table
@@ -484,8 +486,8 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
       if (Array.isArray(saved.users) && saved.users.length > 0) {
         for (const u of saved.users) {
           await pool.query(
-            `INSERT INTO users (name, email, password, phone, role, account_number, balance, profit, account_type, max_withdrawal_percent, max_daily_frequency, admin_fee_type, admin_fee_value, min_withdrawal_idr, withdrawal_status, withdrawal_note, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            `INSERT INTO users (name, email, password, phone, role, account_number, balance, profit, account_type, max_withdrawal_percent, max_daily_frequency, admin_fee_type, admin_fee_value, min_withdrawal_idr, withdrawal_status, withdrawal_note, custom_profit_rate, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
              ON CONFLICT (email) DO UPDATE SET
                name = EXCLUDED.name,
                password = EXCLUDED.password,
@@ -500,7 +502,8 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
                admin_fee_value = COALESCE(EXCLUDED.admin_fee_value, users.admin_fee_value),
                min_withdrawal_idr = COALESCE(EXCLUDED.min_withdrawal_idr, users.min_withdrawal_idr),
                withdrawal_status = COALESCE(EXCLUDED.withdrawal_status, users.withdrawal_status),
-               withdrawal_note = COALESCE(EXCLUDED.withdrawal_note, users.withdrawal_note)`,
+               withdrawal_note = COALESCE(EXCLUDED.withdrawal_note, users.withdrawal_note),
+               custom_profit_rate = COALESCE(EXCLUDED.custom_profit_rate, users.custom_profit_rate)`,
             [
               u.name,
               u.email,
@@ -518,6 +521,7 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
               u.min_withdrawal_idr || 100000,
               u.withdrawal_status || "active",
               u.withdrawal_note || "",
+              u.custom_profit_rate ?? null,
               u.created_at || new Date().toISOString(),
             ],
           );

@@ -690,7 +690,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     if (request.method === "GET") {
       try {
         const users = await query<DbUser>(
-          "SELECT id, name, COALESCE(username, '') as username, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, COALESCE(base_profit, 0) as base_profit, account_type, created_at FROM users ORDER BY id ASC",
+          "SELECT id, name, COALESCE(username, '') as username, email, phone, role, account_number, balance, COALESCE(profit, 0) as profit, COALESCE(base_profit, 0) as base_profit, custom_profit_rate, account_type, created_at FROM users ORDER BY id ASC",
         );
         return jsonResponse({ success: true, users });
       } catch (err: unknown) {
@@ -1404,7 +1404,15 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
         if (depositBal <= 0) continue;
 
-        const dailyGain = Math.round(depositBal * (rate / 100) * 100) / 100;
+        // If targetUserId is set, use the explicitly requested rate.
+        // If it's a global distribution, use user's custom_profit_rate if configured, else fallback to global rate.
+        const effectiveRate = body.targetUserId
+          ? rate
+          : Number(u.custom_profit_rate) > 0
+            ? Number(u.custom_profit_rate)
+            : rate;
+
+        const dailyGain = Math.round(depositBal * (effectiveRate / 100) * 100) / 100;
         if (dailyGain <= 0) continue;
 
         await query(
@@ -1416,10 +1424,15 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         );
 
         const txId = "PRF-" + Date.now().toString().slice(-6);
+        const channelLabel =
+          !body.targetUserId && Number(u.custom_profit_rate) > 0
+            ? `Profit Harian (+${effectiveRate}% Khusus)`
+            : `Profit Harian (${effectiveRate}%)`;
+
         await query(
           `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
-           VALUES ($1, $2, $3, $4, 'Profit', 'Profit Harian (${rate}%)', 'Gotrade Wallet', $5, 'Berhasil')`,
-          [txId, u.id, u.name, u.account_number, dailyGain * 16000],
+           VALUES ($1, $2, $3, $4, 'Profit', $5, 'Gotrade Wallet', $6, 'Berhasil')`,
+          [txId, u.id, u.name, u.account_number, channelLabel, dailyGain * 16000],
         );
 
         affectedCount++;
@@ -1503,11 +1516,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         user_id?: number;
         amount?: number;
         profitAmount?: number;
+        percent?: number;
+        percentage?: number;
+        saveCustomRate?: boolean;
         note?: string;
         notes?: string;
       };
       const userId = Number(body.userId ?? body.user_id ?? 0);
       const amount = Number(body.amount ?? body.profitAmount ?? 0);
+      const percentVal =
+        body.percent !== undefined && !isNaN(Number(body.percent))
+          ? Number(body.percent)
+          : body.percentage !== undefined && !isNaN(Number(body.percentage))
+            ? Number(body.percentage)
+            : undefined;
 
       if (!userId || !amount || amount <= 0) {
         return jsonResponse(
@@ -1525,26 +1547,49 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
 
       const targetUser = existing[0];
+      const customRateToSet =
+        percentVal !== undefined && percentVal > 0 && body.saveCustomRate !== false
+          ? percentVal
+          : (targetUser.custom_profit_rate ?? null);
+
       const updated = await query<DbUser>(
         `UPDATE users
          SET profit = COALESCE(profit, 0) + $1,
-             balance = COALESCE(balance, 0) + $1
+             balance = COALESCE(balance, 0) + $1,
+             custom_profit_rate = COALESCE($3, custom_profit_rate)
          WHERE id = $2
-         RETURNING id, name, email, phone, role, account_number, balance, profit, account_type`,
-        [amount, userId],
+         RETURNING id, name, email, phone, role, account_number, balance, profit, custom_profit_rate, account_type`,
+        [amount, userId, customRateToSet],
       );
 
       // Record profit grant in transactions table
       const txId = "PRF-" + Date.now().toString().slice(-6);
+      const channelLabel =
+        percentVal !== undefined && percentVal > 0
+          ? `Injeksi Profit (+${percentVal}%)`
+          : "Admin Profit Grant";
       await query(
         `INSERT INTO transactions (id, user_id, user_name, account_number, type, channel, destination, amount, status)
-         VALUES ($1, $2, $3, $4, 'Profit', 'Admin Profit Grant', 'Gotrade Wallet', $5, 'Berhasil')`,
-        [txId, targetUser.id, targetUser.name, targetUser.account_number, amount],
+         VALUES ($1, $2, $3, $4, 'Profit', $5, 'Gotrade Wallet', $6, 'Berhasil')`,
+        [txId, targetUser.id, targetUser.name, targetUser.account_number, channelLabel, amount],
       );
+
+      void logSecurityEvent({
+        userId: adminCheck.user.id,
+        userEmail: adminCheck.user.email,
+        userRole: adminCheck.user.role,
+        action: "ADMIN_CUSTOM_PROFIT_INJECTED",
+        details: `Admin menginjeksi profit $${amount} (${percentVal ? `+${percentVal}%` : "nominal"}) ke user ID ${userId} (${targetUser.name})`,
+        ipAddress: clientIp,
+        status: "SUCCESS",
+      });
 
       return jsonResponse({
         success: true,
-        message: `Berhasil menambahkan profit $${amount.toLocaleString()} ke user ${targetUser.name}!`,
+        message:
+          percentVal !== undefined && percentVal > 0
+            ? `Berhasil menambahkan profit $${amount.toLocaleString()} (+${percentVal}%) ke user ${targetUser.name}!`
+            : `Berhasil menambahkan profit $${amount.toLocaleString()} ke user ${targetUser.name}!`,
         user: updated[0],
       });
     } catch (err: unknown) {
