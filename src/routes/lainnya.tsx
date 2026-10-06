@@ -39,6 +39,7 @@ import { useAuth } from "@/lib/auth-context";
 import { NotificationModal } from "@/components/NotificationModal";
 import { useNotifications } from "@/lib/notifications";
 import { useTheme } from "@/lib/theme-context";
+import { TelegramIcon } from "@/components/TelegramIcon";
 
 export const Route = createFileRoute("/lainnya")({
   head: () => ({
@@ -63,6 +64,16 @@ interface ContactPersonItem {
   active?: boolean;
 }
 
+interface TelegramContactItem {
+  id: string;
+  name: string;
+  role: string;
+  telegramUsername: string;
+  telegramLink?: string;
+  description?: string;
+  active?: boolean;
+}
+
 const defaultContactPersons: ContactPersonItem[] = [
   {
     id: "contact_aksay",
@@ -74,6 +85,31 @@ const defaultContactPersons: ContactPersonItem[] = [
     active: true,
   },
 ];
+
+const defaultTelegramContacts: TelegramContactItem[] = [
+  {
+    id: "tg_support_1",
+    name: "Gotrade Official Support",
+    role: "Telegram Dedicated Trader Support",
+    telegramUsername: "GotradeOfficialSupport",
+    telegramLink: "https://t.me/GotradeOfficialSupport",
+    description: "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
+    active: true,
+  },
+];
+
+function formatTelegramUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "https://t.me/GotradeOfficialSupport";
+  if (trimmed.startsWith("https://t.me/") || trimmed.startsWith("http://t.me/")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const clean = trimmed.replace(/^@/, "");
+  return `https://t.me/${clean}`;
+}
 
 function formatWaUrl(phone: string): string {
   const cleaned = phone.replace(/[^0-9]/g, "");
@@ -146,6 +182,8 @@ export function LainnyaPage() {
 
   // Dynamic Contact Persons from Admin Settings (CRUD)
   const [contactPersons, setContactPersons] = useState<ContactPersonItem[]>(defaultContactPersons);
+  const [telegramContacts, setTelegramContacts] =
+    useState<TelegramContactItem[]>(defaultTelegramContacts);
 
   useEffect(() => {
     async function loadContactSettings() {
@@ -158,14 +196,11 @@ export function LainnyaPage() {
               const list = JSON.parse(data.settings.contact_persons_list);
               if (Array.isArray(list) && list.length > 0) {
                 setContactPersons(list);
-                return;
               }
             } catch {
               // fallback to single fields
             }
-          }
-
-          if (data.settings.contact_person_name) {
+          } else if (data.settings.contact_person_name) {
             setContactPersons([
               {
                 id: "contact_primary",
@@ -174,6 +209,33 @@ export function LainnyaPage() {
                 whatsappLabel: data.settings.contact_person_wa_label || "Whatsapp",
                 whatsappNumber: data.settings.contact_person_phone || "082329157278",
                 email: data.settings.contact_person_email || "support@gotrade.com",
+                active: true,
+              },
+            ]);
+          }
+
+          if (data.settings.telegram_contacts_list) {
+            try {
+              const tgList = JSON.parse(data.settings.telegram_contacts_list);
+              if (Array.isArray(tgList) && tgList.length > 0) {
+                setTelegramContacts(tgList);
+              }
+            } catch {
+              // fallback
+            }
+          } else if (data.settings.telegram_contact_username) {
+            setTelegramContacts([
+              {
+                id: "tg_support_1",
+                name: data.settings.telegram_contact_name || "Gotrade Official Support",
+                role: data.settings.telegram_contact_role || "Telegram Dedicated Trader Support",
+                telegramUsername: data.settings.telegram_contact_username,
+                telegramLink:
+                  data.settings.telegram_contact_link ||
+                  formatTelegramUrl(data.settings.telegram_contact_username),
+                description:
+                  data.settings.telegram_contact_desc ||
+                  "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
                 active: true,
               },
             ]);
@@ -894,6 +956,98 @@ export function LainnyaPage() {
                             </span>
                           </div>
                         </a>
+                      )}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+
+        {/* 8.b Contact Person Telegram Support */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between px-1">
+            <p className="text-xs font-bold text-gray-700">Contact Person Telegram Support</p>
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-[#229ED9]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#229ED9] animate-pulse" />
+              Online 24/7
+            </span>
+          </div>
+          <div className="space-y-3">
+            {telegramContacts.filter((c) => c.active !== false).length === 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-white p-4 text-center text-xs text-gray-500 shadow-2xs">
+                Tidak ada contact person Telegram yang aktif saat ini.
+              </div>
+            ) : (
+              telegramContacts
+                .filter((c) => c.active !== false)
+                .map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="flex flex-col gap-3 rounded-xl border border-blue-100/70 bg-white p-4 shadow-2xs transition-all hover:border-[#229ED9]/40"
+                  >
+                    {/* Header Contact */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#229ED9]/30 bg-[#229ED9]/10 text-[#229ED9]">
+                          <TelegramIcon className="h-5 w-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base font-extrabold tracking-wide text-gray-900">
+                              {contact.name}
+                            </span>
+                            <span className="rounded-full bg-[#229ED9]/10 px-1.5 py-0.2 text-[9px] font-bold text-[#229ED9]">
+                              Resmi
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">{contact.role}</span>
+                        </div>
+                      </div>
+
+                      <a
+                        href={contact.telegramLink || formatTelegramUrl(contact.telegramUsername)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 rounded-lg bg-[#229ED9] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-all hover:bg-[#229ED9]/90 active:scale-95 shrink-0"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Chat
+                      </a>
+                    </div>
+
+                    {/* Telegram Details & Username */}
+                    <div className="flex flex-col gap-2 border-t border-gray-100 pt-3">
+                      <div className="flex items-center justify-between rounded-lg bg-blue-50/60 px-3 py-2 text-xs">
+                        <a
+                          href={contact.telegramLink || formatTelegramUrl(contact.telegramUsername)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 font-bold text-[#229ED9] hover:underline"
+                        >
+                          <TelegramIcon className="h-3.5 w-3.5" />@
+                          {contact.telegramUsername.replace(/^@/, "")}
+                          <ExternalLink className="h-3 w-3 opacity-70" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const handle = `@${contact.telegramUsername.replace(/^@/, "")}`;
+                            if (navigator.clipboard?.writeText) {
+                              navigator.clipboard.writeText(handle).catch(() => {});
+                            }
+                            toast.success(`Username Telegram ${handle} berhasil disalin!`);
+                          }}
+                          className="flex items-center gap-1 font-semibold text-gray-600 hover:text-[#229ED9]"
+                        >
+                          <Copy className="h-3 w-3" /> Salin
+                        </button>
+                      </div>
+
+                      {contact.description && (
+                        <p className="px-1 text-[11px] text-gray-500 leading-relaxed">
+                          {contact.description}
+                        </p>
                       )}
                     </div>
                   </div>

@@ -227,6 +227,7 @@ Konfigurasi kunci dinamis dalam tabel `settings`:
 - `deposit_account_name`: Atas Nama Rekening Tujuan Deposit (default: `AKSAY S.PUTRA`).
 - `deposit_payment_sources`: JSON Array daftar Rekening / E-Wallet Sumber Dana Deposit yang diizinkan (Bank BCA, Mandiri, BNI, BRI, BSI, CIMB Niaga, Permata, GoPay, OVO, DANA, ShopeePay, LinkAja).
 - `contact_persons_list`: JSON Array daftar Contact Person Support Gotrade (nama: AKSAY, role: Gotrade Dedicated Account Support, nomor WhatsApp: 082329157278, status aktif).
+- `telegram_contacts_list`: JSON Array daftar Contact Person Telegram Support Gotrade (nama, role, username @telegram, link t.me, deskripsi, status aktif).
 - `global_daily_profit_rate`: Persentase acuan profit harian global (default: 5%) yang dapat diubah dan diterapkan secara on-demand oleh Admin di `/admin/profit`.
 - `default_max_withdrawal_percent`: Batas maksimal penarikan bawaan (% dari Akumulasi Profit Total, default: 10%).
 - `default_max_daily_frequency`: Batas frekuensi penarikan harian bawaan per hari kalender WIB (default: 1x sehari).
@@ -334,6 +335,7 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
 - **Menu Lainnya (`/lainnya`)**:
   - **Ringkasan Akun Dinamis & Kontrol Simulasi**: Menampilkan ringkasan Margin, Free Margin, Margin Level, Credits, Floating P/L, dan Win Rate. Khusus pengguna dengan Balance $0.00 dan Equity $0.00, simulasi dinonaktifkan otomatis sehingga nilai secara bersih menampilkan $0.00, 0.00%, dan Win Rate 0% (tidak menampilkan angka simulasi aktif sebelum ada pendanaan). Ketika akun memiliki dana aktif, metrik beroperasi sesuai saldo riil.
   - **Contact Person Support Resmi AKSAY**: Kartu representatif "Gotrade Dedicated Account Support" atas nama **AKSAY** dengan nomor WhatsApp **082329157278**, badge "Dedicated Support", dan tombol interaktif 1-klik langsung menghubungi via WhatsApp (`https://wa.me/6282329157278`). Data ini tersambung dinamis ke CRUD admin di `/admin/pengaturan`.
+  - **Contact Person Telegram Support Resmi**: Kartu representatif dukungan Telegram resmi Gotrade dengan indikator live "Online 24/7", ikon resmi Telegram paper-plane, nama kontak, role/jabatan, username `@telegram` yang dapat diklik langsung membuka chat aplikasi Telegram (`https://t.me/...`), tombol Salin Username, serta deskripsi layanan. Data ini tersinkronisasi dinamis dari CRUD admin di `/admin/pengaturan`.
   - **CRUD Rekening Bank Pengguna**: Menu "Informasi Bank" untuk menambah, mengedit, menghapus, serta memilih rekening utama user.
   - **Akses Cepat Pengaturan**: Tautan langsung ke halaman `/pengaturan` dilengkapi badge status Mode Gelap terkini.
 
@@ -354,7 +356,8 @@ Aplikasi Gotrade menerapkan prinsip **Defense-in-Depth** dengan pembagian peran 
 - **Pengaturan Sistem, Rekening & Contact Person (`/admin/pengaturan`)**:
   - **CRUD Rekening Tujuan Deposit**: Admin dapat mengubah Nama Bank (Keb Hana Bank), Nomor Rekening (11628950560), dan Atas Nama Rekening Tujuan Deposit (AKSAY S.PUTRA).
   - **CRUD Rekening / E-Wallet Sumber Dana**: Form CRUD lengkap untuk menambah sumber dana baru (Bank/E-Wallet), mengubah nama sumber dana, mengaktifkan/menonaktifkan, atau menghapus item sumber dana yang tersedia bagi trader pada halaman deposit.
-  - **CRUD Contact Person Gotrade Support**: Panel CRUD terpadu untuk mengelola kontak person support Gotrade (Nama: AKSAY, Jabatan/Role: Gotrade Dedicated Account Support, Nomor WhatsApp: 082329157278, Email, dan Status Aktif).
+  - **CRUD Contact Person Gotrade Support (WhatsApp & Email)**: Panel CRUD terpadu untuk mengelola kontak person support Gotrade (Nama: AKSAY, Jabatan/Role: Gotrade Dedicated Account Support, Nomor WhatsApp: 082329157278, Email, dan Status Aktif).
+  - **CRUD Contact Person Telegram Gotrade**: Panel CRUD lengkap khusus untuk mengelola contact person Telegram (Nama Support, Role/Jabatan, Username/Link Telegram `@username`, Deskripsi Layanan, dan Status Aktif). Dilengkapi pencarian real-time, 1-klik toggle switch aktif/nonaktif, modal dialog tambah/edit, konfirmasi hapus, tombol reset ke default, dan live preview pratinjau tampilan kartu trader.
   - **Pengaturan QRIS Pembayaran**: Pengunggahan gambar QRIS dinamis pembayaran platform.
 - **Kelola Rewards (`/admin/rewards`)**:
   - Manajemen katalog produk reward (Tambah, Edit, Hapus, Ubah Stok, Ubah Poin Dibutuhkan).
@@ -522,7 +525,7 @@ Pengujian end-to-end multi-layer telah dijalankan pada seluruh domain aplikasi (
 
 | Suite Pengujian                      | Cakupan & Fokus Pengujian                                                       |   Target    |         Hasil          |         Status         |
 | :----------------------------------- | :------------------------------------------------------------------------------ | :---------: | :--------------------: | :--------------------: |
-| **Master E2E Platform Suite**        | Siklus Keuangan Penuh, Bank CRUD, Settings, Metrics, News Seed, RBAC, Aturan & Limit WD | 70 Skenario | **70 Lolos** (0 Gagal) |    **100% HEALTHY**    |
+| **Master E2E Platform Suite**        | Siklus Keuangan Penuh, Bank CRUD, Telegram & WhatsApp Support CRUD, Settings, Metrics, News Seed, RBAC, Limit WD | 71 Skenario | **71 Lolos** (0 Gagal) |    **100% HEALTHY**    |
 | **Full Platform & Security Suite**   | 28 Rute SPA, Rekening AKSAY, Sumber Dana, Deposit, Profit, WD, Rewards, RBAC    | 64 Skenario | **64 Lolos** (0 Gagal) |    **100% SUCCESS**    |
 | **Comprehensive Audit Suite**        | 28 Halaman SPA, CRUD Bank, Transaksi, Rewards, RBAC Guard                       | 64 Skenario | **64 Lolos** (0 Gagal) |    **100% SUCCESS**    |
 | **Auto-Fill & Simulation Suite**     | Kredensial Auto-Fill (Register & Logout) & Non-Aktif Simulasi Saldo $0.00       | 9 Skenario  |  **9 Lolos** (0 Gagal) |    **100% VERIFIED**   |
@@ -561,6 +564,7 @@ Semua fitur, menu, halaman, dan sistem keamanan platform Gotrade telah diverifik
     - Tombol 1-klik Reset Kuota Harian user untuk hari ini.
     - Modal Pengaturan Default Global dengan opsi penerapan massal ke seluruh trader.
     - Sumber dana penarikan terkunci ketat hanya berasal dari Akumulasi Profit Total (`user.profit`) dari `/admin/profit`, bukan dari modal deposit awal (`Free Margin`).
-12. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (280+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
+12. **CRUD Contact Person Telegram Support**: Komponen manajemen Contact Person Telegram pada `/admin/pengaturan` dengan fitur lengkap CRUD (tambah, edit, hapus, switch aktif/nonaktif, pencarian real-time, live preview) yang secara dinamis menampilkan kartu **Contact Person Telegram Support** resmi di halaman `/lainnya` trader (dilengkapi direct link `https://t.me/...`, tombol Salin Username, dan status Online 24/7).
+13. **Keamanan & Kinerja Platform**: Seluruh 28 rute halaman SPA dan endpoint API mencatatkan tingkat kelolosan **100% (280+ skenario uji lolos tanpa kegagalan)** dengan performa latensi rata-rata **19ms** (jauh melampaui SLA sub-detik 1.000ms), isolasi privasi tanpa kebocoran kartu sosial, serta proteksi RBAC aktif.
 
 Aplikasi Gotrade dinyatakan berada dalam status **Production-Ready** dengan integritas fungsional, performa tinggi, dan tingkat keamanan enterprise.

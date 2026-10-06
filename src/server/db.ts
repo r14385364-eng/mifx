@@ -1139,6 +1139,29 @@ async function runSchemaAndSeeds(pool: pg.Pool) {
     ]);
   }
 
+  // Seed default Telegram contact persons if not present
+  const telegramContactListCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, [
+    "telegram_contacts_list",
+  ]);
+  const defaultTelegramContacts = [
+    {
+      id: "tg_support_1",
+      name: "Gotrade Official Support",
+      role: "Telegram Dedicated Trader Support",
+      telegramUsername: "GotradeOfficialSupport",
+      telegramLink: "https://t.me/GotradeOfficialSupport",
+      description: "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
+      active: true,
+    },
+  ];
+
+  if (telegramContactListCheck.rows.length === 0) {
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2)`, [
+      "telegram_contacts_list",
+      JSON.stringify(defaultTelegramContacts),
+    ]);
+  }
+
   // Seed default QRIS and profit settings if not present
   const qrisCheck = await pool.query(`SELECT key FROM settings WHERE key = $1`, ["qris_image"]);
   if (qrisCheck.rows.length === 0) {

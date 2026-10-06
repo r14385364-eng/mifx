@@ -740,6 +740,42 @@ async function runMasterTestSuite() {
     }
   });
 
+  await test("POST /api/settings (Admin) updates Telegram contact person and persists in settings", async () => {
+    const tgContacts = [
+      {
+        id: "tg_support_test",
+        name: "Gotrade Official Support",
+        role: "Telegram Dedicated Trader Support",
+        telegramUsername: "GotradeOfficialSupport",
+        telegramLink: "https://t.me/GotradeOfficialSupport",
+        description: "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
+        active: true,
+      },
+    ];
+
+    const putRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        telegram_contacts_list: JSON.stringify(tgContacts),
+        telegram_contact_username: "GotradeOfficialSupport",
+      }),
+    });
+
+    if (!putRes.ok) throw new Error(`Status ${putRes.status}`);
+    const putData = (await putRes.json()) as { success?: boolean };
+    if (!putData.success) throw new Error("Failed to update telegram contacts");
+
+    const getRes = await fetch(`${baseUrl}/api/settings`);
+    const getData = (await getRes.json()) as { settings?: { telegram_contacts_list?: string } };
+    if (!getData.settings?.telegram_contacts_list?.includes("GotradeOfficialSupport")) {
+      throw new Error("Updated telegram contact not found in GET /api/settings");
+    }
+  });
+
   // =========================================================================
   // 12. ACCOUNT CARD METRICS FORMULA & MAPPING VALIDATION
   // =========================================================================

@@ -3,6 +3,7 @@ import {
   CreditCard,
   Copy,
   Edit2,
+  ExternalLink,
   Eye,
   Headphones,
   Info,
@@ -14,6 +15,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Send,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -24,6 +26,7 @@ import { toast } from "sonner";
 import { secureFetch } from "@/lib/api-client";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { TelegramIcon } from "@/components/TelegramIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +59,16 @@ export interface ContactPersonItem {
   active: boolean;
 }
 
+export interface TelegramContactItem {
+  id: string;
+  name: string;
+  role: string;
+  telegramUsername: string;
+  telegramLink?: string;
+  description?: string;
+  active: boolean;
+}
+
 const defaultPaymentSources: PaymentSourceItem[] = [
   { id: "bca", label: "Bank BCA", category: "Bank", active: true },
   { id: "mandiri", label: "Bank Mandiri", category: "Bank", active: true },
@@ -81,6 +94,31 @@ const defaultContactPersons: ContactPersonItem[] = [
   },
 ];
 
+export const defaultTelegramContacts: TelegramContactItem[] = [
+  {
+    id: "tg_support_1",
+    name: "Gotrade Official Support",
+    role: "Telegram Dedicated Trader Support",
+    telegramUsername: "GotradeOfficialSupport",
+    telegramLink: "https://t.me/GotradeOfficialSupport",
+    description: "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
+    active: true,
+  },
+];
+
+export function formatTelegramUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "https://t.me/GotradeOfficialSupport";
+  if (trimmed.startsWith("https://t.me/") || trimmed.startsWith("http://t.me/")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const clean = trimmed.replace(/^@/, "");
+  return `https://t.me/${clean}`;
+}
+
 function formatWaUrl(phone: string): string {
   const cleaned = phone.replace(/[^0-9]/g, "");
   if (!cleaned) return "https://wa.me/6282329157278";
@@ -100,6 +138,11 @@ export function SettingsAdminPage() {
   const [contactPersons, setContactPersons] = useState<ContactPersonItem[]>(defaultContactPersons);
   const [contactSearch, setContactSearch] = useState<string>("");
 
+  // Telegram Contact Persons state (CRUD)
+  const [telegramContacts, setTelegramContacts] =
+    useState<TelegramContactItem[]>(defaultTelegramContacts);
+  const [telegramSearch, setTelegramSearch] = useState<string>("");
+
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [copiedBank, setCopiedBank] = useState<boolean>(false);
@@ -115,7 +158,7 @@ export function SettingsAdminPage() {
   const [formSourceCategory, setFormSourceCategory] = useState<"Bank" | "E-Wallet">("Bank");
   const [formSourceActive, setFormSourceActive] = useState<boolean>(true);
 
-  // Modal State for Add / Edit Contact Person
+  // Modal State for Add / Edit Contact Person (WhatsApp)
   const [isContactModalOpen, setIsContactModalOpen] = useState<boolean>(false);
   const [editingContactItem, setEditingContactItem] = useState<ContactPersonItem | null>(null);
   const [formContactName, setFormContactName] = useState<string>("");
@@ -124,6 +167,15 @@ export function SettingsAdminPage() {
   const [formContactWaNumber, setFormContactWaNumber] = useState<string>("");
   const [formContactEmail, setFormContactEmail] = useState<string>("");
   const [formContactActive, setFormContactActive] = useState<boolean>(true);
+
+  // Modal State for Add / Edit Contact Person (Telegram)
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState<boolean>(false);
+  const [editingTelegramItem, setEditingTelegramItem] = useState<TelegramContactItem | null>(null);
+  const [formTelegramName, setFormTelegramName] = useState<string>("");
+  const [formTelegramRole, setFormTelegramRole] = useState<string>("");
+  const [formTelegramUsername, setFormTelegramUsername] = useState<string>("");
+  const [formTelegramDescription, setFormTelegramDescription] = useState<string>("");
+  const [formTelegramActive, setFormTelegramActive] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadSettings() {
@@ -171,6 +223,33 @@ export function SettingsAdminPage() {
               },
             ]);
           }
+
+          if (data.settings.telegram_contacts_list) {
+            try {
+              const parsedTg = JSON.parse(data.settings.telegram_contacts_list);
+              if (Array.isArray(parsedTg) && parsedTg.length > 0) {
+                setTelegramContacts(parsedTg);
+              }
+            } catch {
+              // fallback
+            }
+          } else if (data.settings.telegram_contact_username) {
+            setTelegramContacts([
+              {
+                id: "tg_support_1",
+                name: data.settings.telegram_contact_name || "Gotrade Official Support",
+                role: data.settings.telegram_contact_role || "Telegram Dedicated Trader Support",
+                telegramUsername: data.settings.telegram_contact_username,
+                telegramLink:
+                  data.settings.telegram_contact_link ||
+                  formatTelegramUrl(data.settings.telegram_contact_username),
+                description:
+                  data.settings.telegram_contact_desc ||
+                  "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
+                active: true,
+              },
+            ]);
+          }
         }
       } catch {
         // use default state
@@ -187,12 +266,14 @@ export function SettingsAdminPage() {
     customAccountNum?: string,
     customAccountName?: string,
     customContacts?: ContactPersonItem[],
+    customTelegramContacts?: TelegramContactItem[],
   ) => {
     const bName = (customBankName ?? bankName).trim();
     const aNum = (customAccountNum ?? accountNumber).trim();
     const aName = (customAccountName ?? accountName).trim();
     const sourcesToSave = customSources ?? paymentSources;
     const contactsToSave = customContacts ?? contactPersons;
+    const telegramToSave = customTelegramContacts ?? telegramContacts;
 
     if (!bName || !aNum || !aName) {
       toast.error("Mohon lengkapi seluruh data nama bank, nomor rekening, dan atas nama.");
@@ -213,6 +294,15 @@ export function SettingsAdminPage() {
         contact_person_phone: contactsToSave[0]?.whatsappNumber || "082329157278",
         contact_person_wa_label: contactsToSave[0]?.whatsappLabel || "Whatsapp",
         contact_person_email: contactsToSave[0]?.email || "support@gotrade.com",
+        telegram_contacts_list: JSON.stringify(telegramToSave),
+        telegram_contact_name: telegramToSave[0]?.name || "Gotrade Official Support",
+        telegram_contact_username: telegramToSave[0]?.telegramUsername || "GotradeOfficialSupport",
+        telegram_contact_link:
+          telegramToSave[0]?.telegramLink || "https://t.me/GotradeOfficialSupport",
+        telegram_contact_role: telegramToSave[0]?.role || "Telegram Dedicated Trader Support",
+        telegram_contact_desc:
+          telegramToSave[0]?.description ||
+          "Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7",
       };
 
       const res = await secureFetch("/api/settings", {
@@ -241,7 +331,7 @@ export function SettingsAdminPage() {
     if (success) {
       toast.success("Seluruh pengaturan berhasil disimpan ke Database!", {
         description:
-          "Rekening tujuan deposit & profil contact person AKSAY telah ter-update di seluruh sistem.",
+          "Rekening tujuan deposit, kontak WhatsApp AKSAY, dan kontak Telegram telah ter-update di seluruh sistem.",
       });
     }
   };
@@ -427,6 +517,112 @@ export function SettingsAdminPage() {
     }
   };
 
+  // Telegram CRUD Handlers
+  const openAddTelegramModal = () => {
+    setEditingTelegramItem(null);
+    setFormTelegramName("");
+    setFormTelegramRole("Telegram Dedicated Trader Support");
+    setFormTelegramUsername("");
+    setFormTelegramDescription("Layanan bantuan deposit, penarikan, dan konsultasi trading 24/7");
+    setFormTelegramActive(true);
+    setIsTelegramModalOpen(true);
+  };
+
+  const openEditTelegramModal = (item: TelegramContactItem) => {
+    setEditingTelegramItem(item);
+    setFormTelegramName(item.name);
+    setFormTelegramRole(item.role);
+    setFormTelegramUsername(item.telegramUsername);
+    setFormTelegramDescription(item.description || "");
+    setFormTelegramActive(item.active);
+    setIsTelegramModalOpen(true);
+  };
+
+  const handleSaveTelegramModal = () => {
+    if (!formTelegramName.trim() || !formTelegramUsername.trim()) {
+      toast.error("Nama dan Username / Link Telegram wajib diisi.");
+      return;
+    }
+
+    const cleanUsername = formTelegramUsername.trim().replace(/^@/, "");
+    const generatedLink = formatTelegramUrl(formTelegramUsername.trim());
+
+    let updatedTgList: TelegramContactItem[];
+    if (editingTelegramItem) {
+      updatedTgList = telegramContacts.map((c) =>
+        c.id === editingTelegramItem.id
+          ? {
+              ...c,
+              name: formTelegramName.trim(),
+              role: formTelegramRole.trim() || "Telegram Dedicated Trader Support",
+              telegramUsername: cleanUsername,
+              telegramLink: generatedLink,
+              description: formTelegramDescription.trim(),
+              active: formTelegramActive,
+            }
+          : c,
+      );
+      toast.success(`Contact Telegram "${formTelegramName.trim()}" berhasil diperbarui`);
+    } else {
+      const generatedId = `tg_contact_${Date.now().toString().slice(-6)}`;
+      const newContact: TelegramContactItem = {
+        id: generatedId,
+        name: formTelegramName.trim(),
+        role: formTelegramRole.trim() || "Telegram Dedicated Trader Support",
+        telegramUsername: cleanUsername,
+        telegramLink: generatedLink,
+        description: formTelegramDescription.trim(),
+        active: formTelegramActive,
+      };
+      updatedTgList = [...telegramContacts, newContact];
+      toast.success(`Contact Telegram "${formTelegramName.trim()}" berhasil ditambahkan`);
+    }
+
+    setTelegramContacts(updatedTgList);
+    setIsTelegramModalOpen(false);
+    void persistSettings(undefined, undefined, undefined, undefined, undefined, updatedTgList);
+  };
+
+  const handleDeleteTelegramContact = (item: TelegramContactItem) => {
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menghapus contact Telegram "${item.name}" (@${item.telegramUsername})?`,
+      )
+    ) {
+      return;
+    }
+    const updated = telegramContacts.filter((c) => c.id !== item.id);
+    setTelegramContacts(updated);
+    toast.success(`Contact Telegram "${item.name}" telah dihapus.`);
+    void persistSettings(undefined, undefined, undefined, undefined, undefined, updated);
+  };
+
+  const handleToggleTelegramActive = (item: TelegramContactItem) => {
+    const updated = telegramContacts.map((c) =>
+      c.id === item.id ? { ...c, active: !c.active } : c,
+    );
+    setTelegramContacts(updated);
+    toast.info(
+      `Status Telegram "${item.name}" diubah menjadi ${!item.active ? "Aktif" : "Nonaktif"}.`,
+    );
+    void persistSettings(undefined, undefined, undefined, undefined, undefined, updated);
+  };
+
+  const handleResetTelegramDefault = async () => {
+    if (confirm("Kembalikan contact person Telegram ke default (@GotradeOfficialSupport)?")) {
+      setTelegramContacts(defaultTelegramContacts);
+      await persistSettings(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        defaultTelegramContacts,
+      );
+      toast.success("Contact person Telegram telah di-reset ke default.");
+    }
+  };
+
   const handleCopyPreviewBank = () => {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(accountNumber).catch(() => {});
@@ -460,6 +656,19 @@ export function SettingsAdminPage() {
   });
 
   const activeContacts = contactPersons.filter((c) => c.active !== false);
+
+  // Filtered Telegram contact persons
+  const filteredTelegramContacts = telegramContacts.filter((c) => {
+    const search = telegramSearch.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(search) ||
+      c.role.toLowerCase().includes(search) ||
+      c.telegramUsername.toLowerCase().includes(search) ||
+      (c.description && c.description.toLowerCase().includes(search))
+    );
+  });
+
+  const activeTelegramContacts = telegramContacts.filter((c) => c.active !== false);
 
   return (
     <AdminLayout
@@ -636,7 +845,165 @@ export function SettingsAdminPage() {
               </CardContent>
             </Card>
 
-            {/* 2. Rekening Tujuan Deposit Gotrade */}
+            {/* 2. Contact Person Telegram Gotrade (CRUD) */}
+            <Card className="border-[#229ED9]/40 shadow-xs">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#229ED9]/15 text-[#229ED9]">
+                        <TelegramIcon className="h-4 w-4" />
+                      </div>
+                      Contact Person Telegram Gotrade (Halaman /lainnya)
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Kelola kontak support Telegram resmi (Nama, Role, Username/Link @telegram)
+                      yang tampil pada kartu Telegram Support di halaman <strong>/lainnya</strong>.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetTelegramDefault}
+                      title="Reset ke profil Telegram default"
+                      className="h-8 text-xs text-muted-foreground"
+                    >
+                      <RotateCcw className="mr-1 h-3 w-3" /> Reset
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={openAddTelegramModal}
+                      className="h-8 gap-1 bg-[#229ED9] text-xs text-white hover:bg-[#229ED9]/90"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Tambah Contact Telegram
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={telegramSearch}
+                    onChange={(e) => setTelegramSearch(e.target.value)}
+                    placeholder="Cari nama support, role, atau username Telegram (@username)..."
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+
+                {/* List Telegram Contacts */}
+                <div className="max-h-72 divide-y overflow-y-auto rounded-lg border">
+                  {filteredTelegramContacts.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      Tidak ada contact person Telegram yang cocok dengan pencarian.
+                    </div>
+                  ) : (
+                    filteredTelegramContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className={`flex items-center justify-between p-3 text-xs transition-colors hover:bg-muted/30 ${
+                          !contact.active ? "bg-muted/10 opacity-60" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#229ED9]/30 bg-[#229ED9]/10 text-[#229ED9] shadow-2xs">
+                            <TelegramIcon className="h-4 w-4" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-extrabold tracking-wide text-foreground">
+                                {contact.name}
+                              </span>
+                              <Badge
+                                variant={contact.active ? "default" : "secondary"}
+                                className={`text-[9px] px-1.5 py-0 ${
+                                  contact.active
+                                    ? "bg-[#229ED9]/15 text-[#229ED9] hover:bg-[#229ED9]/25"
+                                    : ""
+                                }`}
+                              >
+                                {contact.active ? "Aktif" : "Nonaktif"}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">{contact.role}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px] text-muted-foreground">
+                              <a
+                                href={
+                                  contact.telegramLink ||
+                                  formatTelegramUrl(contact.telegramUsername)
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1 font-semibold text-[#229ED9] hover:underline"
+                              >
+                                <Send className="h-3 w-3" />@
+                                {contact.telegramUsername.replace(/^@/, "")}
+                                <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                              </a>
+                              {contact.description && (
+                                <span className="text-[10px] text-muted-foreground italic">
+                                  • {contact.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Toggle Active Switch */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              {contact.active ? "Aktif" : "Nonaktif"}
+                            </span>
+                            <Switch
+                              checked={contact.active}
+                              onCheckedChange={() => handleToggleTelegramActive(contact)}
+                              className="scale-75"
+                            />
+                          </div>
+
+                          {/* Edit Button */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => openEditTelegramModal(contact)}
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title="Edit Contact Telegram"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+
+                          {/* Delete Button */}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteTelegramContact(contact)}
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            title="Hapus Contact Telegram"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Kontak Telegram berstatus <strong>Aktif</strong> akan otomatis tampil pada halaman{" "}
+                  <strong>/lainnya</strong> trader dan dapat langsung dihubungi dengan 1-klik menuju
+                  aplikasi Telegram.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 3. Rekening Tujuan Deposit Gotrade */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -1084,6 +1451,65 @@ export function SettingsAdminPage() {
               </CardContent>
             </Card>
 
+            {/* Live Preview: Contact Person Telegram (/lainnya) */}
+            <Card className="border-[#229ED9]/30 bg-muted/10">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <TelegramIcon className="h-4 w-4 text-[#229ED9]" /> Live Preview Telegram
+                    (/lainnya)
+                  </CardTitle>
+                  <Badge
+                    variant="outline"
+                    className="border-[#229ED9]/40 bg-[#229ED9]/10 text-[#229ED9] text-[10px]"
+                  >
+                    Telegram Support
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Pratinjau kartu kontak Telegram yang dilihat trader pada halaman /lainnya.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {activeTelegramContacts.length === 0 ? (
+                  <div className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+                    Tidak ada contact person Telegram yang aktif. Aktifkan minimal 1 kontak di
+                    sebelah kiri.
+                  </div>
+                ) : (
+                  activeTelegramContacts.slice(0, 2).map((tg) => (
+                    <div
+                      key={tg.id}
+                      className="rounded-xl border border-[#229ED9]/30 bg-card p-3 shadow-xs space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#229ED9]/15 text-[#229ED9]">
+                            <TelegramIcon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{tg.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{tg.role}</p>
+                          </div>
+                        </div>
+                        <span className="rounded bg-[#229ED9]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#229ED9]">
+                          Resmi
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-md bg-[#229ED9]/10 px-2.5 py-1.5 text-xs">
+                        <span className="font-semibold text-[#229ED9]">
+                          @{tg.telegramUsername.replace(/^@/, "")}
+                        </span>
+                        <span className="text-[10px] font-medium text-muted-foreground">
+                          {tg.active ? "Aktif" : "Nonaktif"}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
             {/* Quick Helper */}
             <Card>
               <CardContent className="pt-5">
@@ -1293,6 +1719,123 @@ export function SettingsAdminPage() {
               className="bg-primary text-xs text-primary-foreground"
             >
               {editingSourceItem ? "Simpan Perubahan" : "Tambahkan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Dialog for Add / Edit Telegram Contact */}
+      <Dialog open={isTelegramModalOpen} onOpenChange={setIsTelegramModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#229ED9]/10 text-[#229ED9]">
+                <TelegramIcon className="h-4 w-4" />
+              </div>
+              {editingTelegramItem
+                ? "Edit Contact Person Telegram"
+                : "Tambah Contact Person Telegram"}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Atur username @telegram dan identitas support yang tampil pada kartu Telegram di
+              halaman /lainnya.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="form-tg-name" className="text-xs font-semibold">
+                Nama Lengkap / Akun Support <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="form-tg-name"
+                value={formTelegramName}
+                onChange={(e) => setFormTelegramName(e.target.value)}
+                placeholder="Contoh: Gotrade Official Support"
+                className="text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="form-tg-role" className="text-xs font-semibold">
+                Jabatan / Role Support
+              </Label>
+              <Input
+                id="form-tg-role"
+                value={formTelegramRole}
+                onChange={(e) => setFormTelegramRole(e.target.value)}
+                placeholder="Contoh: Telegram Dedicated Trader Support"
+                className="text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="form-tg-user" className="text-xs font-semibold">
+                Username / Link Telegram <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative flex items-center">
+                <span className="pointer-events-none absolute left-3 text-xs font-bold text-[#229ED9]">
+                  @
+                </span>
+                <Input
+                  id="form-tg-user"
+                  value={formTelegramUsername}
+                  onChange={(e) => setFormTelegramUsername(e.target.value)}
+                  placeholder="GotradeOfficialSupport"
+                  className="pl-7 text-xs font-medium"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Bisa berupa username tanpa spasi (misal: <code>GotradeSupport</code>) atau link
+                lengkap (<code>https://t.me/GotradeSupport</code>).
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="form-tg-desc" className="text-xs font-semibold">
+                Keterangan / Deskripsi Singkat (Opsional)
+              </Label>
+              <Input
+                id="form-tg-desc"
+                value={formTelegramDescription}
+                onChange={(e) => setFormTelegramDescription(e.target.value)}
+                placeholder="Contoh: Layanan konsultasi & bantuan deposit/withdraw 24/7"
+                className="text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-2.5">
+              <div className="space-y-0.5">
+                <Label htmlFor="form-tg-active" className="text-xs font-semibold">
+                  Status Aktif
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Tampilkan kontak Telegram ini pada halaman /lainnya trader
+                </p>
+              </div>
+              <Switch
+                id="form-tg-active"
+                checked={formTelegramActive}
+                onCheckedChange={setFormTelegramActive}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsTelegramModalOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveTelegramModal}
+              className="bg-[#229ED9] text-xs text-white hover:bg-[#229ED9]/90"
+            >
+              {editingTelegramItem ? "Simpan Perubahan" : "Tambahkan Contact Telegram"}
             </Button>
           </DialogFooter>
         </DialogContent>
